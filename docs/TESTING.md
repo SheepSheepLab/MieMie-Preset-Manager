@@ -1,0 +1,102 @@
+# Testing · 0.1.2
+
+自动检查、源码核验和真实宿主验收分别记录。当前没有真实 SillyTavern、Tavern Helper、MieMie Hub 或物理手机运行结果。
+
+## 可复现命令
+
+要求 Node.js `>=22`、npm。仓库根目录：
+
+```sh
+npm ci
+npm run check
+npm test
+npm run build
+npm run test:browser
+```
+
+`build` 已包含类型检查和 Node 测试；完整日常检查可直接运行 `npm ci`、`npm run build`、`npm run test:browser`。构建生成交付 JSON、manifest 和本地演示页面，浏览器检查必须在构建后运行。
+
+浏览器测试固定 Playwright `1.62.1`，默认使用本机 Chrome。也可安装 Playwright 管理的 Chromium：
+
+```sh
+npx playwright install chromium
+```
+
+随后设置 `PLAYWRIGHT_CHANNEL=chromium` 再执行 `npm run test:browser`。例如 PowerShell：
+
+```powershell
+$env:PLAYWRIGHT_CHANNEL = 'chromium'
+npm run test:browser
+```
+
+POSIX shell：
+
+```sh
+PLAYWRIGHT_CHANNEL=chromium npm run test:browser
+```
+
+浏览器检查打开生成的 `delivery/preview.html`，使用内存 Adapter 和人工演示数据。截图与检查回执写入本地 `evidence/`，不作为预设数据上传。演示入口不进入 Tavern Helper 交付脚本。
+
+## 自动检查结果
+
+2026-09-28，在独立依赖安装后执行以下检查，使用 Chrome `153.0.8010.48`。这些结果是开发测试，不是真实 ST 运行记录；机器可读结果见 [validation-results.json](validation-results.json)。
+
+| 检查 | 覆盖范围 | 结果 |
+| --- | --- | --- |
+| `npm ci` | 从锁文件安装开发依赖 | 通过，81 个包 |
+| TypeScript 与脚本构建 | 严格类型检查、可读业务脚本、Extension JSON、打包后语法检查 | 通过 |
+| Node：75 项 | 原始对象与 Round Trip、未知字段、所有顺序组、分类、Prompt 操作、Adapter 数据／失败／并发／停用、控制器草稿及模拟 Hub 生命周期 | 75 通过 |
+| 其中 22 项原生契约测试 | 执行固定版本原生源码片段，以模拟 DOM／HTTP／事件依赖核对 1.18／1.19 行为 | 22 通过，包含在 75 项内 |
+| 功能浏览器：12 项 | 编辑取消与保存、导入导出、复制切换、删除确认、鼠标拖动、触屏长按、窄屏控件与缩短视口 | 12 通过 |
+| 响应式浏览器：9 项 | PC／窄屏／横屏、编辑草稿与焦点、视口缩短、安全区、旋转取消拖动、入口与菜单可达性 | 9 通过 |
+| 干净目录重建 | 在没有父目录依赖的独立临时目录，从锁文件执行 `npm ci` 与 `npm run build` | 通过，4 项产物逐字一致 |
+
+当前 Extension JSON 的 SHA-256：
+
+```text
+24e51e84b3944f57a99015f7e29b102bf21ddede67c6f870f88456845bb1c3c2
+```
+
+Node 夹具来自公开固定提交的 Default 预设、固定原生源码片段和人工数据。测试为克隆夹具加入未来字段和多组数据；**没有使用真实私人复杂预设**。出处和许可见 [fixtures](../tests/fixtures/README.md)，版本差异见 [Compatibility Notes](COMPATIBILITY.md)。
+
+## 版本证据边界
+
+| 对象 | 源码／自动检查基线 | 真实宿主状态 |
+| --- | --- | --- |
+| ST 1.18.0 | `51ad27fb86d39a3daca3adaa970375c9670c12df`，固定原生方法与模拟宿主 | 未执行 |
+| ST 1.19.0 | `7e8663cd9c184a550b37238218bdd32c6efc68e9`，固定原生方法与模拟宿主 | 未执行 |
+| ST 1.19.0 交叉源码 | `06bde939fb1e9c4c8d8641d810f0a916b5bce127`，相关文件比对及 Default 夹具来源 | 未执行 |
+| Tavern Helper 4.10.0 源码 | `e9aa5ba146d0f13b7a26742c26dd04d9132a30da` 的接口研究，版本号来自该提交的 package.json | 无已测试运行版本 |
+| MieMie Hub | API v1 生命周期模拟 | 无已测试运行版本 |
+| 手机 | 桌面浏览器的触控、视口和布局模拟 | 物理设备、移动 Safari、实际软键盘未执行 |
+
+模拟真实方法体仍不包含完整 ST 服务、真实宿主页面、Tavern Helper iframe 或其他扩展。浏览器触控模拟也不能验证手机输入法、设备 safe-area 值或实际浏览器工具栏。
+
+## 真实宿主 Golden Path
+
+依据 [产品计划第 25 节](PRODUCT_PLAN.md#25-测试要求)，以下 **18 项全部待执行**。分别记录 ST 1.18 与 1.19 的准确版本／commit、Tavern Helper 版本、Hub 版本、浏览器／设备、交付 JSON 哈希、结果及失败证据。测试使用已备份且获准使用的预设；公开记录不得包含私人正文、连接凭据或完整导出。
+
+| # | 验收项 | 需要确认的真实结果 | 状态 |
+| --- | --- | --- | --- |
+| 1 | 关闭 Hub | 独立悬浮入口出现 | 待执行 |
+| 2 | 打开管理器 | 读取 ST 实际当前预设，名称与内容一致 | 待执行 |
+| 3 | 切换预设 | ST 当前预设实际切换，管理器回读一致 | 待执行 |
+| 4 | 导入复杂预设 | 保存成功后自动成为当前预设，同名不静默覆盖 | 待执行 |
+| 5 | 复制预设 | 完整 copy、来源不变、自动切换至 copy | 待执行 |
+| 6 | 编辑 Prompt | 标题／Role／Content 取消无变化，保存后刷新仍保留 | 待执行 |
+| 7 | 复制 Prompt | 副本位于原条目下方，新 identifier 有效，其他字段保留 | 待执行 |
+| 8 | 整卡拖动 | 实际 `prompt_order` 更新，刷新后顺序保留 | 待执行 |
+| 9 | Toggle | 原生发送状态与 UI 一致，刷新后保留 | 待执行 |
+| 10 | 解锁 | 从活动发送顺序移出，定义保留并位于解锁区 | 待执行 |
+| 11 | 删除 | 确认框取消无变化，确认后合法删除；核对内建／Marker 限制 | 待执行 |
+| 12 | 导出 | 完整原生 JSON 可以由 ST 原生导入器重新导入 | 待执行 |
+| 13 | 无修改 Round Trip | 复杂预设导入再导出，字段及功能语义保持 | 待执行 |
+| 14 | 未知字段 | 加入未来字段，修改其他 Prompt 后仍完整保留 | 待执行 |
+| 15 | 手机 | 列表滑动、长按排序、按钮不误拖、软键盘和旋转后保存可达 | 待执行 |
+| 16 | 启动 Hub | 独立入口隐藏，Hub 出现入口，原草稿和面板可用 | 待执行 |
+| 17 | 关闭 Hub | 状态不丢失，独立入口与面板恢复 | 待执行 |
+| 18 | 再启动 Hub | 重新接入，只有一个业务实例，无重复监听或入口 | 待执行 |
+
+另需在可恢复副本上验证失败与并发场景：保存失败／响应丢失、同名预设被外部改动、保存中切换或停用、原生未保存设置、重命名部分成功。确认错误提示与磁盘实际状态一致，能导出操作前备份，不覆盖外部新状态。
+
+已知需求差距包括保留 identifier／Marker 的额外删除保护、旧格式迁移、全局活动组限制及后端非原子事务，详见 [Compatibility Notes](COMPATIBILITY.md#已知限制与需求差距)。完成自动检查不等于这些限制已消除，也不构成维护者验收。

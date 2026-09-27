@@ -2,35 +2,74 @@
 
 SillyTavern Chat Completion Preset / Prompt Manager
 
-咩咩预设管理是 SillyTavern 原生 Chat Completion Preset 与 Prompt Manager 的管理前端，提供更直观的预设与提示词操作，支持 PC / Mobile 和 Standalone / MieMie Hub。
+咩咩预设管理是 SillyTavern 原生 Chat Completion Preset 与 Prompt Manager 的管理前端，提供预设切换、导入导出、完整复制，以及 Prompt 编辑、排序和开关。同一份脚本共用 Core、UI 和 Hub Adapter，适配 PC / 手机及 Standalone / MieMie Hub。
 
 MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion presets and Prompt Manager. It preserves native data and does not introduce a proprietary preset format.
 
 ## 项目状态 / Status
 
-- **Early Development / Prototype Integration**：社区 Contributor 已实现 0.1.0 原型，维护者持有 0.1.2 兼容修订包。当前仓库基础文件不包含该实现，等待 Contributor 通过本人账号提交源码与 PR。
-- 初始计划版本：`0.1.0`；原型包版本：`0.1.2`；二者不代表已经发布或验收的官方版本。
+- 当前实现与测试包版本：`0.1.2`。这是待真实宿主验收的开发版本，不代表官方发布或验收通过。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
-- Extension / Product ID：`miemie.preset-manager`。
-- 版本仅使用 `x.x.x`，不加 alpha、beta、build 或 hub.N 后缀。
+- Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
+- 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。固定源码研究与模拟测试以 `1.18.0`、`1.19.0` 为基线；**尚未进行真实 ST、Tavern Helper、Hub 或物理手机验证**，不能据此宣称整个版本系列已通过实测。
 
-正式产品需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。已有原型用于理解现状，不能用原型的限制替代正式需求。当前仓库尚无可复现构建或已验证安装包，安装与构建说明在源码 PR 中补齐。
+正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
-## 兼容与数据原则 / Compatibility
+## 安装测试包
 
-1. 原始 Preset 对象 + 局部 Patch；保留未知字段、生成参数、模型配置、`prompts` 与所有 `prompt_order` 分组，不从缩水模型重建 JSON。
-2. 导出仍为 SillyTavern 原生 Preset；无修改 Round Trip 和修改后的未知字段保留均须验证。
-3. 预设切换、导入、复制必须改变并回读 ST 实际当前预设；排序写入实际 `prompt_order`。
-4. Built-in / Marker 的编辑、关闭、解除挂接和删除遵循 ST 原生规则。
-5. 保存成功且确认实际状态后才报告成功；失败、并发变化或不确定结果应明确提示并保留恢复依据。
+交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-兼容研究覆盖 ST 1.18.x / 1.19.x，以每个测试版本的源码、commit、Tavern Helper 版本和实机结果为依据。**当前未宣称上述版本已通过验收**。版本差异集中在 ST Adapter / Compatibility Layer，共用 Core、UI 与 Hub Adapter。
+[MieMie-Preset-Manager-Extension-0.1.2.json](delivery/MieMie-Preset-Manager-Extension-0.1.2.json)
 
-## 双模式与隐私 / Modes and privacy
+1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
+2. 未运行兼容 Hub 时，点击右下方 SVG 悬浮入口打开管理器；打开面板后入口隐藏，关闭后恢复。
+3. 运行 MieMie Hub API v1 时，独立入口收起，从 Hub 打开“咩咩预设管理”。Hub 退出后恢复独立入口，再次出现时重新接入。
+4. 按 [Testing](docs/TESTING.md) 在目标 ST 版本上验证，记录 ST commit、Tavern Helper 和 Hub 的实际版本。
 
-无兼容 Hub 时使用独立 Launcher；兼容 Hub API v1 出现后注册并收起独立入口；Hub 退出后恢复，期间仅保留一个业务实例。手机触控、长按拖动及软键盘布局属于正式支持范围。
+运行时需要宿主的原生预设管理器、事件总线、请求头、Chat Completion 设置，以及 Tavern Helper 的 `getTavernVersion()`、`builtin.promptManager`。缺少能力时在写入前停止。Hub 可选；不要求用户安装 Node.js，不从 CDN 加载业务代码。
 
-Prompt 正文默认在本地处理，不上传至 Registry、Hub Server、第三方分析或 AI 服务，不进行 Prompt 内容遥测。本地 ST 宿主的原生预设持久化属于必要的数据操作；Hub 只负责扩展入口，不读取完整预设。
+## 日常操作
+
+顶部显示实际当前预设。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供新建、重命名、删除和操作前备份导出。新建沿用当前生成／连接设置与内建条目，清除自定义条目，来源预设不变。
+
+Prompt 编辑在点击“保存”后提交，取消丢弃编辑。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。当前对 Marker 和保留 identifier 的保护比原生规则更严格，见兼容文档的已知限制。
+
+整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，不更改名称或数据；在分类内排序只置换该分类原有位置。
+
+界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。真实移动浏览器及软键盘仍待验证。
+
+## 数据与隐私
+
+读取完整原生 Preset，修改目标字段后保存，不从简化模型重建 JSON。未知字段、生成／模型配置及所有 `prompt_order` 分组保留。写入通过原生保存接口，随后从磁盘读取接口核对；外部切换、同名文件变化或未保存的原生设置可能阻止操作，并明确报告保存与应用的实际结果。
+
+导出包含**完整原始设置**，可能含 `proxy_password`、`custom_include_headers`、连接地址或其他敏感字段；不会自动脱敏。导出文件和操作前备份应作为私人数据保管，分享前另行检查。内存备份在停用脚本、关闭或刷新酒馆页面后清除。原生服务端没有跨请求事务，不能保证跨浏览器并发写入的绝对原子性。
+
+分类和编辑在浏览器本地处理。运行时仅请求当前 ST 宿主的原生读取／保存接口，不向 Registry、Hub Server、第三方分析、遥测或 AI 服务发送 Prompt 正文。Hub 只接收清单与面板生命周期，不接收完整预设、控制器或草稿。这不构成对其他同源脚本的安全隔离。
+
+## 源码与构建
+
+要求 Node.js `>=22`、npm。依赖版本由 `package-lock.json` 固定，在仓库根目录执行：
+
+```sh
+npm ci
+npm run build
+npm run test:browser
+```
+
+`npm run build` 执行严格 TypeScript 检查、Node 测试、脚本打包和语法检查。`npm test` 只转译并运行 Node 测试；`npm run check` 只检查生产源码类型。浏览器测试使用 Playwright `1.62.1`，默认启动本机 Chrome；使用 Playwright Chromium 的方法见 [Testing](docs/TESTING.md)。
+
+构建输出位于 `delivery/`。仓库提交当前版本的 Extension JSON 和 `component-update-manifest.json`；`preset-manager.js`、`preview.js`、`preview.html` 由构建生成。预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。
+
+| 文件 | 职责 |
+| --- | --- |
+| `contracts.ts` / `model.ts` | 原始对象类型、验证、分类与局部 Prompt 操作 |
+| `st-adapter.ts` | ST 能力检查、版本差异、磁盘回读、并发及失败处理 |
+| `controller.ts` | 草稿、互斥操作、状态与内存备份 |
+| `ui.ts` / `styles.ts` / `icons.ts` | PC／手机共用交互、样式与 SVG |
+| `dual-mode.ts` | 单个业务实例的 Hub／独立入口生命周期 |
+| `index.ts` | Tavern Helper 脚本启动与停用 |
+| `preview.ts` | 本地演示入口，不进入交付脚本 |
+| `build.cjs` / `tests/` | 构建、数据与宿主契约测试、浏览器检查 |
 
 ## 授权 / Licensing
 
@@ -38,9 +77,9 @@ Prompt 正文默认在本地处理，不上传至 Registry、Hub Server、第三
 
 Software code is licensed under GNU GPL version 3 or, at your option, any later version, without warranty. Contributor authorship and copyright notices remain intact.
 
-MieMie / 咩咩的品牌、Logo、角色形象和指定美术资产不自动纳入软件 GPL 授权。当前基础仓库不含这些素材，也不含 Contributor 的实现。品牌和素材声明不向 GPL 软件代码附加限制。
+MieMie / 咩咩的品牌、Logo、角色形象和指定美术资产不自动纳入软件 GPL 授权。品牌和素材声明不向 GPL 软件代码附加限制。第三方测试源码与夹具保留上游许可，具体范围与来源见以下文件。
 
 - [BRAND.md](BRAND.md)
 - [ASSETS-LICENSE.md](ASSETS-LICENSE.md)
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-
+- [测试夹具来源](tests/fixtures/README.md)

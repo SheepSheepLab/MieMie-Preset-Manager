@@ -1,0 +1,56 @@
+{
+  "date": "2026-09-28",
+  "version": "0.1.2",
+  "environment": {
+    "node": "v24.18.0",
+    "typescript": "6.0.3",
+    "webpack": "5.108.4",
+    "tsLoader": "9.6.2",
+    "playwright": "1.62.1",
+    "browser": "153.0.8010.53"
+  },
+  "commands": {
+    "npm ci --ignore-scripts --no-audit --no-fund": "passed",
+    "npm run check": "passed",
+    "npm run build": "passed",
+    "npm run test:browser": "passed"
+  },
+  "nodeTests": {
+    "passed": 75,
+    "failed": 0,
+    "nativeSourceSnippetTestsWithMockedDependencies": 22
+  },
+  "browserChecks": {
+    "kind": "offline-preview",
+    "passed": 12,
+    "pageErrors": 0
+  },
+  "responsiveChecks": {
+    "kind": "offline-preview-with-CDP-touch-and-simulated-visualViewport",
+    "passed": 9,
+    "pageErrors": 0
+  },
+  "independentDirectoryBuild": {
+    "freshNpmCi": true,
+    "passed": true,
+    "nodeTestsPassed": 75,
+    "byteEqual": [
+      "MieMie-Preset-Manager-Extension-0.1.2.json",
+      "component-update-manifest.json",
+      "preset-manager.js",
+      "preview.js"
+    ]
+  },
+  "artifact": {
+    "path": "delivery/MieMie-Preset-Manager-Extension-0.1.2.json",
+    "sha256": "24e51e84b3944f57a99015f7e29b102bf21ddede67c6f870f88456845bb1c3c2"
+  },
+  "realHost": {
+    "sillyTavern118": "not-run",
+    "sillyTavern119": "not-run",
+    "tavernHelper": "not-run",
+    "mieMieHub": "not-run",
+    "physicalMobileKeyboard": "not-run"
+  },
+  "acceptance": "pending-maintainer-review-and-real-host-testing"
+}
