@@ -51,3 +51,10 @@ cookie-jar.json
 # Local reference material; contributor implementation enters through its own PR
 work/
 local-reference/
+
+# Local test output and generated previews
+.test-build/
+evidence/
+delivery/*
+!delivery/MieMie-Preset-Manager-Extension-0.1.2.json
+!delivery/component-update-manifest.json

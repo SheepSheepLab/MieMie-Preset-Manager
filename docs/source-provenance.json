@@ -1,0 +1,225 @@
+{
+  "kind": "pinned-source-comparison",
+  "realHost": false,
+  "files": [
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/st-context.js",
+      "sha256": "0ffc6bce3e1b5d1abcced21063f6cc5b3fd9c81d2d5555c3f14f9832c041cfea",
+      "bytes": 10759,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/st-context.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/events.js",
+      "sha256": "2aa1c20f140fab8967e6f850bd6e253bd0aa6e7c6a2e0540778cb11dd0f3a6ea",
+      "bytes": 5629,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/events.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/PromptManager.js",
+      "sha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "bytes": 90717,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/PromptManager.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/openai.js",
+      "sha256": "93445a168807b916654bcb857f3b7f3943eaff8142c48aa1674fc9763944611d",
+      "bytes": 299442,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/openai.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/preset-manager.js",
+      "sha256": "af5963314eaed6e39dfba0873d61e01ed56b0dadb0ad25727a28b8b8f05edc3c",
+      "bytes": 45863,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/preset-manager.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "src/endpoints/presets.js",
+      "sha256": "710620f0ae5157a9c0f5dadb1bd81f93ffabf11feb18d7c91c96ce452cfd583c",
+      "bytes": 3612,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/src/endpoints/presets.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "src/endpoints/settings.js",
+      "sha256": "bbc3d36ad758b1fc567f63f1e24eada063172791005c5b3baadc195b78726955",
+      "bytes": 13048,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/src/endpoints/settings.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "default/content/presets/openai/Default.json",
+      "sha256": "c83f0922af22a0ba82de89f56c11cba0c6dc50b0f3037fe0055908284cefee62",
+      "bytes": 7755,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/default/content/presets/openai/Default.json"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/st-context.js",
+      "sha256": "5a91ce36a343041c81351953baba10a54a7576f15571c01ef1af8c19bcc0e30d",
+      "bytes": 10862,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/st-context.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/events.js",
+      "sha256": "2aa1c20f140fab8967e6f850bd6e253bd0aa6e7c6a2e0540778cb11dd0f3a6ea",
+      "bytes": 5629,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/events.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/PromptManager.js",
+      "sha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "bytes": 90717,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/PromptManager.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/openai.js",
+      "sha256": "0b77c30282825540265d5a09e681e5ccacf6760b05111ec880ffe237a9250604",
+      "bytes": 307267,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/openai.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/preset-manager.js",
+      "sha256": "6a4bf761140e105069f251e8db8f6a68144d6236b5175b452494a725a9a4df4c",
+      "bytes": 46318,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/preset-manager.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "src/endpoints/presets.js",
+      "sha256": "710620f0ae5157a9c0f5dadb1bd81f93ffabf11feb18d7c91c96ce452cfd583c",
+      "bytes": 3612,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/src/endpoints/presets.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "src/endpoints/settings.js",
+      "sha256": "bbc3d36ad758b1fc567f63f1e24eada063172791005c5b3baadc195b78726955",
+      "bytes": 13048,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/src/endpoints/settings.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "default/content/presets/openai/Default.json",
+      "sha256": "a2b1bdcfd190d69b91452baff91281480c32020950092589e692ad6e2c1523bd",
+      "bytes": 7759,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/default/content/presets/openai/Default.json"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "public/scripts/st-context.js",
+      "sha256": "5a91ce36a343041c81351953baba10a54a7576f15571c01ef1af8c19bcc0e30d",
+      "bytes": 10862,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/st-context.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "public/scripts/events.js",
+      "sha256": "2aa1c20f140fab8967e6f850bd6e253bd0aa6e7c6a2e0540778cb11dd0f3a6ea",
+      "bytes": 5629,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/events.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "public/scripts/PromptManager.js",
+      "sha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "bytes": 90717,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/PromptManager.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "public/scripts/openai.js",
+      "sha256": "0b77c30282825540265d5a09e681e5ccacf6760b05111ec880ffe237a9250604",
+      "bytes": 307267,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/openai.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "public/scripts/preset-manager.js",
+      "sha256": "6a4bf761140e105069f251e8db8f6a68144d6236b5175b452494a725a9a4df4c",
+      "bytes": 46318,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/public/scripts/preset-manager.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "src/endpoints/presets.js",
+      "sha256": "710620f0ae5157a9c0f5dadb1bd81f93ffabf11feb18d7c91c96ce452cfd583c",
+      "bytes": 3612,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/src/endpoints/presets.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "src/endpoints/settings.js",
+      "sha256": "bbc3d36ad758b1fc567f63f1e24eada063172791005c5b3baadc195b78726955",
+      "bytes": 13048,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/src/endpoints/settings.js"
+    },
+    {
+      "version": "1.19-inspected",
+      "commit": "06bde939fb1e9c4c8d8641d810f0a916b5bce127",
+      "path": "default/content/presets/openai/Default.json",
+      "sha256": "a2b1bdcfd190d69b91452baff91281480c32020950092589e692ad6e2c1523bd",
+      "bytes": 7759,
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/06bde939fb1e9c4c8d8641d810f0a916b5bce127/default/content/presets/openai/Default.json"
+    },
+    {
+      "project": "Tavern Helper / JS-Slash-Runner",
+      "version": "4.10.0",
+      "commit": "e9aa5ba146d0f13b7a26742c26dd04d9132a30da",
+      "path": "package.json",
+      "sha256": "0c2df743f282bf0f488918a80bbff3f637ab300e9f354d51d813e4af226c8eda",
+      "bytes": 2764,
+      "url": "https://raw.githubusercontent.com/N0VI028/JS-Slash-Runner/e9aa5ba146d0f13b7a26742c26dd04d9132a30da/package.json"
+    },
+    {
+      "project": "Tavern Helper / JS-Slash-Runner",
+      "version": "4.10.0",
+      "commit": "e9aa5ba146d0f13b7a26742c26dd04d9132a30da",
+      "path": "src/function/builtin.ts",
+      "sha256": "d9ab4112fedbd621abada2ba2abb7311753f6332e39510da206da3b292608432",
+      "bytes": 948,
+      "url": "https://raw.githubusercontent.com/N0VI028/JS-Slash-Runner/e9aa5ba146d0f13b7a26742c26dd04d9132a30da/src/function/builtin.ts"
+    },
+    {
+      "project": "Tavern Helper / JS-Slash-Runner",
+      "version": "4.10.0",
+      "commit": "e9aa5ba146d0f13b7a26742c26dd04d9132a30da",
+      "path": "src/function/preset.ts",
+      "sha256": "cb87f8af8c3c9cbe65c7fd71721f2e9c68af42a1f079f62c18d67d24f9b3bd85",
+      "bytes": 22357,
+      "url": "https://raw.githubusercontent.com/N0VI028/JS-Slash-Runner/e9aa5ba146d0f13b7a26742c26dd04d9132a30da/src/function/preset.ts"
+    }
+  ]
+}

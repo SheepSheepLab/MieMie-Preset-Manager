@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "deliveryMode": "component",
+  "artifacts": [
+    {
+      "kind": "helper-script",
+      "id": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
+      "relativePath": "MieMie-Preset-Manager-Extension-0.1.2.json",
+      "sha256": "24e51e84b3944f57a99015f7e29b102bf21ddede67c6f870f88456845bb1c3c2"
+    }
+  ]
+}
