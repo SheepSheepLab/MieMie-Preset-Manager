@@ -32,8 +32,15 @@ type Host = Window & {
   };
 };
 
-const builtinIds = new Set(['main', 'nsfw', 'jailbreak', 'enhanceDefinitions', 'dialogueExamples', 'chatHistory',
-  'worldInfoBefore', 'worldInfoAfter', 'charDescription', 'charPersonality', 'scenario', 'personaDescription']);
+// Complete default-object fingerprints from chatCompletionDefaultPrompts in the
+// pinned 1.18.0 / 1.19.0 PromptManager.js (identical in both). Only exact native
+// missing-prompt supplements are projections; an identifier alone is not proof.
+const builtinDefaults: Record<string, string> = {
+  main: '7bd33ad7e48cb623', nsfw: '82cf4a6ff1eb7c1b', jailbreak: '198534d8bd8851c',
+  enhanceDefinitions: '5527d66c98e566b8', dialogueExamples: '677399ad4499b11', chatHistory: 'ab0a72c9ff391fbd',
+  worldInfoBefore: '174dd9f476fe2670', worldInfoAfter: '13a1d32e5f1fa322', charDescription: 'dd9dda05c5bd19d9',
+  charPersonality: '95c60dc9f35de96d', scenario: '3c392cef2288dc63', personaDescription: '2ee9f4779ea40c33',
+};
 const aliases: Record<string, string> = {
   temperature: 'temp_openai', frequency_penalty: 'freq_pen_openai', presence_penalty: 'pres_pen_openai',
   top_p: 'top_p_openai', top_k: 'top_k_openai', top_a: 'top_a_openai', min_p: 'min_p_openai',
@@ -204,14 +211,24 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (!equal(raw.extensions ?? {}, live.extensions ?? {})) conflict();
     if (!Array.isArray(live.prompts) || !Array.isArray(live.prompt_order)) conflict();
     const prompts = live.prompts as Data[];
+    if (prompts.some(p => !object(p) || typeof p.identifier !== 'string')
+      || new Set(prompts.map(p => p.identifier)).size !== prompts.length) conflict();
     for (const prompt of raw.prompts) {
       const actual = prompts.find(p => p.identifier === prompt.identifier);
-      if (!actual || Object.keys(prompt).some(key => !equal(prompt[key], actual[key]))) conflict();
+      // Service settings are plain objects, not Prompt constructor projections.
+      // Even a default-looking new attribute may be an unsaved native/third-party
+      // edit. Compare both directions; never rebase a revision over that delta.
+      if (!actual || !equal(prompt, actual)) conflict();
     }
-    if (prompts.some(p => !raw.prompts.some(r => r.identifier === p.identifier) && !builtinIds.has(String(p.identifier)))) conflict();
+    if (prompts.some(p => !raw.prompts.some(r => r.identifier === p.identifier)
+      && (!Object.hasOwn(builtinDefaults, String(p.identifier)) || hash(p) !== builtinDefaults[String(p.identifier)]))) conflict();
+    const groups = live.prompt_order as Data[];
+    if (groups.length !== raw.prompt_order.length || groups.some(g => !object(g))
+      || new Set(groups.map(g => String(g.character_id))).size !== groups.length) conflict();
     for (const group of raw.prompt_order) {
-      const actual = (live.prompt_order as Data[]).find(g => String(g.character_id) === String(group.character_id));
-      if (!actual || !equal(group.order, actual.order)) conflict();
+      const actual = groups.find(g => String(g.character_id) === String(group.character_id));
+      if (!actual || !equal({ ...group, character_id: String(group.character_id) },
+        { ...actual, character_id: String(actual.character_id) })) conflict();
     }
   }
   async function read(): Promise<Snapshot> {

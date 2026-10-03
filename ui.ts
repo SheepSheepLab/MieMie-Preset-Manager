@@ -106,7 +106,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
   logo.append(createIcon(doc, 'sheep'));
   const brand = el('div', 'mm-brand');
   brand.append(el('h2', '', '咩咩预设管理'), el('div', 'mm-subtitle', 'MIEMIE PRESET MANAGER'));
-  const closeButton = button('关闭预设管理', 'close', close);
+  let closeHandler: (() => unknown) | null = null;
+  const closeButton = button('关闭预设管理', 'close', requestClose);
   closeButton.classList.add('mm-return');
   brandline.append(logo, brand, closeButton);
   const toolbar = el('div', 'mm-toolbar');
@@ -868,7 +869,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
         menu.hidden = true;
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.focus();
-      } else close();
+      } else requestClose();
       return;
     }
     const target = event.target as HTMLElement;
@@ -951,6 +952,14 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const first = !editorLayer.hidden ? editorLayer.querySelector<HTMLElement>('input') : presetSelect;
     (first ?? frame).focus();
   }
+  function requestClose() {
+    if (disposed) return;
+    cancelDrag();
+    menu.hidden = true;
+    moreButton.setAttribute('aria-expanded', 'false');
+    if (closeHandler) closeHandler();
+    else close();
+  }
   function close() {
     cancelDrag();
     panel.hidden = true;
@@ -966,9 +975,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
     panel,
     open,
     close,
+    setCloseHandler(handler) { closeHandler = handler; },
     dispose() {
       if (disposed) return;
       disposed = true;
+      closeHandler = null;
       cancelDrag();
       unsubscribe();
       for (const remove of cleanup.splice(0)) remove();

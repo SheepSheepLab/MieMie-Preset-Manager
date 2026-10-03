@@ -1,28 +1,29 @@
 {
-  "date": "2026-09-28",
+  "date": "2026-10-04",
   "version": "0.1.2",
   "environment": {
-    "node": "v24.18.0",
+    "node": "v24.13.1",
     "typescript": "6.0.3",
     "webpack": "5.108.4",
     "tsLoader": "9.6.2",
     "playwright": "1.62.1",
-    "browser": "153.0.8010.53"
+    "browser": "Chromium 151.0.7922.34"
   },
   "commands": {
-    "npm ci --ignore-scripts --no-audit --no-fund": "passed",
+    "npm ci": "passed",
     "npm run check": "passed",
+    "npm test": "passed",
     "npm run build": "passed",
     "npm run test:browser": "passed"
   },
   "nodeTests": {
-    "passed": 75,
+    "passed": 92,
     "failed": 0,
-    "nativeSourceSnippetTestsWithMockedDependencies": 22
+    "nativeSourceSnippetTestsWithMockedDependencies": 37
   },
   "browserChecks": {
     "kind": "offline-preview",
-    "passed": 12,
+    "passed": 17,
     "pageErrors": 0
   },
   "responsiveChecks": {
@@ -33,7 +34,7 @@
   "independentDirectoryBuild": {
     "freshNpmCi": true,
     "passed": true,
-    "nodeTestsPassed": 75,
+    "nodeTestsPassed": 92,
     "byteEqual": [
       "MieMie-Preset-Manager-Extension-0.1.2.json",
       "component-update-manifest.json",
@@ -43,7 +44,7 @@
   },
   "artifact": {
     "path": "delivery/MieMie-Preset-Manager-Extension-0.1.2.json",
-    "sha256": "24e51e84b3944f57a99015f7e29b102bf21ddede67c6f870f88456845bb1c3c2"
+    "sha256": "545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f"
   },
   "realHost": {
     "sillyTavern118": "not-run",
@@ -52,5 +53,25 @@
     "mieMieHub": "not-run",
     "physicalMobileKeyboard": "not-run"
   },
-  "acceptance": "pending-maintainer-review-and-real-host-testing"
+  "acceptance": "pending-maintainer-review-and-real-host-testing",
+  "artifactsSha256": {
+    "MieMie-Preset-Manager-Extension-0.1.2.json": "545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f",
+    "component-update-manifest.json": "116f18283e0f53ce950198e7f0e44b1d88d2ace7bbb8796f6b9cf5f38f3bf2fd",
+    "preset-manager.js": "30dbbf941fa8fbae32c91f2b94853914a37bc595fd7e22aecdef79c6861ce01b",
+    "preview.js": "77d46fecf88e9ebdd079a5e176304308dbce2117522a3d2790a82e8e1110e6d0"
+  },
+  "regressions": {
+    "baseHead": "8fb308941753acc5fa90975f4c37f8e54ab1508f",
+    "beforeFix": {
+      "existingPassed": 75,
+      "addedFailed": 17
+    },
+    "afterFix": {
+      "allPassed": 92
+    },
+    "B1": "live-added Prompt attributes and order metadata block refresh/save; no live-to-raw overwrite",
+    "B2": "UI close routes via active Hub closePanel; Standalone fallback; draft, rejoin and cleanup covered",
+    "hubSourceBaseline": "928362c1eb224afe780801060c6d867e01cf5013",
+    "evidenceKind": "offline mocks and pinned-source reproduction; not real-host acceptance"
+  }
 }

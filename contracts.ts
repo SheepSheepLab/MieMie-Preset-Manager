@@ -50,4 +50,11 @@ export interface ManagerController {
   move(id: string, beforeId: string | null, expectedRevision: string): Promise<void>;
   dispose(): void;
 }
-export interface ManagerView { panel: HTMLElement; open(): void; close(): void; dispose(): void; }
+export interface ManagerView {
+  panel: HTMLElement;
+  open(): void;
+  /** Local hiding for lifecycle cleanup; user actions go through the installed route. */
+  close(): void;
+  setCloseHandler(handler: (() => unknown) | null): void;
+  dispose(): void;
+}

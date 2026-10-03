@@ -66,6 +66,16 @@ Adapter 内串行写入，以原始快照、切换代次、当前名称及 live 
 
 同一控制器和视图在独立入口与 Hub API v1 间切换。通过 `window.__MieMieHub`、`miemie:hub-ready` / `miemie:hub-disposed` 与 `hub.extensions.provide(manifest, factory)` 接入。Hub 不接收 raw、控制器或草稿；失去 Hub 后面板回到独立容器。双模式不构成同源脚本安全隔离。
 
+## Maintainer Review 修复：live 新增字段与关闭路由
+
+Prompt 定义采用双向完整对象比较，顺序条目和全部分组（包括分组元数据、额外分组与重复标识）也参与冲突检查。新增、删除或修改的属性会阻止读取成为安全快照，并在写入前再次阻止操作；失败的 refresh 不更新 snapshot / draft revision。不把完整 live 投影合并进 raw。
+
+固定两版 `PromptManager.js` 的 `sanitizeServiceSettings()` / `checkForMissingPrompts()` 只为缺失的内建定义补上 `chatCompletionDefaultPrompts` 对象。Adapter 使用这些完整默认对象的固定双指纹，仅放行匹配的缺失内建补项；仅 identifier 匹配不再足够。补项不会写回 raw。`Prompt` 构造器的 Order / Trigger 默认值与编辑表单默认显示值不等于 service settings 的安全补值：既有 Prompt 上新增属性，即使看起来是默认值，也保守地作为未保存变化处理。未知补值／迁移需先在可恢复副本中确认并原生保存。本轮保留既有 1.18 `pollinations_endpoint` 和 1.19 三种模型迁移的比较投影。
+
+UI 的关闭按钮及关闭面板的 Escape 分支统一请求 Dual Mode 的关闭能力。Standalone 本地隐藏；Hub 模式由当前有效实例的 `api.closePanel()` 完成 Surface 过渡与 Launcher 恢复，关闭不 deactivate、不销毁控制器、不清除草稿。生命周期停用仍可执行内部本地隐藏与清理。没有正式 `closePanel` 能力的 Hub API v1 实例注册失败后恢复 Standalone，不猜测其私有 DOM 或状态。
+
+Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/EXTENSION-API.md)、同提交 `src/surface-controller.js` / `src/extension-runtime.js`。当前 Hub 源码状态机的补充本地复现仅模拟动画与 Launcher 依赖；真实 Hub 尚未验收。测试中 Surface 关闭可返回原 Launcher 菜单，不要求 Hub 整体退出。
+
 ## 已知限制与需求差距
 
 1. **真实宿主未验。** 尚未验证 ST iframe 执行、真实事件时序、第三方钩子、实际 Hub、物理手机和软键盘。源码／mock 不证明整个 1.18.x 或 1.19.x 系列可用。
@@ -73,7 +83,7 @@ Adapter 内串行写入，以原始快照、切换代次、当前名称及 live 
 3. **旧格式迁移不自动执行。** 会触发原生迁移的 `main_prompt`、`nsfw_prompt`、`jailbreak_prompt` 旧字段会阻止操作。缺失 `100001`、重复 identifier 或悬空引用也拒绝写入，不自动修复。应先在副本中完成原生迁移。其他历史模型迁移和第三方 BEFORE／AFTER 转换未全面覆盖。
 4. **仅支持全局活动组。** 非全局策略或非 `100001` 活动组停止运行；保留多组数据不等于支持切换任意角色组来编辑。
 5. **没有后端原子事务。** ST 不提供比较后交换或原子重命名；最后一次回读与保存／删除之间仍可能有另一个浏览器写入。重命名可部分成功。磁盘确认不能消除该后端窗口。
-6. **缺失 raw 字段的 live 基线有限。** 原生默认值不自动视为未保存修改，但没有较早基线时，无法总是区分 raw 中不存在字段的默认值与已有 live 修改；不会以保存全部 live 设置绕过此问题。
+6. **顶层缺失字段与其他迁移仍有限。** Prompt / 顺序对象的新增字段现已阻止不安全写入；顶层缺失的已知设置仍可能是原生默认值，缺少较早基线时不能总是区分已有 live 修改。未识别的 Prompt 补值保守阻止操作；不会以保存全部 live 设置绕过这些限制。
 7. **完整导出含敏感设置。** `proxy_password`、`custom_include_headers`、连接地址及未知字段均保留，备份同样如此。文件不会自动脱敏，分享前需检查；没有 Prompt 遥测不意味着导出文件适合公开。
 
 18 项产品 Golden Path 的真实宿主状态均见 [Testing](TESTING.md)，不能以开发测试替代维护者验收。

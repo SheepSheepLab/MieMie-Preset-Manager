@@ -39,25 +39,34 @@ PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 
 ## 自动检查结果
 
-2026-09-28，在独立依赖安装后执行以下检查，使用 Chrome `153.0.8010.48`。这些结果是开发测试，不是真实 ST 运行记录；机器可读结果见 [validation-results.json](validation-results.json)。
+2026-10-04，在独立依赖安装后执行以下检查，使用 Node `24.13.1`、Playwright `1.62.1` 与其 Chromium `151.0.7922.34`。这些结果是开发测试，不是真实 ST 运行记录；机器可读结果见 [validation-results.json](validation-results.json)。
 
 | 检查 | 覆盖范围 | 结果 |
 | --- | --- | --- |
-| `npm ci` | 从锁文件安装开发依赖 | 通过，81 个包 |
+| `npm ci` | 从锁文件安装开发依赖 | 通过，82 个包；审计 83 个包，无已知漏洞 |
 | TypeScript 与脚本构建 | 严格类型检查、可读业务脚本、Extension JSON、打包后语法检查 | 通过 |
-| Node：75 项 | 原始对象与 Round Trip、未知字段、所有顺序组、分类、Prompt 操作、Adapter 数据／失败／并发／停用、控制器草稿及模拟 Hub 生命周期 | 75 通过 |
-| 其中 22 项原生契约测试 | 执行固定版本原生源码片段，以模拟 DOM／HTTP／事件依赖核对 1.18／1.19 行为 | 22 通过，包含在 75 项内 |
-| 功能浏览器：12 项 | 编辑取消与保存、导入导出、复制切换、删除确认、鼠标拖动、触屏长按、窄屏控件与缩短视口 | 12 通过 |
+| Node：92 项 | 原始对象与 Round Trip、未知字段、所有顺序组、分类、Prompt 操作、Adapter 数据／失败／并发／停用、控制器草稿及模拟 Hub 生命周期 | 92 通过 |
+| 其中 37 项原生契约测试 | 执行固定版本原生源码片段，以模拟 DOM／HTTP／事件依赖核对 1.18／1.19 行为 | 37 通过，包含在 92 项内 |
+| 功能浏览器：17 项 | 编辑取消与保存、导入导出、复制切换、删除确认、鼠标拖动、触屏长按、窄屏控件与缩短视口、共享 UI 的 Hub 关闭／重开／草稿与重新接入 | 17 通过 |
 | 响应式浏览器：9 项 | PC／窄屏／横屏、编辑草稿与焦点、视口缩短、安全区、旋转取消拖动、入口与菜单可达性 | 9 通过 |
 | 干净目录重建 | 在没有父目录依赖的独立临时目录，从锁文件执行 `npm ci` 与 `npm run build` | 通过，4 项产物逐字一致 |
 
 当前 Extension JSON 的 SHA-256：
 
 ```text
-24e51e84b3944f57a99015f7e29b102bf21ddede67c6f870f88456845bb1c3c2
+545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f
 ```
 
 Node 夹具来自公开固定提交的 Default 预设、固定原生源码片段和人工数据。测试为克隆夹具加入未来字段和多组数据；**没有使用真实私人复杂预设**。出处和许可见 [fixtures](../tests/fixtures/README.md)，版本差异见 [Compatibility Notes](COMPATIBILITY.md)。
+
+## B1 / B2 回归证据
+
+在同一旧 Head `8fb308941753acc5fa90975f4c37f8e54ab1508f` 上仅加入最终 Node 回归测试：原有 75 项通过，新增 17 项全部失败；修复后 92 项全部通过。
+
+- B1：固定 1.18.0、1.19.0 和 1.19 交叉源码片段、模拟依赖。raw 缺少字段时，live 新增 `injection_depth`、默认样式 `injection_order:100` 或第三方对象；refresh 不接受新 revision，编辑标题后的 save 被阻止，live 新字段及磁盘 raw 保持不变。另覆盖已有未知字段修改、顺序条目／分组新增字段、精确原生缺失 Marker 补项及其外部修改。
+- B2：Node 协议测试核对 Standalone 关闭／重开、Hub 正式 close 调用、Surface 关闭与 Launcher 恢复、五次循环复用同一面板／实例、Hub disposed / ready 恢复与清理。缺少 close 能力时回到 Standalone。
+- 浏览器：使用真实构建后的共享 UI 和内存 Controller，配合独立 Hub Surface 契约模拟，覆盖关闭按钮／Standalone Escape、五次 Hub 关闭重开、编辑草稿、退出与重新收纳。编辑层遮挡顶部按钮时使用 DOM click 事件验证关闭路由，不宣称物理触控可达或真实 Hub 集成；真实 Hub 可从自己的 Surface 返回入口关闭。
+- 原 Review 复现再次运行：B1 两版均拒绝 refresh / save，字段未丢失；当前固定 Hub Surface 源码配合模拟动画／Launcher，在关闭后返回 `menu`、面板隐藏且 Launcher 不再暂停，closePanel 恰好一次。这仍是本地源码补充复现，不属于真实宿主验收。
 
 ## 版本证据边界
 
