@@ -25,6 +25,7 @@ type HubApi = {
   signal: AbortSignal;
   attachPanel(panel: HTMLElement, options: { icon: string }): unknown;
   showPanel(): unknown;
+  closePanel(): unknown;
   onCleanup(fn: () => void): unknown;
 };
 type HubInstance = { activate(): Promise<void>; open(): unknown; deactivate(): void };
@@ -53,9 +54,18 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
   let launcher: HTMLButtonElement | null = null;
   let launcherCleanup: (() => void) | null = null;
   let activeSession: (() => void) | null = null;
+  let closeSession: (() => unknown) | null = null;
   let placement: { x: number; y: number } | null = null;
 
   const report = (error: unknown) => console.warn('[咩咩预设管理]', error);
+  view.setCloseHandler(() => {
+    if (disposed) return;
+    // Hub owns visibility and launcher restoration, including its animation.
+    // Never locally hide a Hub surface ahead of its formal close operation.
+    if (connection) {
+      try { Promise.resolve(closeSession?.()).catch(report); } catch (error) { report(error); }
+    } else view.close();
+  });
   function currentHub(): Hub | null {
     const hub = host.__MieMieHub as Hub | undefined;
     return hub?.apiVersion === 1 && typeof hub.extensions?.provide === 'function' && !retiredHubs.has(hub) ? hub : null;
@@ -236,6 +246,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     removeLauncher();
     view.close();
     const factory = (api: HubApi): HubInstance => {
+      if (typeof api.closePanel !== 'function') throw new Error('Hub 缺少正式面板关闭能力，已恢复独立入口。');
       let ended = false;
       const valid = () =>
         !disposed && !ended && next.valid && connection === next && currentHub() === hub && !api.signal.aborted;
@@ -246,6 +257,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
         next.sessions.delete(end);
         if (activeSession === end) {
           activeSession = null;
+          closeSession = null;
           view.close();
         }
       };
@@ -258,6 +270,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
           if (!valid()) return;
           activeSession?.();
           activeSession = end;
+          closeSession = () => valid() && activeSession === end ? api.closePanel() : false;
           restorePanel();
           await api.attachPanel(view.panel, { icon: ICON });
           if (!valid()) end();
@@ -317,6 +330,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
   function dispose() {
     if (disposed) return queue;
     disposed = true;
+    view.setCloseHandler(null);
     stopped.abort();
     removeLauncher();
     view.close();

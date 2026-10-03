@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const fixtures = require('./fixtures/st-native-contracts.json');
 const { nativeHost, deferred, copy } = require('./helpers/st-native-host.cjs');
 const { createSTAdapter } = require('../.test-build/st-adapter.js');
+const { createController } = require('../.test-build/controller.js');
 const options = { timeout: 2500 };
 const turn = () => new Promise(resolve => setImmediate(resolve));
 
@@ -15,6 +16,52 @@ test.describe('Version-pinned native contract snippets with mocked dependencies'
 for (const baseline of fixtures.baselines) {
   const label = `[native snippets ${baseline.id}; mocked host]`;
   const is18 = baseline.version.startsWith('1.18.');
+  for (const [key, value] of [['injection_depth', 7], ['injection_order', 100], ['third_party_added', { preserve: 'synthetic external edit' }]]) {
+    test(`${label} B1 refresh cannot rebase a draft over live-added ${key}`, options, async t => {
+      const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host), controller = createController(adapter);
+      t.after(() => { controller.dispose(); f.cleanup(); });
+      await controller.refresh();
+      const original = copy(f.records.get('A')), revision = controller.state.snapshot.revision;
+      assert.equal(Object.hasOwn(original.prompts[1], key), false);
+      f.live.prompts[1][key] = copy(value);
+      await controller.refresh();
+      assert.match(controller.state.error, /未保存修改/);
+      assert.equal(controller.state.snapshot.revision, revision, 'conflicted live must not become a safe revision');
+      controller.edit('custom'); controller.draft({ name: 'only title changed' });
+      await controller.saveEdit();
+      assert.match(controller.state.error, /未保存修改/);
+      assert.deepEqual(f.live.prompts[1][key], value);
+      assert.deepEqual(f.records.get('A'), original);
+      assert.equal(f.controls.http.filter(r => r.pathname === '/api/presets/save').length, 0);
+    });
+  }
+  test(`${label} B1 rejects added order-entry/group fields and existing prompt edits`, options, async t => {
+    for (const mutate of [
+      f => { f.live.prompt_order[1].order[0].third_party_added = { keep: true }; },
+      f => { f.live.prompt_order[0].third_party_added = { keep: true }; },
+      f => { f.live.prompts[1].future_prompt.x = 2; },
+    ]) {
+      const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host);
+      t.after(() => { adapter.dispose(); f.cleanup(); });
+      const snapshot = await adapter.read(); mutate(f);
+      await assert.rejects(adapter.read(), /未保存修改/);
+      await assert.rejects(adapter.save(snapshot, snapshot.raw), /未保存修改/);
+    }
+  });
+  test(`${label} B1 permits exact native missing-marker defaults but rejects edits and unknown additions`, options, async t => {
+    const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host);
+    t.after(() => { adapter.dispose(); f.cleanup(); });
+    const original = copy(f.records.get('A'));
+    const marker = { identifier: 'chatHistory', name: 'Chat History', system_prompt: true, marker: true };
+    f.live.prompts.push(marker);
+    const snapshot = await adapter.read();
+    assert.deepEqual(snapshot.raw, original, 'native supplement must not be copied into raw');
+    marker.third_party_added = { keep: true };
+    await assert.rejects(adapter.read(), /未保存修改/);
+    delete marker.third_party_added; marker.name = 'external title';
+    await assert.rejects(adapter.read(), /未保存修改/);
+  });
+
   test(`${label} selectPreset has the upstream void / promise return contract`, options, async t => {
     const f = await nativeHost(baseline); t.after(() => f.cleanup());
     const completed = deferred();

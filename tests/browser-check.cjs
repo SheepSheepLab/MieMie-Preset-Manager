@@ -91,6 +91,89 @@ const receipts = [];
     const saveBounds = await page.getByRole('dialog', { name: '编辑条目', exact: true }).getByRole('button', { name: '保存', exact: true }).boundingBox();
     assert(saveBounds.y >= 0 && saveBounds.y + saveBounds.height <= 400); receipts.push('390/320窄屏无控件横向溢出，缩短视口编辑按钮可达');
     await context.close();
+    // B2: actual shared UI/controller with an offline Hub Surface contract model.
+    // DOM hiding alone cannot change this model's Surface/Launcher state.
+    const lifecycle = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const panelPage = await lifecycle.newPage(); panelPage.on('pageerror', error => errors.push(error.message));
+    await panelPage.goto(pathToFileURL(path.join(root, 'delivery', 'preview.html')).href);
+    await panelPage.locator('.mm-card').first().waitFor();
+    // The editor overlay blocks header pointer taps; dispatch exercises that UI
+    // close route while retaining a draft, rather than claiming a physical tap.
+    const closeManager = (withDraft = false) => {
+      const button = panelPage.getByRole('button', { name: '关闭预设管理', exact: true });
+      return withDraft ? button.dispatchEvent('click') : button.click();
+    };
+    const launcher = () => panelPage.locator('[data-miemie-preset-manager-standalone]');
+    await closeManager(); await launcher().waitFor({ state: 'visible' });
+    await launcher().click(); await panelPage.locator('.mm-card').first().waitFor();
+    await panelPage.keyboard.press('Escape'); await launcher().waitFor({ state: 'visible' });
+    await launcher().click(); receipts.push('B2 Standalone button/Escape close and reopen');
+    await panelPage.locator('.mm-card[data-id="demo-0"]').getByRole('button', { name: '编辑条目', exact: true }).click();
+    await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).fill('synthetic lifecycle draft');
+    await panelPage.evaluate(async () => {
+      const source = window.__MieMiePresetManagerSource;
+      const originalPanel = document.querySelector('.miemie-pm');
+      window.makeTestHub = () => {
+        const record = { state: 'closed', launcherSuspended: false, closes: 0, panels: [], instances: [], signals: [], cleanups: [] };
+        const hub = { apiVersion: 1, extensions: { provide(manifest, factory) {
+          const ctrl = new AbortController(); record.signals.push(ctrl);
+          const instance = factory({ signal: ctrl.signal, onCleanup(fn) { record.cleanups.push(fn); },
+            attachPanel(panel) { record.panels.push(panel); panel.hidden = true; panel.inert = true; },
+            showPanel() { record.state = 'preset'; record.launcherSuspended = true; record.panels[0].hidden = false; record.panels[0].inert = false; return true; },
+            closePanel() {
+              record.closes++;
+              // Keep the panel visible until the formal Surface transition ends.
+              return new Promise(resolve => setTimeout(() => {
+                record.state = 'closed'; record.launcherSuspended = false;
+                record.panels[0].hidden = true; record.panels[0].inert = true; resolve(true);
+              }, 20));
+            }
+          }); record.instances.push(instance);
+          return { ok: true, ready: instance.activate(), release() { ctrl.abort(); instance.deactivate(); record.cleanups.splice(0).forEach(fn => fn()); } };
+        } } };
+        return { hub, record };
+      };
+      window.lifecyclePanel = originalPanel; window.firstTestHub = window.makeTestHub();
+      window.__MieMieHub = window.firstTestHub.hub;
+      window.dispatchEvent(new CustomEvent('miemie:hub-ready'));
+      await source.settled(); await window.firstTestHub.record.instances[0].open();
+    });
+    const hubState = () => panelPage.evaluate(() => {
+      const r = window.firstTestHub.record;
+      return { state: r.state, launcherSuspended: r.launcherSuspended, closes: r.closes,
+        panels: r.panels.length, instances: r.instances.length, samePanel: r.panels[0] === window.lifecyclePanel };
+    });
+    for (let i = 1; i <= 5; i++) {
+      await closeManager(true);
+      await panelPage.waitForFunction(() => window.firstTestHub.record.state === 'closed');
+      assert.deepEqual(await hubState(), { state: 'closed', launcherSuspended: false, closes: i, panels: 1, instances: 1, samePanel: true });
+      await panelPage.evaluate(() => window.firstTestHub.record.instances[0].open());
+      assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).inputValue(), 'synthetic lifecycle draft');
+    }
+    receipts.push('B2 Hub close restores Surface/Launcher and reopens one panel for five cycles');
+    receipts.push('B2 editor draft survives Hub arrival and repeated close/reopen');
+    await panelPage.evaluate(async () => {
+      const old = window.__MieMieHub; delete window.__MieMieHub;
+      window.dispatchEvent(new CustomEvent('miemie:hub-disposed', { detail: old }));
+      await window.__MieMiePresetManagerSource.settled();
+    });
+    await launcher().waitFor({ state: 'visible' }); assert.equal(await launcher().count(), 1);
+    await launcher().click();
+    assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).inputValue(), 'synthetic lifecycle draft');
+    await closeManager(true); await launcher().waitFor({ state: 'visible' });
+    receipts.push('B2 Hub disposal restores Standalone launcher and retained draft');
+    await panelPage.evaluate(async () => {
+      window.secondTestHub = window.makeTestHub(); window.__MieMieHub = window.secondTestHub.hub;
+      for (let i = 0; i < 5; i++) window.dispatchEvent(new CustomEvent('miemie:hub-ready'));
+      await window.__MieMiePresetManagerSource.settled(); await window.secondTestHub.record.instances[0].open();
+    });
+    assert.equal(await launcher().count(), 0);
+    await closeManager(true); await panelPage.waitForFunction(() => window.secondTestHub.record.state === 'closed');
+    assert.deepEqual(await panelPage.evaluate(() => ({ instances: window.secondTestHub.record.instances.length,
+      panels: window.secondTestHub.record.panels.length, same: window.secondTestHub.record.panels[0] === window.firstTestHub.record.panels[0], oldCloses: window.firstTestHub.record.closes,
+      newCloses: window.secondTestHub.record.closes })), { instances: 1, panels: 1, same: true, oldCloses: 5, newCloses: 1 });
+    receipts.push('B2 Hub rejoin/repeated ready reuse one business panel and current close route');
+    await lifecycle.close();
     // Isolated touch context for real touch event paths.
     const touch = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     const mobile = await touch.newPage(); mobile.on('pageerror', error => errors.push(error.message));

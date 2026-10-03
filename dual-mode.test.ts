@@ -3,6 +3,7 @@
 // See LICENSE for terms; distributed without warranty.
 
 import { test } from 'node:test';
+import { getEventListeners } from 'node:events';
 import type { ManagerView } from './contracts';
 import { PRESET_MANAGER_MANIFEST, startDualMode } from './dual-mode';
 
@@ -81,7 +82,9 @@ function environment() {
   let opened = 0,
     closed = 0,
     destroyed = 0;
+  let closeHandler: (() => unknown) | null = null;
   const view: ManagerView = {
+    setCloseHandler(handler: (() => unknown) | null) { closeHandler = handler; },
     panel: panel as unknown as HTMLElement,
     open() {
       opened++;
@@ -117,15 +120,15 @@ function environment() {
     host.dispatchEvent(event);
   };
   const launchers = () => parent.children.filter(node => 'miemiePresetManagerStandalone' in node.dataset);
-  return { host, frame, view, panel, emit, launchers, counts: () => ({ opened, closed, destroyed }) };
+  return { host, frame, view, panel, emit, launchers, requestClose: () => closeHandler ? closeHandler() : view.close(), counts: () => ({ opened, closed, destroyed }) };
 }
 
 function hubMock(
-  options: { reject?: boolean; neverReady?: boolean; neverRelease?: boolean; attachmentParent?: TestElement } = {},
+  options: { reject?: boolean; neverReady?: boolean; neverRelease?: boolean; missingClose?: boolean; attachmentParent?: TestElement } = {},
 ) {
   const instances: TestInstance[] = [];
   const panels: HTMLElement[] = [];
-  let releases = 0;
+  let releases = 0, closeCalls = 0, state = 'closed', launcherSuspended = false;
   const controllers: AbortController[] = [];
   const cleanups: (() => void)[] = [];
   const hub = {
@@ -148,7 +151,14 @@ function hubMock(
             return true;
           },
           showPanel() {
+            state = 'preset'; launcherSuspended = true;
+            panels.at(-1)!.hidden = false; panels.at(-1)!.inert = false;
             return true;
+          },
+          closePanel: options.missingClose ? undefined : () => {
+            closeCalls++; state = 'closed'; launcherSuspended = false;
+            panels.at(-1)!.hidden = true; panels.at(-1)!.inert = true;
+            return Promise.resolve(true);
           },
         });
         instances.push(instance);
@@ -171,7 +181,7 @@ function hubMock(
       },
     },
   };
-  return { hub, instances, panels, controllers, cleanups, releases: () => releases };
+  return { hub, instances, panels, controllers, cleanups, releases: () => releases, surface: () => ({ state, launcherSuspended, closeCalls }) };
 }
 
 /** Run against the compiled module; these are offline protocol checks only. */
@@ -316,3 +326,48 @@ export async function runDualModeTests() {
 }
 
 test('shared preset-manager view survives launcher and Hub lifecycle changes', runDualModeTests);
+
+
+test('B2 UI close routes through the active Hub Surface and returns to standalone on disposal', async () => {
+  const e = environment(), source = startDualMode(e.host, e.frame, e.view);
+  await source.settled();
+  e.view.open(); await e.requestClose();
+  assert(e.panel.hidden, 'Standalone close must hide the panel');
+  e.launchers()[0].dispatchEvent(new Event('click'));
+  assert(!e.panel.hidden, 'Standalone reopen must work');
+  const first = hubMock(); e.host.__MieMieHub = first.hub; e.emit('miemie:hub-ready');
+  await source.settled();
+  for (let i = 1; i <= 5; i++) {
+    first.instances[0].open(); await e.requestClose();
+    const surface = first.surface();
+    assert(surface.state === 'closed' && !surface.launcherSuspended && surface.closeCalls === i,
+      'Hub must close its Surface and restore its launcher once per UI request');
+    assert(e.panel.hidden && first.panels.length === 1 && first.instances.length === 1, 'One panel/session must be reused');
+    assert(first.cleanups.length === 1 && getEventListeners(first.controllers[0].signal, 'abort').length === 1, 'Close/open must not add session cleanup or abort listeners');
+    assert(getEventListeners(e.host as unknown as EventTarget, 'miemie:hub-ready').length === 1
+      && getEventListeners(e.host as unknown as EventTarget, 'miemie:hub-disposed').length === 1, 'One host listener per lifecycle event');
+  }
+  e.host.__MieMieHub = undefined; e.emit('miemie:hub-disposed', first.hub); await source.settled();
+  e.launchers()[0].dispatchEvent(new Event('click')); await e.requestClose();
+  assert(e.panel.hidden && e.launchers().length === 1 && e.panel.hiddenObservers.size === 1, 'Standalone recovers one observer/launcher');
+  const second = hubMock(); e.host.__MieMieHub = second.hub; e.emit('miemie:hub-ready'); await source.settled();
+  second.instances[0].open(); await e.requestClose();
+  assert(second.surface().closeCalls === 1 && first.surface().closeCalls === 5, 'Rejoin uses only the new Hub capability');
+  assert(second.panels[0] === first.panels[0] && e.counts().destroyed === 0, 'No second business view');
+  await source.dispose();
+  assert(e.panel.hiddenObservers.size === 0 && first.cleanups.length === 0 && second.cleanups.length === 0, 'Final cleanup removes observers/session cleanup');
+  assert(getEventListeners(e.host as unknown as EventTarget, 'miemie:hub-ready').length === 0
+    && getEventListeners(e.host as unknown as EventTarget, 'miemie:hub-disposed').length === 0, 'Final cleanup removes host listeners');
+});
+
+
+test('B2 Hub without a formal close capability safely falls back to Standalone', async () => {
+  const e = environment(), hub = hubMock({ missingClose: true });
+  e.host.__MieMieHub = hub.hub;
+  const source = startDualMode(e.host, e.frame, e.view);
+  await source.settled();
+  assert(e.launchers().length === 1 && hub.panels.length === 0, 'Do not capture a panel that cannot formally close');
+  e.launchers()[0].dispatchEvent(new Event('click')); await e.requestClose();
+  assert(e.panel.hidden, 'Recovered Standalone close must work');
+  await source.dispose();
+});
