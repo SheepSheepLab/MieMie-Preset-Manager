@@ -25,3 +25,12 @@ These are official public presets, not private user data. Prompt bodies named `n
 The [source provenance record](../../docs/source-provenance.json) records inspected files and hashes. The native contract harness executes the original method bodies with mocked DOM, event, and persistence dependencies. This supplies version-pinned source and contract evidence; it is not execution of a real SillyTavern server or Tavern Helper iframe, and it does not establish compatibility with every release in either version family.
 
 These fixtures are used only by the local tests and are excluded from the production bundle and Extension JSON. Other test fixtures are synthetic data authored for this project. See [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) for the repository's third-party inventory.
+
+## MieMie Hub API v1 contracts
+
+`hub-v1-contracts.json` contains 9 unchanged excerpts from SheepSheepLab/MieMie-Hub commit `36aaec46282e67bd01b87035165977a40d23acc9`: Runtime, bootstrap provide/registerSource, Hub UI renderMenu/attachPanel/showPanel/closePanel, Surface controller and motion. Every excerpt records its original file/line interval and full source SHA-256. Upstream copyright and GPL v3 terms are retained; the complete upstream license is in [MieMie-Hub-LICENSE.txt](MieMie-Hub-LICENSE.txt).
+
+The harness executes these function bodies using the unchanged production Manifest, synthetic DOM/storage/Launcher dependencies and no visual animation. It checks validation, activation, presentation-image selection/failure fallback, formal close/reopen and invalid oversized launcher metadata. It does not normalize the Manifest or start a real Hub. The excerpts and test helper are excluded from production bundles.
+
+
+> 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。

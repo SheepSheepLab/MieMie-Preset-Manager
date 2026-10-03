@@ -22,7 +22,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 [MieMie-Preset-Manager-Extension-0.1.2.json](delivery/MieMie-Preset-Manager-Extension-0.1.2.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
-2. 未运行兼容 Hub 时，点击右下方 SVG 悬浮入口打开管理器；打开面板后入口隐藏，关闭后恢复。
+2. 未运行兼容 Hub 时，点击右下方正式 PNG 悬浮入口打开管理器；打开面板后入口隐藏，关闭后恢复。
 3. 运行 MieMie Hub API v1 时，独立入口收起，从 Hub 打开“咩咩预设管理”。Hub 退出后恢复独立入口，再次出现时重新接入。
 4. 按 [Testing](docs/TESTING.md) 在目标 ST 版本上验证，记录 ST commit、Tavern Helper 和 Hub 的实际版本。
 

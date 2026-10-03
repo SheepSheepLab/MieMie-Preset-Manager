@@ -18,6 +18,12 @@ const receipts = [];
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(pathToFileURL(path.join(root, 'delivery', 'preview.html')).href);
     await page.locator('.mm-card').first().waitFor();
+    const officialPNG = fs.readFileSync(path.join(root, 'assets', 'preset-manager-icon.png'));
+    await page.waitForFunction(() => { const img = document.querySelector('[data-miemie-preset-manager-standalone] img'); return img?.complete && img.naturalWidth === 1254 && img.naturalHeight === 1254; });
+    const officialIconURL = await page.locator('[data-miemie-preset-manager-standalone] img').getAttribute('src');
+    assert.match(officialIconURL, /^data:image\/png;base64,/);
+    assert.deepEqual(Buffer.from(officialIconURL.split(',')[1], 'base64'), officialPNG);
+    receipts.push('正式 PNG 产品图标原样内嵌并在浏览器加载成功');
     const card = id => page.locator(`.mm-card[data-id="${id}"]`);
     const exported = async () => {
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '导出完整预设', exact: true }).click()]);
