@@ -3,10 +3,10 @@
 // See LICENSE for terms; distributed without warranty.
 
 import type { ManagerView } from './contracts';
+import { ICON } from './product-icon';
 
 const SOURCE_KEY = '__MieMiePresetManagerSource';
 const WAIT_MS = 1500;
-const ICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#201332"/><g fill="#f4d8ec"><circle cx="23" cy="24" r="7"/><circle cx="31" cy="20" r="7"/><circle cx="38" cy="25" r="7"/><ellipse cx="31" cy="32" rx="11" ry="12"/></g><path d="M18 29l-5-5m31 5 5-5" stroke="#ef79ca" stroke-width="5" stroke-linecap="round"/><circle cx="27" cy="31" r="2" fill="#392544"/><circle cx="35" cy="31" r="2" fill="#392544"/><path d="M23 48h22m-22 7h22" stroke="#ef79ca" stroke-width="3" stroke-linecap="round"/></svg>')}`;
 
 export const PRESET_MANAGER_MANIFEST = Object.freeze({
   schemaVersion: 1,
@@ -17,7 +17,7 @@ export const PRESET_MANAGER_MANIFEST = Object.freeze({
   description: '直接管理当前酒馆预设及提示词条目。',
   entry: 'preset-manager.js',
   icon: ICON,
-  contributes: { launcher: { title: '咩咩预设管理', icon: ICON } },
+  contributes: { launcher: { title: '咩咩预设管理', icon: '预设' } },
   hubApi: { min: 1, max: 1 },
 });
 

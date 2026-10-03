@@ -45,16 +45,16 @@ PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 | --- | --- | --- |
 | `npm ci` | 从锁文件安装开发依赖 | 通过，82 个包；审计 83 个包，无已知漏洞 |
 | TypeScript 与脚本构建 | 严格类型检查、可读业务脚本、Extension JSON、打包后语法检查 | 通过 |
-| Node：92 项 | 原始对象与 Round Trip、未知字段、所有顺序组、分类、Prompt 操作、Adapter 数据／失败／并发／停用、控制器草稿及模拟 Hub 生命周期 | 92 通过 |
-| 其中 37 项原生契约测试 | 执行固定版本原生源码片段，以模拟 DOM／HTTP／事件依赖核对 1.18／1.19 行为 | 37 通过，包含在 92 项内 |
-| 功能浏览器：17 项 | 编辑取消与保存、导入导出、复制切换、删除确认、鼠标拖动、触屏长按、窄屏控件与缩短视口、共享 UI 的 Hub 关闭／重开／草稿与重新接入 | 17 通过 |
+| Node：97 项 | 原始对象与 Round Trip、未知字段、所有顺序组、分类、Prompt 操作、Adapter 数据／失败／并发／停用、控制器草稿及模拟 Hub 生命周期、正式 Hub Manifest／图片契约 | 97 通过 |
+| 其中 37 项原生契约测试 | 执行固定版本原生源码片段，以模拟 DOM／HTTP／事件依赖核对 1.18／1.19 行为 | 37 通过，包含在 97 项内 |
+| 功能浏览器：18 项 | 编辑取消与保存、导入导出、复制切换、删除确认、鼠标拖动、触屏长按、窄屏控件与缩短视口、共享 UI 的 Hub 关闭／重开／草稿与重新接入、正式 PNG 解码 | 18 通过 |
 | 响应式浏览器：9 项 | PC／窄屏／横屏、编辑草稿与焦点、视口缩短、安全区、旋转取消拖动、入口与菜单可达性 | 9 通过 |
 | 干净目录重建 | 在没有父目录依赖的独立临时目录，从锁文件执行 `npm ci` 与 `npm run build` | 通过，4 项产物逐字一致 |
 
 当前 Extension JSON 的 SHA-256：
 
 ```text
-545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f
+5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5
 ```
 
 Node 夹具来自公开固定提交的 Default 预设、固定原生源码片段和人工数据。测试为克隆夹具加入未来字段和多组数据；**没有使用真实私人复杂预设**。出处和许可见 [fixtures](../tests/fixtures/README.md)，版本差异见 [Compatibility Notes](COMPATIBILITY.md)。
@@ -67,6 +67,20 @@ Node 夹具来自公开固定提交的 Default 预设、固定原生源码片段
 - B2：Node 协议测试核对 Standalone 关闭／重开、Hub 正式 close 调用、Surface 关闭与 Launcher 恢复、五次循环复用同一面板／实例、Hub disposed / ready 恢复与清理。缺少 close 能力时回到 Standalone。
 - 浏览器：使用真实构建后的共享 UI 和内存 Controller，配合独立 Hub Surface 契约模拟，覆盖关闭按钮／Standalone Escape、五次 Hub 关闭重开、编辑草稿、退出与重新收纳。编辑层遮挡顶部按钮时使用 DOM click 事件验证关闭路由，不宣称物理触控可达或真实 Hub 集成；真实 Hub 可从自己的 Surface 返回入口关闭。
 - 原 Review 复现再次运行：B1 两版均拒绝 refresh / save，字段未丢失；当前固定 Hub Surface 源码配合模拟动画／Launcher，在关闭后返回 `menu`、面板隐藏且 Launcher 不再暂停，closePanel 恰好一次。这仍是本地源码补充复现，不属于真实宿主验收。
+
+## Hub 注册与正式 PNG 回归
+
+在同一固定 Hub commit `928362c1eb224afe780801060c6d867e01cf5013` 上执行原始 Runtime `validate()`、bootstrap `provide()`、Hub UI `renderMenu()`／面板方法和 Surface 函数体。新增 5 项 Node contract 检查：
+
+1. 不替换生产 Manifest，注册后 factory／activate 执行，attachPanel 接收正式 PNG 原始字节。
+2. 当前 Hub Launcher 优先选择 presentation.icon 的图片，图片加载失败回到 `预设`。
+3. open → 正式 closePanel → reopen 三次循环复用面板并恢复 Launcher，最终清理。
+4. 把超长 SVG data URL 放回 launcher.icon 时，provide 在 factory 前拒绝。
+5. Standalone 使用与 Hub 相同且逐字节保留的正式 PNG。
+
+仅改短文本、仍挂载原临时 SVG 的本地候选运行了 96 项：95 通过，实际 Hub 渲染选图断言失败；接入维护者提供的正式 PNG 后，原有 92 项与新增 5 项共 97 项全部通过。新增浏览器检查确认内嵌 PNG 实际解码为 1254×1254，数据与仓库原图一致；功能检查共 18 项，响应式保持 9 项。
+
+测试不替换 Manifest、不放宽 Hub validator、不使用 Emoji 功能图标，不在生产包中包含 Hub 测试源码。DOM／存储偏好／Launcher 依赖仍为模拟，Surface 动画未执行；这不是运行真实 Hub。正式 PNG 原样保存，来源及独立素材许可边界见 ASSETS-LICENSE.md。实际宿主仍全部待验。
 
 ## 版本证据边界
 

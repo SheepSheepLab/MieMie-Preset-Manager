@@ -17,13 +17,14 @@
     "npm run test:browser": "passed"
   },
   "nodeTests": {
-    "passed": 92,
+    "passed": 97,
     "failed": 0,
-    "nativeSourceSnippetTestsWithMockedDependencies": 37
+    "nativeSourceSnippetTestsWithMockedDependencies": 37,
+    "hubSourceContractTestsWithMockedDependencies": 5
   },
   "browserChecks": {
     "kind": "offline-preview",
-    "passed": 17,
+    "passed": 18,
     "pageErrors": 0
   },
   "responsiveChecks": {
@@ -34,7 +35,7 @@
   "independentDirectoryBuild": {
     "freshNpmCi": true,
     "passed": true,
-    "nodeTestsPassed": 92,
+    "nodeTestsPassed": 97,
     "byteEqual": [
       "MieMie-Preset-Manager-Extension-0.1.2.json",
       "component-update-manifest.json",
@@ -44,7 +45,7 @@
   },
   "artifact": {
     "path": "delivery/MieMie-Preset-Manager-Extension-0.1.2.json",
-    "sha256": "545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f"
+    "sha256": "5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5"
   },
   "realHost": {
     "sillyTavern118": "not-run",
@@ -55,10 +56,10 @@
   },
   "acceptance": "pending-maintainer-review-and-real-host-testing",
   "artifactsSha256": {
-    "MieMie-Preset-Manager-Extension-0.1.2.json": "545f7831649b5c6c947906911c5cf5dfef5ab0152bb1d80343aea304f496eb7f",
-    "component-update-manifest.json": "116f18283e0f53ce950198e7f0e44b1d88d2ace7bbb8796f6b9cf5f38f3bf2fd",
-    "preset-manager.js": "30dbbf941fa8fbae32c91f2b94853914a37bc595fd7e22aecdef79c6861ce01b",
-    "preview.js": "77d46fecf88e9ebdd079a5e176304308dbce2117522a3d2790a82e8e1110e6d0"
+    "MieMie-Preset-Manager-Extension-0.1.2.json": "5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5",
+    "component-update-manifest.json": "2ec39c059f1f104ff31968bbd55d6ba48454cb27e84afa83dc97dc95add57227",
+    "preset-manager.js": "a96dcac4898c1f764d90bbb8636645c266c1e753f420875571bd56ae1898c0ad",
+    "preview.js": "20caba021ce466c775fbe7ce94db8be7ec36668025f562041d3ff71af6b937ea"
   },
   "regressions": {
     "baseHead": "8fb308941753acc5fa90975f4c37f8e54ab1508f",
@@ -73,5 +74,23 @@
     "B2": "UI close routes via active Hub closePanel; Standalone fallback; draft, rejoin and cleanup covered",
     "hubSourceBaseline": "928362c1eb224afe780801060c6d867e01cf5013",
     "evidenceKind": "offline mocks and pinned-source reproduction; not real-host acceptance"
+  },
+  "hubManifestContract": {
+    "baseHead": "1ffed1d75b9e2846b10944d760ffaf765b7bbcc4",
+    "sourceCommit": "928362c1eb224afe780801060c6d867e01cf5013",
+    "testsPassed": 5,
+    "productionManifestUnmodifiedInHarness": true,
+    "launcherFallback": "预设",
+    "presentationIcon": "unmodified maintainer-provided PNG embedded as data:image/png;base64",
+    "originalPNG_SHA256": "2735ea7e6485e2c719680bad34a38573c14171ff38494803273a05dce7e12b53",
+    "validateAndProvide": "passed with original pinned Hub function bodies",
+    "launcherImageSelection": "passed with original pinned renderMenu",
+    "formalCloseReopen": "passed with original pinned Surface",
+    "oversizedSVGMetadata": "rejected before factory",
+    "shortFallbackOnlyCandidate": {
+      "passed": 95,
+      "failedImageSelection": 1
+    },
+    "realHost": false
   }
 }

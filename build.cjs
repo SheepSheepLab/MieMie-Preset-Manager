@@ -15,14 +15,16 @@ const version = require('./package.json').version;
 const licenseBanner = 'MieMie Preset Manager — Copyright (C) 2026 louisSSR\nSPDX-License-Identifier: GPL-3.0-or-later\nDistributed without warranty; see LICENSE.\nSource: https://github.com/SheepSheepLab/MieMie-Preset-Manager\n\nBundled webpack runtime license:\n' + fs.readFileSync(path.join(root, 'licenses', 'webpack-MIT.txt'), 'utf8');
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? (['.git', '.test-build', 'delivery', 'node_modules', 'evidence'].includes(e.name) ? [] : walk(path.join(dir, e.name))) : [path.join(dir, e.name)]); }
 function compileTests() {
-  const files = walk(root).filter(f => f.endsWith('.ts'));
+  const files = walk(root).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
+  fs.mkdirSync(path.join(root, '.test-build', 'assets'), { recursive: true });
+  fs.copyFileSync(path.join(root, 'assets', 'preset-manager-icon.png'), path.join(root, '.test-build', 'assets', 'preset-manager-icon.png'));
   for (const file of files) {
     const out = path.join(root, '.test-build', path.relative(root, file).replace(/\.ts$/, '.js'));
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, ts.transpileModule(fs.readFileSync(file, 'utf8'), { fileName: file, compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
   }
   const tests = walk(path.join(root, 'tests')).filter(f => /\.test\.cjs$/.test(f)).concat(files.filter(f => /\.test\.ts$/.test(f)).map(f => path.join(root, '.test-build', path.relative(root, f).replace(/\.ts$/, '.js'))));
-  const result = spawnSync(process.execPath, ['--test', ...tests], { stdio: 'inherit', cwd: root });
+  const result = spawnSync(process.execPath, ['--require', path.join(root, 'tests', 'helpers', 'png-loader.cjs'), '--test', ...tests], { stdio: 'inherit', cwd: root });
   if (result.status !== 0) process.exit(result.status || 1);
 }
 function bundle(entry, filename) {
@@ -30,7 +32,7 @@ function bundle(entry, filename) {
     context: root, mode: 'development', entry: path.join(root, entry), target: ['web', 'es2022'], devtool: false,
     output: { path: path.join(root, 'delivery'), filename, iife: true },
     resolve: { extensions: ['.ts', '.js'] },
-    module: { rules: [{ test: /\.ts$/, exclude: /node_modules/, use: { loader: require.resolve('ts-loader'), options: { transpileOnly: true, configFile: path.join(root, 'tsconfig.json'), compilerOptions: { noEmit: false } } } }] },
+    module: { rules: [{ test: /\.png$/, type: 'asset/inline' }, { test: /\.ts$/, exclude: /node_modules/, use: { loader: require.resolve('ts-loader'), options: { transpileOnly: true, configFile: path.join(root, 'tsconfig.json'), compilerOptions: { noEmit: false } } } }] },
     plugins: [new webpack.BannerPlugin({ banner: licenseBanner })],
     optimization: { minimize: false }, performance: { hints: false },
   }, (error, stats) => { if (error || stats.hasErrors()) reject(error || Error(stats.toString({ all: false, errors: true }))); else resolve(); }));

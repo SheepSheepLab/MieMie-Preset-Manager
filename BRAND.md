@@ -8,7 +8,7 @@ MieMie、咩咩、MieMie Preset Manager、咩咩预设管理及相应官方视�
 
 软件代码按 [GNU GPL v3.0 or later](LICENSE) 授权。第三方可以依法 Fork、修改、分发及商业使用代码，不需要因为使用代码而另行取得品牌许可；应履行的源码提供、版权及许可证保留等义务由 GPL 决定。本文件不向软件代码添加禁止商业使用或其他额外限制，也不要求删除应当保留的原作者署名或来源声明。
 
-获得代码不等于获得以 SheepSheep 名义发布产品、暗示官方认可，或将 MieMie / 咩咩角色与标识作为自己品牌的许可。当前仓库尚未包含需要单独授权的指定角色／品牌美术资产；具体素材范围见 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
+获得代码不等于获得以 SheepSheep 名义发布产品、暗示官方认可，或将 MieMie / 咩咩角色与标识作为自己品牌的许可。当前仓库的指定品牌／角色美术资产及其来源记录见 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。
 
 ## 可以正常进行的说明
 

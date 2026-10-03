@@ -76,6 +76,14 @@ UI 的关闭按钮及关闭面板的 Escape 分支统一请求 Dual Mode 的关�
 
 Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/EXTENSION-API.md)、同提交 `src/surface-controller.js` / `src/extension-runtime.js`。当前 Hub 源码状态机的补充本地复现仅模拟动画与 Launcher 依赖；真实 Hub 尚未验收。测试中 Surface 关闭可返回原 Launcher 菜单，不要求 Hub 整体退出。
 
+## Hub Manifest 与正式产品 Icon
+
+`contributes.launcher.icon` 使用短文本 fallback `预设`，符合当前 Hub API v1 的最多 16 字符约束，不放 data URL，也不使用 Emoji。Standalone、Manifest 的图片元数据与 `api.attachPanel(view.panel, { icon: ICON })` 共用维护者提供的正式 PNG；构建将原始 PNG 内嵌为 `data:image/png;base64,`，替换临时羊头 SVG，不依赖远程图片服务。
+
+当前固定 Hub 的 `renderMenu()` 优先读取已挂载 panel 的 `presentation.icon`，接受 PNG/WebP/JPEG base64 data URL 或 HTTPS 图片；原先的 SVG data URL不在此范围。正式图片可用时 Launcher 使用 PNG；图片加载失败才回到 `预设`。本轮没有修改 Hub 或放宽 validator。依据：[Runtime validator](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/src/extension-runtime.js#L38)、[Launcher 渲染](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/src/hub-ui.js#L170)、[Icon guideline](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/ICON-GUIDELINE.md)。
+
+新增固定 Hub 原始 `validate/provide`、UI 和 Surface 契约测试，生产 Manifest 不经测试包装替换；执行注册、factory/activate、正式图片选择、加载失败 fallback、正式关闭/重开及超长 SVG 元数据拒绝。PNG 在 Node 中核对原始字节，在浏览器中核对实际解码与尺寸。以上仍是源码摘录与离线测试，不是 Hub 实机验收；素材来源及代码／图片授权边界见 [ASSETS-LICENSE.md](../ASSETS-LICENSE.md)。
+
 ## 已知限制与需求差距
 
 1. **真实宿主未验。** 尚未验证 ST iframe 执行、真实事件时序、第三方钩子、实际 Hub、物理手机和软键盘。源码／mock 不证明整个 1.18.x 或 1.19.x 系列可用。

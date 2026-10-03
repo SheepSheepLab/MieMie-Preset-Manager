@@ -16,6 +16,10 @@ MieMie Preset Manager 的项目代码按 [GPL-3.0-or-later](LICENSE) 提供，�
 
 两个 Default 文件是公开的官方测试基线，不包含用户的私人预设；其中名为 `nsfw` 和 `jailbreak` 的 Prompt 正文为空。其他测试数据由本项目构造。源码摘录测试使用模拟的 DOM、事件和存储依赖，不代表已经通过真实 SillyTavern 宿主验证。
 
+## MieMie Hub 测试源码
+
+`tests/fixtures/hub-v1-contracts.json` 包含 SheepSheepLab/MieMie-Hub commit `928362c1eb224afe780801060c6d867e01cf5013` 的 9 段未修改源码摘录（Runtime、provide、面板、Launcher 渲染和 Surface）。相应作者与贡献者的版权和上游 GNU GPL v3 许可保留，完整上游许可见 [tests/fixtures/MieMie-Hub-LICENSE.txt](tests/fixtures/MieMie-Hub-LICENSE.txt)。逐段记录文件、行号和完整来源文件 SHA-256；仅在本地测试中执行，不进入生产 bundle 或 Extension JSON，也不代表真实 Hub 实机验收。
+
 ## 构建与测试工具
 
 开发依赖由 `package.json` 和 `package-lock.json` 记录。下表列出直接依赖；完整依赖树及各包附带的许可随包管理器安装，可在锁文件和安装包中核查。
@@ -35,4 +39,4 @@ SillyTavern 和 [Tavern Helper / JS-Slash-Runner](https://github.com/N0VI028/JS-
 
 Hub 集成只使用接入、退出和面板挂载等生命周期接口。本次提交不包含 Polisher 的业务实现、Extension JSON 或美术素材。
 
-`icons.ts` 和 `dual-mode.ts` 中的内联 SVG 是本项目编写的几何界面图形，随软件代码使用 GPL-3.0-or-later；没有引入第三方图标库、字体或指定角色美术资产，也不将这些 SVG 声称为官方角色资产。品牌身份与指定素材的边界仍见 [BRAND.md](BRAND.md) 和 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。对宿主或其他项目的提及不表示获得其官方背书。
+`icons.ts` 中的内联 SVG 控件是本项目编写的几何界面图形，随软件代码使用 GPL-3.0-or-later；没有引入第三方图标库或字体，也不将这些 SVG 控件声称为官方角色资产。正式产品 PNG 由维护者提供，其单独素材记录见 ASSETS-LICENSE.md。品牌身份与指定素材的边界仍见 [BRAND.md](BRAND.md) 和 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。对宿主或其他项目的提及不表示获得其官方背书。
