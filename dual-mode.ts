@@ -4,6 +4,8 @@
 
 import type { ManagerView } from './contracts';
 import { ICON } from './product-icon';
+import { createPresetManagerNativeLauncher, type NativeLauncher } from './native-launcher';
+import { PRESET_MANAGER_PRODUCT } from './product-identity';
 
 const SOURCE_KEY = '__MieMiePresetManagerSource';
 const WAIT_MS = 1500;
@@ -12,12 +14,12 @@ export const PRESET_MANAGER_MANIFEST = Object.freeze({
   schemaVersion: 1,
   apiVersion: 1,
   id: 'miemie.preset-manager',
-  name: '咩咩预设管理',
-  version: '0.1.2',
+  name: PRESET_MANAGER_PRODUCT.name,
+  version: PRESET_MANAGER_PRODUCT.version,
   description: '直接管理当前酒馆预设及提示词条目。',
   entry: 'preset-manager.js',
   icon: ICON,
-  contributes: { launcher: { title: '咩咩预设管理', icon: '预设' } },
+  contributes: { launcher: { title: PRESET_MANAGER_PRODUCT.launcherName, icon: '预设' } },
   hubApi: { min: 1, max: 1 },
 });
 
@@ -26,6 +28,7 @@ type HubApi = {
   attachPanel(panel: HTMLElement, options: { icon: string }): unknown;
   showPanel(): unknown;
   closePanel(): unknown;
+  registerShortcutLauncher?(provider: { mount(context: { open(): unknown }): NativeLauncher }): unknown;
   onCleanup(fn: () => void): unknown;
 };
 type HubInstance = { activate(): Promise<void>; open(): unknown; deactivate(): void };
@@ -51,20 +54,25 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
   let connection: Connection | null = null;
   let failedHub: Hub | null = null;
   const retiredHubs = new WeakSet<Hub>();
-  let launcher: HTMLButtonElement | null = null;
-  let launcherCleanup: (() => void) | null = null;
+  let launcher: NativeLauncher | null = null;
   let activeSession: (() => void) | null = null;
   let closeSession: (() => unknown) | null = null;
-  let placement: { x: number; y: number } | null = null;
 
   const report = (error: unknown) => console.warn('[咩咩预设管理]', error);
   view.setCloseHandler(() => {
-    if (disposed) return;
+    if (disposed) return undefined;
     // Hub owns visibility and launcher restoration, including its animation.
     // Never locally hide a Hub surface ahead of its formal close operation.
     if (connection) {
-      try { Promise.resolve(closeSession?.()).catch(report); } catch (error) { report(error); }
-    } else view.close();
+      try { return Promise.resolve(closeSession?.()).catch(report); } catch (error) { report(error); }
+    } else {
+      const closing = launcher;
+      if (closing) return closing.close(view.panel).then(ok => {
+        if (ok && !disposed && !connection && launcher === closing) view.close();
+      });
+      view.close();
+    }
+    return undefined;
   });
   function currentHub(): Hub | null {
     const hub = host.__MieMieHub as Hub | undefined;
@@ -96,128 +104,20 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     });
   }
   function removeLauncher() {
-    launcherCleanup?.();
-    launcherCleanup = null;
-    launcher?.remove();
-    launcher = null;
+    launcher?.dispose(); launcher = null;
   }
   function makeLauncher() {
     if (disposed || launcher) return;
-    restorePanel();
-    const button = doc.createElement('button');
-    button.type = 'button';
-    button.dataset.miemiePresetManagerStandalone = '';
-    button.title = '咩咩预设管理（可拖动）';
-    button.setAttribute('aria-label', '打开咩咩预设管理');
-    const img = doc.createElement('img');
-    img.src = ICON;
-    img.alt = '';
-    img.draggable = false;
-    button.appendChild(img);
-    const style = doc.createElement('style');
-    style.textContent =
-      '[data-miemie-preset-manager-standalone]{position:fixed!important;display:grid;place-items:center;width:60px!important;height:60px!important;min-width:60px;min-height:60px;padding:0!important;margin:0!important;box-sizing:border-box;overflow:hidden;border-radius:50%;border:1px solid #da72b4;background:#201332;box-shadow:0 4px 16px #0009;color:#fff;cursor:pointer;z-index:2147482999;touch-action:none;user-select:none;-webkit-user-select:none;--mm-safe-t:env(safe-area-inset-top,0px);--mm-safe-r:env(safe-area-inset-right,0px);--mm-safe-b:env(safe-area-inset-bottom,0px);--mm-safe-l:env(safe-area-inset-left,0px)}[data-miemie-preset-manager-standalone][hidden]{display:none!important}[data-miemie-preset-manager-standalone]:focus-visible{outline:3px solid #ffd0ee;outline-offset:3px}[data-miemie-preset-manager-standalone] img{width:100%;height:100%;pointer-events:none}';
-    doc.documentElement.appendChild(style);
-    doc.documentElement.appendChild(button);
-    launcher = button;
-    // UI and Hub can open the same view without using this launcher's click handler.
-    const syncVisibility = () => {
-      button.hidden = !view.panel.hidden;
-      button.inert = !view.panel.hidden;
-    };
-    const panelObserver = new host.MutationObserver(syncVisibility);
-    panelObserver.observe(view.panel, { attributes: true, attributeFilter: ['hidden'] });
-    syncVisibility();
-    let drag: { id: number; startX: number; startY: number; x: number; y: number; moved: boolean } | null = null;
-    let suppressClick = false;
-    const position = (x?: number, y?: number) => {
-      const vv = host.visualViewport;
-      const viewport = {
-        x: vv?.offsetLeft || 0,
-        y: vv?.offsetTop || 0,
-        w: vv?.width || host.innerWidth,
-        h: vv?.height || host.innerHeight,
-      };
-      const computed = host.getComputedStyle(button);
-      const safe = (side: string) => Number.parseFloat(computed.getPropertyValue(`--mm-safe-${side}`)) || 0;
-      const minX = viewport.x + safe('l') + 8,
-        minY = viewport.y + safe('t') + 8;
-      const maxX = Math.max(minX, viewport.x + viewport.w - safe('r') - 68);
-      const maxY = Math.max(minY, viewport.y + viewport.h - safe('b') - 68);
-      const px = x ?? (placement ? minX + placement.x * (maxX - minX) : maxX - 10);
-      const py = y ?? (placement ? minY + placement.y * (maxY - minY) : maxY - 96);
-      const left = Math.min(maxX, Math.max(minX, px)),
-        top = Math.min(maxY, Math.max(minY, py));
-      button.style.left = `${left}px`;
-      button.style.top = `${top}px`;
-      if (x !== undefined && y !== undefined)
-        placement = { x: (left - minX) / (maxX - minX || 1), y: (top - minY) / (maxY - minY || 1) };
-    };
-    const resize = () => position();
-    const down = (event: PointerEvent) => {
-      if (drag || !event.isPrimary || event.button !== 0) return;
-      suppressClick = false;
-      const rect = button.getBoundingClientRect();
-      drag = {
-        id: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        x: rect.left,
-        y: rect.top,
-        moved: false,
-      };
-      button.setPointerCapture(event.pointerId);
-    };
-    const move = (event: PointerEvent) => {
-      if (!drag || drag.id !== event.pointerId) return;
-      const dx = event.clientX - drag.startX,
-        dy = event.clientY - drag.startY;
-      if (Math.hypot(dx, dy) > 5) drag.moved = true;
-      if (drag.moved) {
-        event.preventDefault();
-        position(drag.x + dx, drag.y + dy);
-      }
-    };
-    const end = (event: PointerEvent) => {
-      if (!drag || drag.id !== event.pointerId) return;
-      suppressClick = drag.moved || event.type === 'pointercancel';
-      drag = null;
-      if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
-    };
-    const click = (event: MouseEvent) => {
-      if (suppressClick && event.detail !== 0) {
-        suppressClick = false;
-        event.preventDefault();
-        return;
-      }
-      if (!disposed && !connection) {
-        restorePanel();
-        view.open();
-      }
-    };
-    button.addEventListener('pointerdown', down);
-    button.addEventListener('pointermove', move);
-    button.addEventListener('pointerup', end);
-    button.addEventListener('pointercancel', end);
-    button.addEventListener('click', click);
-    host.addEventListener('resize', resize);
-    host.visualViewport?.addEventListener('resize', resize);
-    host.visualViewport?.addEventListener('scroll', resize);
-    position();
-    launcherCleanup = () => {
-      panelObserver.disconnect();
-      if (drag && button.hasPointerCapture(drag.id)) button.releasePointerCapture(drag.id);
-      drag = null;
-      button.removeEventListener('pointerdown', down);
-      button.removeEventListener('pointermove', move);
-      button.removeEventListener('pointerup', end);
-      button.removeEventListener('pointercancel', end);
-      button.removeEventListener('click', click);
-      host.removeEventListener('resize', resize);
-      host.visualViewport?.removeEventListener('resize', resize);
-      host.visualViewport?.removeEventListener('scroll', resize);
-      style.remove();
-    };
+    restorePanel(); view.setPresentation?.('native');
+    launcher = createPresetManagerNativeLauncher({ host, icon:ICON, onError:report, open:async () => {
+      const opening = launcher;
+      if (!opening || disposed || connection) return false;
+      restorePanel(); view.setPresentation?.('native');
+      const ok = await opening.show(view.panel);
+      if (ok && !disposed && !connection && launcher === opening) view.open();
+      return ok;
+    } });
+    launcher.presentation.place(view.panel);
   }
   async function detachHub() {
     const old = connection;
@@ -248,11 +148,14 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     const factory = (api: HubApi): HubInstance => {
       if (typeof api.closePanel !== 'function') throw new Error('Hub 缺少正式面板关闭能力，已恢复独立入口。');
       let ended = false;
+      let shortcut: NativeLauncher | null = null;
+      let activation: Promise<void> | null = null;
       const valid = () =>
         !disposed && !ended && next.valid && connection === next && currentHub() === hub && !api.signal.aborted;
       const end = () => {
         if (ended) return;
         ended = true;
+        shortcut?.dispose(); shortcut = null;
         api.signal.removeEventListener('abort', end);
         next.sessions.delete(end);
         if (activeSession === end) {
@@ -266,19 +169,42 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
       api.onCleanup(end);
       if (api.signal.aborted) end();
       return {
-        async activate() {
+        activate() {
+          if (activation) return activation;
+          activation = (async () => {
           if (!valid()) return;
-          activeSession?.();
+          if (activeSession !== end) activeSession?.();
           activeSession = end;
           closeSession = () => valid() && activeSession === end ? api.closePanel() : false;
           restorePanel();
+          view.setPresentation?.('hub');
           await api.attachPanel(view.panel, { icon: ICON });
-          if (!valid()) end();
+          if (!valid()) { end(); return; }
+          if (typeof api.registerShortcutLauncher === 'function') api.registerShortcutLauncher({
+            mount({ open }) {
+              if (!valid()) throw new Error('预设管理 Shortcut session 已停用。');
+              shortcut?.dispose();
+              const native = createPresetManagerNativeLauncher({ host, icon: ICON, mode:'shortcut',
+                open:() => valid() ? open() : false, onError:report });
+              shortcut = native;
+              return native;
+            },
+          });
+          })();
+          return activation;
         },
         open() {
           if (!valid() || activeSession !== end) return false;
           restorePanel();
-          view.open();
+          // Hub owns the current Surface origin and its opening/closing flight.
+          // Repeated launch is only a focus request: resetting a visible panel
+          // would erase Native placement, and view.open() would unlock a flight.
+          // A fresh hidden entry starts with Hub geometry; the Shortcut provider
+          // applies Native placement when Hub actually enters that Surface.
+          if (view.panel.hidden) {
+            view.setPresentation?.('hub');
+            view.open();
+          }
           return api.showPanel();
         },
         deactivate: end,

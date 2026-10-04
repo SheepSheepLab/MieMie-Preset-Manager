@@ -8,35 +8,39 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前实现与测试包版本：`0.1.2`。这是已完成一次 Foundation 基础实机验收的开发版本，不代表官方发布或完整 Phase 1 验收通过。
+- 当前阶段版本：`0.2.0`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、Prompt 拖动排序及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。固定源码研究与模拟测试以 `1.18.0`、`1.19.0` 为基线；本次基础实机通过的组合为 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**。ST 1.19、其他补丁版本和物理手机仍待验证，不能宣称整个版本系列已通过实测。
 
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
-本次实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)；[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 继续 Open。
+此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)；[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 继续 Open。
 
-## 安装测试包
+## 安装阶段版本
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.1.2.json](delivery/MieMie-Preset-Manager-Extension-0.1.2.json)
+[MieMie-Preset-Manager-Extension-0.2.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.0/MieMie-Preset-Manager-Extension-0.2.0.json)
+
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.0.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
-2. 未运行兼容 Hub 时，点击右下方正式 PNG 悬浮入口打开管理器；打开面板后入口隐藏，关闭后恢复。
-3. 运行 MieMie Hub API v1 时，独立入口收起，从 Hub 打开“咩咩预设管理”。Hub 退出后恢复独立入口，再次出现时重新接入。
+2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，重叠关键操作或内部 Dialog 时暂时避让。
+3. 运行 MieMie Hub API v1 时，独立入口收起，从 Hub 打开“咩咩预设管理”。Hub 退出后恢复独立入口，再次出现时重新接入，保留同一业务 Session。若 Hub 提供 Shortcut capability，用户可在 Hub 中选择“显示悬浮球”，使用同一个 Native 入口；蜂窝动画仍由 Hub 控制。
 4. 按 [Testing](docs/TESTING.md) 在目标 ST 版本上验证，记录 ST commit、Tavern Helper 和 Hub 的实际版本。
 
 运行时需要宿主的原生预设管理器、事件总线、请求头、Chat Completion 设置，以及 Tavern Helper 的 `getTavernVersion()`、`builtin.promptManager`。缺少能力时在写入前停止。Hub 可选；不要求用户安装 Node.js，不从 CDN 加载业务代码。
+
+当前版本使用实际 600×780 Clamp 应用窗口、正式 PNG Header 和底部“返回”，没有主窗口全屏遮罩。Native / Floating Presentation 来源、入口分工和验证范围见 [Application Presentation](docs/APPLICATION-PRESENTATION.md) 与 [Presentation Review](docs/PRESENTATION-REVIEW.md)。
 
 ## 日常操作
 
 顶部显示实际当前预设。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供新建、重命名、删除和操作前备份导出。新建沿用当前生成／连接设置与内建条目，清除自定义条目，来源预设不变。
 
-Prompt 编辑在点击“保存”后提交，取消丢弃编辑。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。当前对 Marker 和保留 identifier 的保护比原生规则更严格，见兼容文档的已知限制。
+当前版本采用统一保存：Prompt 编辑窗口的“保存”只暂存本次编辑，取消丢弃本次编辑；条目排序、开关、复制、新增、解锁／挂接与删除先留在本地。分类右侧的软盘 SVG 保存图标（“保存修改”）在无改动时变暗，有改动时可用；点击后才统一同步酒馆并回读确认。“重新读取实际状态”在有未保存内容时确认放弃，读取成功后恢复实际数据；读取失败保留修改。关闭预设管理时也会提示未保存内容，选“是”丢弃，选“否”继续编辑。有未保存内容时须先保存或重新读取，再切换、导入、复制或导出预设。新增条目位于分类左侧。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。当前对 Marker 和保留 identifier 的保护比原生规则更严格，见兼容文档的已知限制。
 
-整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，不更改名称或数据；在分类内排序只置换该分类原有位置。
+整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，支持 `🕋难度-地狱`、`📕文风:FateZero` 等连字符／单冒号格式，也保留双冒号、括号等已有格式。中文全角冒号 `：` 同样可用；相同前缀至少两条时生成分类，不更改名称或数据；在分类内排序只置换该分类原有位置。
 
 界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。真实移动浏览器及软键盘仍待验证。
 
@@ -60,7 +64,7 @@ npm run test:browser
 
 `npm run build` 执行严格 TypeScript 检查、Node 测试、脚本打包和语法检查。`npm test` 只转译并运行 Node 测试；`npm run check` 只检查生产源码类型。浏览器测试使用 Playwright `1.62.1`，默认启动本机 Chrome；使用 Playwright Chromium 的方法见 [Testing](docs/TESTING.md)。
 
-构建输出位于 `delivery/`。仓库提交当前版本的 Extension JSON 和 `component-update-manifest.json`；`preset-manager.js`、`preview.js`、`preview.html` 由构建生成。预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。
+构建输出位于 `delivery/`。仓库提交当前版本的 Extension JSON 和 `component-update-manifest.json`；`preset-manager.js`、`preview.js`、`preview.html` 由构建生成。组件交付清单记录当前版本、正式 Release Asset URL 和最终 JSON SHA-256；它不等同于 Hub Managed Extension 的更新包，也不新增自动更新能力。预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。
 
 | 文件 | 职责 |
 | --- | --- |

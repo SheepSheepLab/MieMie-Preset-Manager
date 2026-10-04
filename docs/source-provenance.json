@@ -284,5 +284,187 @@
       "bytes": 1274,
       "url": "https://raw.githubusercontent.com/SheepSheepLab/MieMie-Hub/928362c1eb224afe780801060c6d867e01cf5013/docs/ICON-GUIDELINE.md"
     }
-  ]
+  ],
+  "presentationAlignment": {
+    "references": [
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "native-launcher.js",
+        "sha256": "b58f842eb4ebf7030496d5e11fbc83e548d8b85f2866a1177809e0a26b49dc05",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "native-floating-presentation.js",
+        "sha256": "c51a9445f9c696dc67cd987fadcccf24693e60959fe703f1690ccddd1b92b5b4",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "launcher-adapter.js",
+        "sha256": "4d3a747416a22c464e0e112e1573d2e347f3fbb3085fad4b521ac1dd32a673cc",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "assets/native-launcher.css",
+        "sha256": "2ca9b80324070a7aa37031f27f7be9d6b624e207fbae17c4f4fb81c1f22e6256",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "assets/theme.css",
+        "sha256": "315e8c2a6818a2174737e12500c11c852709044503bab18bb151da9ba106d2e6",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "product-identity.js",
+        "sha256": "cac8b50bf4e4998d32e9c35cf77009ff17deeea3541b11c4f494b83cb927bf57",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "manifest.json",
+        "sha256": "481c2eaf81922663cb7c9c5bd8efa4fb30e3c5dd65b4754d0f02c9afaccf52f8",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "docs/APPLICATION-PRESENTATION.md",
+        "sha256": "683b2dc4248b263c5bd9771c49ec3ea1703013906f098555f5169a1f19d9fbbc",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "docs/SURFACE-COMPATIBILITY.md",
+        "sha256": "837e15ea5f6ce3beb7409ce1b1493e420282167d70bc224b37d588cc2c4fb8e9",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Polisher",
+        "commit": "5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1",
+        "path": "docs/LAUNCHER-PROTOCOL.md",
+        "sha256": "c281187f2d0b531ba2e6a2879977075a91f34b42bed66caaef0467154045ae74",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "src/adapters/dual-mode.js",
+        "sha256": "c7ae43c122551ed13e90c68576dd52b01a8dcac86ae7174908ad4f5097837a4a",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "src/ui/native-launcher.js",
+        "sha256": "7df63c8d38a6cf7567d0e1a47ef6adc522290c457fa046241c74d6ca3e45b7d8",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "src/ui/native-floating-presentation.js",
+        "sha256": "f25b6c87a43b85e314d7ddbba2217ea4b1dafb0f392a7793cc464840a7598ff7",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "src/ui/official-presentation.js",
+        "sha256": "e26336573310fd6740283de8b8fc51b6f8a53d5ccb3771e139808960fd97884c",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "src/ui/official-director.js",
+        "sha256": "2cc1a67d69f6ce548dd34a38ed3ccc9698716c4d2d92f30f2b3d5a2744b77fb5",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "assets/native-launcher.css",
+        "sha256": "b2c55b4be1b5f7817b13409264658c10ce7966e7d77e2ada2632657e1d01acc1",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "assets/official-ui.css",
+        "sha256": "3a92e5544cf19df28b03aeb45737ba0d2225fdc956ae0accca52ec40c0295c6a",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "product-identity.js",
+        "sha256": "bc5fa9344cc9ea6ac0277ecc50a8884bd936237b948e03cf0e9d32ea7902eb5c",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "manifest.json",
+        "sha256": "6f5bcb196acce14be29205cbde37adf6f356d4dbd0d0bd7f1010b2591a5bfafb",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "docs/PHASE-4-REVIEW.md",
+        "sha256": "834f252c2c0447117b3400893de5f65d03e608ddef226788880ec8616874d63a",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "Story Director",
+        "commit": "32f34865af156d35b628adc6e66018329026df96",
+        "path": "docs/ARCHITECTURE.md",
+        "sha256": "9ebfcf63473c74b85515d48596b6b25ea105cba419278c21b7c958b01d3132d8",
+        "license": "GPL-3.0-or-later",
+        "productionUse": "Presentation adaptation only; no Core or product art copied"
+      },
+      {
+        "project": "MieMie Hub",
+        "commit": "928362c1eb224afe780801060c6d867e01cf5013",
+        "path": "src/shortcut-launchers.js",
+        "sha256": "42a1a827b6b7e21c658e69d095575e70e70ef95ba0cb5c14536ee671a2da0d91",
+        "gitBlob": "93436eefe54d4d89be94f40109f3f9dba072d43e",
+        "license": "upstream GNU GPL v3",
+        "productionUse": "None; byte-identical test fixture only"
+      }
+    ],
+    "realHost": false
+  }
 }

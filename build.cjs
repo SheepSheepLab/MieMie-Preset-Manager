@@ -49,7 +49,13 @@ function bundle(entry, filename) {
   new vm.Script(artifact.content, { filename: `MieMie-Preset-Manager-Extension-${version}.js` });
   const artifactPath = path.join(root, 'delivery', `MieMie-Preset-Manager-Extension-${version}.json`);
   fs.writeFileSync(artifactPath, JSON.stringify(artifact, null, 2) + '\n');
-  fs.writeFileSync(path.join(root, 'delivery', 'component-update-manifest.json'), JSON.stringify({ schemaVersion: 1, deliveryMode: 'component', artifacts: [{ kind: 'helper-script', id: artifact.id, relativePath: path.basename(artifactPath), sha256: crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex') }] }, null, 2) + '\n');
+  const artifactName = path.basename(artifactPath);
+  fs.writeFileSync(path.join(root, 'delivery', 'component-update-manifest.json'), JSON.stringify({
+    schemaVersion: 1, deliveryMode: 'component', productId: 'miemie.preset-manager', version, tag: `v${version}`,
+    artifacts: [{ kind: 'helper-script', id: artifact.id, version, relativePath: artifactName,
+      url: `https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v${version}/${artifactName}`,
+      sha256: crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex') }],
+  }, null, 2) + '\n');
   fs.writeFileSync(path.join(root, 'delivery', 'preview.html'), '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><title>咩咩预设管理 · 本地预览</title><style>body{margin:0;background:#100d19;color:#d5c9ee;font-family:system-ui}body>p{margin:24px;max-width:38em}</style><p>本地演示数据 · 操作只保存在本页内存。此预览不代表真实酒馆验收。</p><script src="preview.js"></script></html>');
   console.log('Built: ' + path.join(root, 'delivery', `MieMie-Preset-Manager-Extension-${version}.json`));
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

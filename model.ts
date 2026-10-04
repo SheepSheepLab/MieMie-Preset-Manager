@@ -68,7 +68,7 @@ function prefix(name: string): string | null {
   const clean = name.trim().replace(/^[\s★☆●○◆◇▪▫✦✧•·※#*_~]+/u, '').trim();
   const bracket = clean.match(/^[【\[「『]([^】\]」』]{1,24})[】\]」』]\s*\S/u);
   if (bracket) return bracket[1].trim();
-  const separated = clean.match(/^(.{1,24}?)\s*(?:::|[—–|/\-])\s*\S/u);
+  const separated = clean.match(/^(.{1,24}?)\s*(?:::|[:：—–|/\-])\s*\S/u);
   return separated?.[1].trim() || null;
 }
 
@@ -106,11 +106,13 @@ function prompt(raw: RawPreset, id: string): NativePrompt {
   return p;
 }
 export function patchPrompt(raw: RawPreset, id: string, patch: PromptPatch): RawPreset {
-  const next = clone(raw), p = prompt(next, id);
+  const p = clone(prompt(raw, id));
+  const next = { ...raw, prompts: raw.prompts.map(item => item.identifier === id ? p : item) };
   if (!editable(p)) throw Error('该 Marker 的属性由酒馆管理，不能编辑。');
   for (const [key, value] of Object.entries(patch)) {
     if (!['name', 'role', 'content', 'injection_position', 'injection_depth', 'injection_order', 'injection_trigger', 'forbid_overrides'].includes(key)) throw Error('不支持修改此属性。');
-    if (JSON.stringify(p[key]) === JSON.stringify(value)) continue;
+    if (p[key] === value || (p[key] !== null && value !== null && typeof p[key] === 'object' && typeof value === 'object'
+      && JSON.stringify(p[key]) === JSON.stringify(value))) continue;
     if (key === 'content' && p.marker) throw Error('Marker 的内容由酒馆提供，不能修改。');
     if (key === 'forbid_overrides' && !['main', 'jailbreak'].includes(id)) throw Error('禁止角色卡覆盖仅适用于 Main Prompt 和 Post-History Instructions。');
     if (key === 'role' && !['system', 'user', 'assistant'].includes(String(value))) throw Error('请选择有效的身份；未来未知身份可保持原值。');

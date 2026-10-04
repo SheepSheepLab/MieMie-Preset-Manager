@@ -28,7 +28,7 @@ for (const baseline of fixtures.baselines) {
       assert.match(controller.state.error, /未保存修改/);
       assert.equal(controller.state.snapshot.revision, revision, 'conflicted live must not become a safe revision');
       controller.edit('custom'); controller.draft({ name: 'only title changed' });
-      await controller.saveEdit();
+      await controller.saveEdit(); await controller.saveChanges();
       assert.match(controller.state.error, /未保存修改/);
       assert.deepEqual(f.live.prompts[1][key], value);
       assert.deepEqual(f.records.get('A'), original);

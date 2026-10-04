@@ -5,6 +5,9 @@
 import type { ManagerController, ManagerView, Row } from './contracts';
 import { createIcon, type IconName } from './icons';
 import { managerStyles } from './styles';
+import { ICON } from './product-icon';
+import { PRESET_MANAGER_PRODUCT } from './product-identity';
+import { mountCharacterHeader, protectNativeControls } from './official-presentation';
 
 const TRIGGERS = [
   ['normal', '普通生成'],
@@ -22,6 +25,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
   let localError = '';
   let fileBusy = false;
   let editorKey = '';
+  let cardPreset: string | undefined;
+  const cardCache = new Map<string, { key: string; node: HTMLElement }>();
   let returnFocus: HTMLElement | null = null;
   let editorReturnFocus: HTMLElement | null = null;
   let confirmClose: (() => void) | null = null;
@@ -45,7 +50,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     node.title = label;
     node.setAttribute('aria-label', label);
     if (icon) node.append(createIcon(doc, icon));
-    if (className !== 'mm-icon') node.append(doc.createTextNode(label));
+    if (!className.split(/\s+/).includes('mm-icon')) node.append(doc.createTextNode(label));
     if (action) node.addEventListener('click', action);
     return node;
   }
@@ -72,6 +77,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
     }
     if (!disposed) render();
   }
+  function reorder(id: string, before: string | null, revision: string) {
+    if (disposed || fileBusy || controller.state.busy) return;
+    localError = '';
+    void controller.move(id, before, revision).catch(showLocalError);
+  }
   function download(name: string, text: string) {
     if (disposed) return;
     const url = URL.createObjectURL(new Blob([text], { type: 'application/json;charset=utf-8' }));
@@ -92,24 +102,30 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const panel = el('div', 'miemie-pm');
   panel.hidden = true;
   panel.inert = true;
+  panel.tabIndex = -1;
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-label', PRESET_MANAGER_PRODUCT.name);
+  panel.dataset.presentation = 'local';
   const style = el('style');
   style.textContent = managerStyles;
   const frame = el('section', 'mm-frame');
-  frame.setAttribute('role', 'dialog');
-  frame.setAttribute('aria-modal', 'true');
-  frame.setAttribute('aria-label', '咩咩预设管理');
   frame.tabIndex = -1;
   panel.append(style, frame);
   const header = el('header', 'mm-header');
   const brandline = el('div', 'mm-brandline');
   const logo = el('div', 'mm-logo');
-  logo.append(createIcon(doc, 'sheep'));
+  const productImage = el('img');
+  productImage.src = ICON; productImage.alt = ''; productImage.draggable = false;
+  productImage.dataset.toolIcon = 'preset-manager'; logo.append(productImage);
   const brand = el('div', 'mm-brand');
-  brand.append(el('h2', '', '咩咩预设管理'), el('div', 'mm-subtitle', 'MIEMIE PRESET MANAGER'));
+  const subtitle = el('div', 'mm-subtitle');
+  brand.append(el('h2', '', `${PRESET_MANAGER_PRODUCT.name} ${PRESET_MANAGER_PRODUCT.version}`), subtitle);
+  const characterHeader = mountCharacterHeader(host,subtitle);
+  cleanup.push(() => characterHeader.dispose());
   let closeHandler: (() => unknown) | null = null;
-  const closeButton = button('关闭预设管理', 'close', requestClose);
-  closeButton.classList.add('mm-return');
-  brandline.append(logo, brand, closeButton);
+  const closeButton = button('关闭预设管理', undefined, requestClose, 'mm-secondary mm-return');
+  closeButton.textContent = '返回';
+  brandline.append(logo, brand);
   const toolbar = el('div', 'mm-toolbar');
   const presetField = el('label', 'mm-preset-field');
   const presetSelect = writeControl(el('select'));
@@ -191,17 +207,31 @@ export function createManagerView(host: Window, controller: ManagerController): 
     recoveryButton,
   );
   moreWrap.append(moreButton, menu);
+  for (const node of [presetSelect, importButton, exportButton, copyButton, ...menu.querySelectorAll<HTMLButtonElement>('[data-write]')])
+    node.dataset.clean = 'true';
   actions.append(importButton, exportButton, copyButton, moreWrap, fileInput);
   toolbar.append(presetField, actions);
   header.append(brandline, toolbar);
   const errorBox = el('div', 'mm-status mm-error');
   errorBox.setAttribute('role', 'alert');
   errorBox.hidden = true;
-  const noticeBox = el('div', 'mm-status mm-notice');
-  noticeBox.setAttribute('role', 'status');
-  noticeBox.hidden = true;
   const tabs = el('nav', 'mm-categorybar');
   tabs.setAttribute('aria-label', '按条目名称分类');
+  const categoryRow = el('div', 'mm-category-row');
+  const sessionActions = el('div', 'mm-session-actions');
+  sessionActions.setAttribute('aria-label', '未保存修改操作');
+  const saveChangesButton = button('保存修改', 'save', () => {
+    cancelDrag(); void run(() => controller.saveChanges());
+  }, 'mm-icon mm-save');
+  const refreshButton = button('重新读取实际状态', 'refresh', requestReload);
+  sessionActions.append(saveChangesButton, refreshButton);
+  const addButton = writeControl(button('新增条目', 'plus', () => void run(() => controller.addPrompt()), 'mm-secondary'));
+  const separator = () => {
+    const line = el('span', 'mm-separator');
+    line.setAttribute('aria-hidden', 'true');
+    return line;
+  };
+  categoryRow.append(addButton, separator(), tabs, separator(), sessionActions);
   const scroll = el('div', 'mm-scroll');
   const attachedList = el('div', 'mm-list');
   attachedList.setAttribute('aria-label', '发送顺序');
@@ -214,17 +244,15 @@ export function createManagerView(host: Window, controller: ManagerController): 
   scroll.append(attachedList, unlockedHead, detachedList);
   const footer = el('footer', 'mm-footer');
   const footerHint = el('span', 'mm-hint', '本地管理 · 内容不会上传');
-  const footerActions = el('div', 'mm-actions');
-  footerActions.append(
-    button('重新读取实际状态', 'refresh', () => void run(() => controller.refresh())),
-    writeControl(button('新增条目', 'plus', () => void run(() => controller.addPrompt()), 'mm-secondary')),
-  );
-  footer.append(footerHint, footerActions);
+  footerHint.setAttribute('role', 'status');
+  footerHint.setAttribute('aria-live', 'polite');
+  footerHint.setAttribute('aria-atomic', 'true');
+  footer.append(footerHint, closeButton);
   const editorLayer = el('div', 'mm-modal-layer');
   editorLayer.hidden = true;
   const confirmLayer = el('div', 'mm-modal-layer mm-confirm-layer');
   confirmLayer.hidden = true;
-  frame.append(header, errorBox, noticeBox, tabs, scroll, footer);
+  frame.append(header, errorBox, categoryRow, scroll, footer);
   panel.append(editorLayer, confirmLayer);
   doc.documentElement.append(panel);
 
@@ -265,12 +293,14 @@ export function createManagerView(host: Window, controller: ManagerController): 
     submitLabel: string,
     submit: () => Promise<void>,
     dangerous = false,
+    cancelLabel = '取消',
   ) {
     menu.hidden = true;
     moreButton.setAttribute('aria-expanded', 'false');
     confirmClose?.();
     const previous = doc.activeElement as HTMLElement | null;
     const expected = controller.state.snapshot;
+    const expectedLocal = controller.revision();
     const box = el('section', 'mm-dialog');
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-modal', 'true');
@@ -289,19 +319,24 @@ export function createManagerView(host: Window, controller: ManagerController): 
       confirmClose = null;
       previous?.isConnected && previous.focus();
     };
-    const cancel = button('取消', undefined, dismiss, 'mm-secondary');
+    let submitting = false;
+    const cancel = button(cancelLabel, undefined, dismiss, 'mm-secondary');
     const accept = writeControl(
       button(
         submitLabel,
         undefined,
         () => {
+          if (submitting) return;
           try {
             assertDialogContext(expected?.name, expected?.revision);
+            if (controller.revision() !== expectedLocal) throw new Error('未保存内容已变化，请重新确认。');
           } catch (error) {
             dismiss();
             showLocalError(error);
             return;
           }
+          submitting = true;
+          accept.dataset.permitted = 'false';
           accept.disabled = true;
           cancel.disabled = true;
           void run(async () => {
@@ -311,6 +346,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
             if (!controller.state.error && !localError) dismiss();
             else {
               dialogError.textContent = controller.state.error || localError;
+              submitting = false;
+              accept.dataset.permitted = 'true';
               accept.disabled = false;
               cancel.disabled = false;
             }
@@ -371,7 +408,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       return;
     }
     if (key === editorKey) return;
-    const prompt = state.snapshot?.raw.prompts.find(item => item.identifier === draft.id);
+    const prompt = (state.pendingRaw ?? state.snapshot?.raw)?.prompts.find(item => item.identifier === draft.id);
     if (!prompt) return;
     editorKey = key;
     const value = { ...prompt, ...draft.patch };
@@ -409,6 +446,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     content.spellcheck = false;
     content.addEventListener('input', () => controller.draft({ content: content.value }));
     form.append(
+      el('p', 'mm-hint', '此处保存只更新未保存修改；点击分类右侧的保存图标后才同步酒馆。'),
       field('标题', title),
       field('身份', role),
       field(prompt.marker ? '内容（由 SillyTavern 动态生成）' : '内容', content),
@@ -556,7 +594,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       controls.append(unlock);
     } else {
       controls.append(
-        writeControl(button('重新挂接到发送顺序', 'plus', () => void run(() => controller.attach(prompt.identifier)))),
+        writeControl(button('重新挂接到发送顺序', 'link', () => void run(() => controller.attach(prompt.identifier)))),
         writeControl(
           button('删除条目', 'trash', () =>
             confirmDialog(
@@ -583,21 +621,35 @@ export function createManagerView(host: Window, controller: ManagerController): 
   function renderStatus() {
     errorBox.textContent = localError || controller.state.error;
     errorBox.hidden = !errorBox.textContent;
-    noticeBox.textContent = fileBusy
-      ? '正在读取导入文件…'
-      : controller.state.busy
-        ? '正在保存并核对 SillyTavern 实际状态…'
-        : errorBox.hidden
-          ? controller.state.notice
-          : '';
-    noticeBox.hidden = !noticeBox.textContent;
     const editorError = editorLayer.querySelector<HTMLElement>('[data-editor-error]');
     if (editorError) editorError.textContent = localError || controller.state.error;
   }
+  function updateSessionControls() {
+    const state = controller.state;
+    saveChangesButton.disabled = state.busy || fileBusy || !state.dirty || state.conflict;
+    closeButton.disabled = state.busy || fileBusy;
+    refreshButton.disabled = state.busy || fileBusy;
+    for (const node of panel.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('[data-clean]'))
+      node.disabled = state.busy || fileBusy || !state.snapshot || state.dirty || state.conflict;
+    sessionActions.dataset.dirty = String(state.dirty);
+    refreshButton.title = state.dirty ? '放弃未保存修改并重新读取酒馆实际状态' : '重新读取实际状态';
+    const footerMessage = fileBusy ? '正在读取导入文件…'
+      : state.busy ? '正在处理并核对酒馆状态…'
+      : state.dirty ? '有未保存修改 · 尚未同步酒馆'
+      : (!localError && !state.error && state.notice) || (state.category === '全部' ? '本地管理 · 内容不会上传' : '分类排序只调整可见条目，其他条目位置保留');
+    if (footerHint.textContent !== footerMessage) footerHint.textContent = footerMessage;
+    footerHint.title = footerMessage;
+  }
+  let lastRender: { snapshot: unknown; pending: unknown; draft: unknown; revision: number; category: string; busy: boolean; file: boolean } | null = null;
   function render() {
     if (disposed) return;
     const state = controller.state;
-    if (drag && (drag.revision !== state.snapshot?.revision || drag.category !== state.category || state.busy))
+    const key = { snapshot: state.snapshot, pending: state.pendingRaw, draft: state.draft, revision: state.localRevision, category: state.category, busy: state.busy, file: fileBusy };
+    if (lastRender && Object.keys(key).every(k => key[k as keyof typeof key] === lastRender![k as keyof typeof key])) {
+      updateSessionControls(); renderStatus(); return;
+    }
+    lastRender = key;
+    if (drag && (drag.revision !== controller.revision() || drag.category !== state.category || state.busy))
       cancelDrag();
     const namesKey = JSON.stringify([state.snapshot?.name, state.snapshot?.names]);
     if (presetSelect.dataset.names !== namesKey) {
@@ -627,42 +679,65 @@ export function createManagerView(host: Window, controller: ManagerController): 
       tabs.dataset.key = tabsKey;
     }
     const rows = controller.rows();
-    const rowsKey = JSON.stringify([
-      state.snapshot?.revision,
-      state.category,
-      rows.map(item => [item.prompt, item.enabled, item.attached, item.editable, item.removable, item.canDetach]),
-    ]);
-    if (scroll.dataset.key !== rowsKey) {
-      const previousFocus = doc.activeElement as HTMLElement | null;
-      const focusedCard = previousFocus?.closest<HTMLElement>('.mm-card');
-      const focusedId = focusedCard?.dataset.id;
-      attachedList.replaceChildren(...rows.filter(row => row.attached).map(card));
-      detachedList.replaceChildren(...rows.filter(row => !row.attached).map(card));
-      unlockedHead.hidden = !detachedList.childElementCount;
-      if (!attachedList.childElementCount)
-        attachedList.append(
-          el('p', 'mm-empty', state.snapshot ? '这个分类中没有已挂接条目' : '读取预设后，提示词条目会显示在这里'),
-        );
-      scroll.dataset.key = rowsKey;
-      if (focusedId && previousFocus === focusedCard)
-        [...scroll.querySelectorAll<HTMLElement>('.mm-card')].find(item => item.dataset.id === focusedId)?.focus();
-    }
+    if (cardPreset !== state.snapshot?.name) { cardCache.clear(); cardPreset = state.snapshot?.name; }
+    const existingIds = new Set((state.pendingRaw ?? state.snapshot?.raw)?.prompts.map(prompt => prompt.identifier) ?? []);
+    for (const id of cardCache.keys()) if (!existingIds.has(id)) cardCache.delete(id);
+    const previousFocus = doc.activeElement as HTMLElement | null;
+    const focusedCard = previousFocus?.closest<HTMLElement>('.mm-card');
+    const nodes = (items: Row[]) => items.map(item => {
+      // Only displayed properties; never serialize full Prompt bodies for UI keys.
+      const key = JSON.stringify([item.prompt.name, item.prompt.role, item.prompt.marker, item.prompt.system_prompt,
+        item.enabled, item.attached, item.editable, item.removable, item.canDetach, item.toggleable]);
+      let cached = cardCache.get(item.prompt.identifier);
+      if (!cached || cached.key !== key) {
+        cached = { key, node: card(item) }; cardCache.set(item.prompt.identifier, cached);
+      }
+      return cached.node;
+    });
+    mountCards(attachedList, nodes(rows.filter(row => row.attached)), Boolean(drag?.active));
+    mountCards(detachedList, nodes(rows.filter(row => !row.attached)));
+    unlockedHead.hidden = !detachedList.childElementCount;
+    if (!attachedList.childElementCount)
+      attachedList.append(el('p', 'mm-empty', state.snapshot ? '这个分类中没有已挂接条目' : '读取预设后，提示词条目会显示在这里'));
+    if (previousFocus?.isConnected && doc.activeElement !== previousFocus) previousFocus.focus({ preventScroll: true });
+    else if (focusedCard && previousFocus === focusedCard) cardCache.get(focusedCard.dataset.id!)?.node.focus({ preventScroll: true });
     renderEditor();
     renderStatus();
     for (const node of panel.querySelectorAll<
       HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >('[data-write]'))
-      node.disabled = state.busy || fileBusy || !state.snapshot || node.dataset.permitted === 'false';
+      node.disabled = state.busy || fileBusy || !state.snapshot || node.dataset.permitted === 'false' || (node.dataset.clean === 'true' && (state.dirty || state.conflict));
+    updateSessionControls();
     frame.setAttribute('aria-busy', String(state.busy || fileBusy));
     recoveryButton.disabled = state.busy || fileBusy || !state.recovery;
-    footerHint.textContent =
-      state.category === '全部' ? '本地管理 · 内容不会上传' : '分类排序只调整可见条目，其他条目位置保留';
   }
 
+  function mountCards(list: HTMLElement, nodes: HTMLElement[], preserveOrder = false) {
+    const wanted = new Set(nodes);
+    for (const node of [...list.children]) if (!wanted.has(node as HTMLElement)) node.remove();
+    nodes.forEach((node, index) => {
+      if (preserveOrder) { if (node.parentNode !== list) list.append(node); }
+      else if (list.children[index] !== node) list.insertBefore(node, list.children[index] ?? null);
+    });
+  }
+  function syncRowOrder(rows = controller.rows()) {
+    const focused = doc.activeElement as HTMLElement | null;
+    const cards = new Map([...attachedList.querySelectorAll<HTMLElement>('.mm-card')].map(node => [node.dataset.id!, node]));
+    rows.filter(row => row.attached).forEach((row, index) => {
+      const node = cards.get(row.prompt.identifier);
+      if (node && attachedList.children[index] !== node) attachedList.insertBefore(node, attachedList.children[index] ?? null);
+    });
+    if (focused && attachedList.contains(focused) && doc.activeElement !== focused) focused.focus({ preventScroll: true });
+  }
+  function clearDragSelection() {
+    const selection = host.getSelection();
+    if (selection && (panel.contains(selection.anchorNode) || panel.contains(selection.focusNode))) selection.removeAllRanges();
+  }
   type Drag = {
     id: string;
     revision: string;
     category: string;
+    presetName: string;
     source: HTMLElement;
     startX: number;
     startY: number;
@@ -675,9 +750,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
     touchId: number | null;
     pointerId: number | null;
     raf: number | null;
+    paintedX?: number;
+    paintedY?: number;
+    scrolling?: boolean;
   };
   let drag: Drag | null = null;
-  function cancelDrag() {
+  function cancelDrag(restore = true) {
     if (!drag) return;
     if (drag.timer !== null) host.clearTimeout(drag.timer);
     if (drag.raf !== null) host.cancelAnimationFrame(drag.raf);
@@ -687,6 +765,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     panel.classList.remove('mm-drag-active');
     attachedList.classList.remove('mm-drop-end');
     for (const node of attachedList.querySelectorAll('.mm-drop-before')) node.classList.remove('mm-drop-before');
+    if (restore) syncRowOrder();
   }
   function beginDrag(
     target: EventTarget | null,
@@ -703,8 +782,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
     cancelDrag();
     drag = {
       id: source.dataset.id!,
-      revision: controller.state.snapshot.revision,
+      revision: controller.revision(),
       category: controller.state.category,
+      presetName: controller.state.snapshot.name,
       source,
       startX: x,
       startY: y,
@@ -724,7 +804,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (!drag || disposed) return;
     const current = drag;
     if (
-      current.revision !== controller.state.snapshot?.revision ||
+      current.revision !== controller.revision() ||
       current.category !== controller.state.category ||
       controller.state.busy
     ) {
@@ -735,6 +815,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     current.active = true;
     current.source.classList.add('mm-drag-source');
     panel.classList.add('mm-drag-active');
+    clearDragSelection();
     const ghost = current.source.cloneNode(true) as HTMLElement;
     ghost.classList.remove('mm-drag-source');
     ghost.classList.add('mm-drag-ghost');
@@ -747,22 +828,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
     current.ghost = ghost;
     panel.append(ghost);
     updateDrag(current.x, current.y);
-    const autoScroll = () => {
+    const tick = () => {
       if (drag !== current || !current.active) return;
-      const bounds = scroll.getBoundingClientRect();
-      const speed =
-        current.y < bounds.top + 56
-          ? -Math.min(15, (bounds.top + 56 - current.y) / 3)
-          : current.y > bounds.bottom - 56
-            ? Math.min(15, (current.y - bounds.bottom + 56) / 3)
-            : 0;
-      if (speed) {
-        scroll.scrollTop += speed;
-        updateDrag(current.x, current.y);
-      }
-      current.raf = host.requestAnimationFrame(autoScroll);
+      paintDrag(current);
+      current.raf = host.requestAnimationFrame(tick);
     };
-    current.raf = host.requestAnimationFrame(autoScroll);
+    current.raf = host.requestAnimationFrame(tick);
   }
   function updateDrag(x: number, y: number) {
     if (!drag) return;
@@ -772,35 +843,45 @@ export function createManagerView(host: Window, controller: ManagerController): 
       const distance = Math.hypot(x - drag.startX, y - drag.startY);
       if (drag.touchId !== null && distance > 8) cancelDrag();
       else if (drag.touchId === null && distance > 4) activateDrag();
-      return;
     }
-    if (drag.ghost) drag.ghost.style.transform = `translate(${x - drag.startX}px,${y - drag.startY}px) rotate(-1deg)`;
-    const candidates = [...attachedList.querySelectorAll<HTMLElement>('.mm-card')].filter(
-      node => node.dataset.id !== drag?.id,
-    );
-    let before: HTMLElement | undefined;
-    for (const node of candidates) {
-      node.classList.remove('mm-drop-before');
-      const box = node.getBoundingClientRect();
-      if (!before && y < box.top + box.height / 2) before = node;
-    }
-    before?.classList.add('mm-drop-before');
+    // Layout and writes are batched by the single animation frame loop.
+  }
+  function paintDrag(current: Drag) {
+    if (current.paintedX === current.x && current.paintedY === current.y && !current.scrolling) return;
+    current.paintedX = current.x; current.paintedY = current.y;
+    // Read all geometry before any DOM/style writes in this frame.
+    const bounds = scroll.getBoundingClientRect();
+    const boxes = [...attachedList.querySelectorAll<HTMLElement>('.mm-card')]
+      .filter(node => node !== current.source).map(node => ({ node, box: node.getBoundingClientRect() }));
+    const before = boxes.find(({ box }) => current.y < box.top + box.height / 2)?.node;
+    const speed = current.y < bounds.top + 56 ? -Math.min(15, (bounds.top + 56 - current.y) / 3)
+      : current.y > bounds.bottom - 56 ? Math.min(15, (current.y - bounds.bottom + 56) / 3) : 0;
+    if (current.ghost) current.ghost.style.transform = `translate(${current.x - current.startX}px,${current.y - current.startY}px) rotate(-1deg)`;
+    if (current.source.nextElementSibling !== (before ?? null)) attachedList.insertBefore(current.source, before ?? null);
+    const previous = attachedList.querySelector('.mm-drop-before');
+    if (previous !== before) { previous?.classList.remove('mm-drop-before'); before?.classList.add('mm-drop-before'); }
     attachedList.classList.toggle('mm-drop-end', !before);
-    drag.before = before?.dataset.id ?? null;
+    current.before = before?.dataset.id ?? null;
+    current.scrolling = Boolean(speed);
+    if (speed) scroll.scrollTop += speed;
   }
   function finishDrag() {
     const current = drag;
-    cancelDrag();
+    if (!current?.active || current.revision !== controller.revision() ||
+      current.category !== controller.state.category || controller.state.busy) {
+      cancelDrag();
+      return;
+    }
+    paintDrag(current);
+    cancelDrag(false);
     const rows = controller.rows().filter(row => row.attached);
-    const index = rows.findIndex(row => row.prompt.identifier === current?.id);
-    if (index >= 0 && (rows[index + 1]?.prompt.identifier ?? null) === current?.before) return;
-    if (
-      current?.active &&
-      current.revision === controller.state.snapshot?.revision &&
-      current.category === controller.state.category
-    )
-      void run(() => controller.move(current.id, current.before, current.revision));
+    const index = rows.findIndex(row => row.prompt.identifier === current.id);
+    if (index >= 0 && (rows[index + 1]?.prompt.identifier ?? null) === current.before) return;
+    reorder(current.id, current.before, current.revision);
   }
+  listen(panel, 'selectstart', ((event: Event) => {
+    if (drag?.active) { event.preventDefault(); clearDragSelection(); }
+  }) as EventListener);
   listen(attachedList, 'pointerdown', ((event: PointerEvent) => {
     if (event.pointerType !== 'touch' && event.button === 0)
       beginDrag(event.target, event.clientX, event.clientY, null, event.pointerId);
@@ -885,8 +966,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
       if (nextIndex < 0 || nextIndex >= rows.length) return;
       const before =
         event.key === 'ArrowUp' ? rows[nextIndex].prompt.identifier : (rows[nextIndex + 1]?.prompt.identifier ?? null);
-      const revision = controller.state.snapshot?.revision;
-      if (revision) void run(() => controller.move(target.dataset.id!, before, revision));
+      const revision = controller.state.snapshot ? controller.revision() : null;
+      if (revision) reorder(target.dataset.id!, before, revision);
       return;
     }
     if (event.key === 'Tab') {
@@ -918,32 +999,46 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const available = frame.getBoundingClientRect().bottom - moreButton.getBoundingClientRect().bottom - 12;
     menu.style.maxHeight = `${Math.max(44, available)}px`;
   }
+  let viewportSize = '';
   function viewport() {
-    const viewport = host.visualViewport;
-    const width = viewport?.width ?? host.innerWidth;
-    const height = viewport?.height ?? host.innerHeight;
-    const resized = panel.style.width !== `${width}px` || panel.style.height !== `${height}px`;
-    // A pending drop was measured in the old geometry. Rotation must not commit it.
+    const visible = host.visualViewport;
+    const width = visible?.width ?? host.innerWidth, height = visible?.height ?? host.innerHeight;
+    const size = `${width}:${height}`;
+    const resized = viewportSize !== size; viewportSize = size;
     if (resized) cancelDrag();
-    panel.style.top = `${viewport?.offsetTop ?? 0}px`;
-    panel.style.left = `${viewport?.offsetLeft ?? 0}px`;
-    panel.style.width = `${width}px`;
-    panel.style.height = `${height}px`;
+    if (panel.dataset.presentation !== 'native') {
+      const css = host.getComputedStyle(panel);
+      const safe = (side: string) => Math.max(10, Number.parseFloat(css.getPropertyValue(`--mm-safe-${side}`)) || 0);
+      const w = Math.max(1, Math.min(600, width - safe('left') - safe('right')));
+      const h = Math.max(1, Math.min(780, height - safe('top') - safe('bottom')));
+      panel.style.left = `${(visible?.offsetLeft ?? 0) + safe('left') + Math.max(0, width - safe('left') - safe('right') - w) / 2}px`;
+      panel.style.top = `${(visible?.offsetTop ?? 0) + safe('top') + Math.max(0, height - safe('top') - safe('bottom') - h) / 2}px`;
+      panel.style.width = `${w}px`; panel.style.height = `${h}px`;
+    }
     panel.dataset.compact = String(width <= 600);
     panel.dataset.short = String(height <= 500);
-    panel.dataset.fullbleed = String(width <= 600 || height <= 500);
     if (!panel.hidden && !menu.hidden) positionMenu();
     const active = doc.activeElement as HTMLElement | null;
     if (resized && active && editorLayer.contains(active) && active.matches('input,select,textarea'))
       active.scrollIntoView({ block: 'nearest' });
   }
+  function setPresentation(mode: 'local' | 'native' | 'hub') {
+    panel.dataset.presentation = mode;
+    for (const key of ['left','top','right','bottom','width','height','max-height','transform','transform-origin','will-change']) panel.style.removeProperty(key);
+    // The initial native window is clamped before the orb fits its exact origin.
+    if (mode === 'native') { panel.dataset.presentation = 'local'; viewport(); panel.dataset.presentation = mode; }
+    else viewport();
+  }
   listen(host, 'resize', viewport);
+  listen(host, 'orientationchange', viewport);
+  listen(panel, 'miemie:presentation-geometry', viewport);
   if (host.visualViewport) {
     listen(host.visualViewport, 'resize', viewport);
     listen(host.visualViewport, 'scroll', viewport);
   }
   function open() {
     if (disposed) return;
+    characterHeader.refresh();
     if (panel.hidden) returnFocus = doc.activeElement as HTMLElement | null;
     panel.hidden = false;
     panel.inert = false;
@@ -952,13 +1047,27 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const first = !editorLayer.hidden ? editorLayer.querySelector<HTMLElement>('input') : presetSelect;
     (first ?? frame).focus();
   }
+  function requestReload() {
+    if (disposed || controller.state.busy || fileBusy) return;
+    cancelDrag();
+    if (controller.state.dirty) {
+      dialog('重新读取实际状态', el('p', 'mm-confirm-copy', '有未保存的内容。重新读取将放弃这些修改并同步酒馆，是否继续？'), '重新读取', () => controller.reload(), true);
+    } else void run(() => controller.reload());
+  }
   function requestClose() {
-    if (disposed) return;
+    if (disposed || controller.state.busy || fileBusy) return;
     cancelDrag();
     menu.hidden = true;
     moreButton.setAttribute('aria-expanded', 'false');
-    if (closeHandler) closeHandler();
-    else close();
+    if (controller.state.dirty) {
+      dialog('关闭预设管理', el('p', 'mm-confirm-copy', '有未保存的内容，是否关闭？选择“是”将丢弃未保存的修改。'), '是', async () => {
+        controller.cancelChanges();
+        if (closeHandler) await closeHandler(); else close();
+      }, true, '否');
+      return;
+    }
+    controller.cancelChanges();
+    if (closeHandler) closeHandler(); else close();
   }
   function close() {
     cancelDrag();
@@ -966,8 +1075,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
     panel.inert = true;
     menu.hidden = true;
     moreButton.setAttribute('aria-expanded', 'false');
-    if (returnFocus?.isConnected) returnFocus.focus();
+    if (panel.dataset.presentation === 'local' && returnFocus?.isConnected) returnFocus.focus();
   }
+  cleanup.push(protectNativeControls(host, panel));
   const unsubscribe = controller.subscribe(render);
   viewport();
   render();
@@ -976,6 +1086,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     open,
     close,
     setCloseHandler(handler) { closeHandler = handler; },
+    setPresentation,
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -985,6 +1096,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       for (const remove of cleanup.splice(0)) remove();
       for (const timer of timers) host.clearTimeout(timer);
       for (const url of urls) URL.revokeObjectURL(url);
+      cardCache.clear();
       panel.remove();
     },
   };

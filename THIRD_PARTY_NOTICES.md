@@ -37,6 +37,14 @@ MieMie Preset Manager 的项目代码按 [GPL-3.0-or-later](LICENSE) 提供，�
 
 SillyTavern 和 [Tavern Helper / JS-Slash-Runner](https://github.com/N0VI028/JS-Slash-Runner) 是宿主及接口参考来源，具体核对版本见 [兼容说明](docs/COMPATIBILITY.md)，SillyTavern 文件哈希见 [源码溯源记录](docs/source-provenance.json)。除上文列明的 SillyTavern 测试资料外，本项目没有随生产包分发这两个宿主的实现。
 
-Hub 集成只使用接入、退出和面板挂载等生命周期接口。本次提交不包含 Polisher 的业务实现、Extension JSON 或美术素材。
+Hub 集成只使用公开生命周期、面板挂载和可选 Shortcut capability。本项目不包含 Polisher 的业务实现、Extension JSON 或美术素材。
 
 `icons.ts` 中的内联 SVG 控件是本项目编写的几何界面图形，随软件代码使用 GPL-3.0-or-later；没有引入第三方图标库或字体，也不将这些 SVG 控件声称为官方角色资产。正式产品 PNG 由维护者提供，其单独素材记录见 ASSETS-LICENSE.md。品牌身份与指定素材的边界仍见 [BRAND.md](BRAND.md) 和 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。对宿主或其他项目的提及不表示获得其官方背书。
+
+## Native Application Presentation 来源
+
+`native-launcher.ts`、`native-floating-presentation.ts` 与 `presentation-styles.ts` 的原生入口、Dock、窗口动画和 Header Hero 结构 Adapted from [MieMie Polisher 1.2.1](https://github.com/SheepSheepLab/MieMie-Polisher/tree/5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1)，commit `5a0a5cf9f4ac7cf5dbb9dac0134d307ad1caa9d1`，按 GPL-3.0-or-later 保留上游贡献归属，并改为 Preset Manager 的 TypeScript、产品身份、Dock key 和紫色 Accent。
+
+`official-presentation.ts` 的悬浮入口避让思路参考 [MieMie Story Director](https://github.com/SheepSheepLab/MieMie-Story-Director/tree/32f34865af156d35b628adc6e66018329026df96)，commit `32f34865af156d35b628adc6e66018329026df96`，GPL-3.0-or-later。该项目的 Native Presentation 同样据实注明 Adapted from Polisher；本次只沿用展示分层与官方应用结构，不复制其业务 Core 或品牌资产。许可文本见本项目 [LICENSE](LICENSE)；固定源文件哈希见 [source-provenance.json](docs/source-provenance.json)。
+
+`tests/fixtures/hub-v1-shortcut-launchers.js` 为上述固定 Hub commit 的原始 `src/shortcut-launchers.js`，Git blob `93436eefe54d4d89be94f40109f3f9dba072d43e`，相应作者与贡献者及 GNU GPL v3 许可保持上游归属。此夹具仅用于离线浏览器测试，未进入生产 bundle。

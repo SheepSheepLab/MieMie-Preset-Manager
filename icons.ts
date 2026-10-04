@@ -3,13 +3,14 @@
 // See LICENSE for terms; distributed without warranty.
 
 export type IconName =
-  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh';
+  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save';
 
 const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   close: ['M6 6l12 12M18 6 6 18'],
   edit: ['m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z'],
   copy: ['M9 9h11v11H9z', 'M15 5V3H3v12h2'],
-  unlock: ['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'],
+  link: ['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2'],
+  unlock: ['M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2', 'M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2', 'M4 4l16 16'],
   trash: ['M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7'],
   plus: ['M12 5v14M5 12h14'],
   import: ['M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5'],
@@ -17,6 +18,7 @@ const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   more: ['M5 11v2M12 11v2M19 11v2'],
   back: ['m10 5-7 7 7 7M3 12h18'],
   refresh: ['M20 8a8 8 0 1 0 0 8M20 3v5h-5'],
+  save: ['M5 3h12l4 4v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2Z', 'M7 3v6h10V3', 'M7 21v-7h10v7'],
 };
 
 /** Only fixed, bundled SVG geometry enters the DOM. Preset data never does. */

@@ -1,4 +1,4 @@
-# SillyTavern Compatibility Notes · 0.1.2
+# SillyTavern Compatibility Notes · 0.2.0
 
 目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
 
@@ -58,11 +58,21 @@
 
 Role 为 `system` 不等于内建删除锁。原生物理删除要求 `system_prompt === false`；本实现还有下文所列保守限制。`chatHistory` / `dialogueExamples` 可切换但不编辑文本；允许进入编辑器的 Marker 内容仍不可更改。高级属性包括 `injection_position`、`injection_depth`、`injection_order`、`injection_trigger`、`forbid_overrides`，未知值和其他字段继续保留。规则依据：[PromptManager](https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/PromptManager.js)。
 
+## 本地统一保存候选（方案 B）
+
+本轮 Maintainer 反馈后批准改为本地暂存，不再每次条目操作都同步酒馆。原始已确认 Snapshot 不变，局部修改单独保留；排序只复制发生变化的 order 数组／分组，保留未变化的 Prompt 正文、其他分组与未知元数据。编辑只复制被编辑的 Prompt，组件保留已完成的阴影隔离、分类宽度、拖动帧布局与卡片节点缓存优化。
+
+分类行按“新增条目｜分类｜保存与重新读取”排列，两处竖线分隔；“保存修改”使用软盘 SVG 图标并保留提示文字；只有实际改动才启用保存。编辑窗口内保存仅暂存，编辑取消仅撤回该窗口的输入。重新读取有未保存修改时先确认，成功取得真实快照才丢弃；失败仍保留修改。没有单独取消修改按钮。关闭确认选择是会丢弃本地暂存及尚未暂存的编辑输入，不写入旧备份。UI 标记“尚未同步酒馆”，不将本地开关／顺序显示当作已保存宿主状态。
+
+多个本地操作在显式保存时合并成一笔原生 save；正常路径保留三次必要 settings 读取与精确 revision／live 检查。失败保留本地修改并读取实际状态；检测到外部切换／修改时拒绝覆盖，不静默接纳新基线。切换、导入、复制、新建、重命名、删除与导出预设要求先保存或重新读取。保存期间不能继续编辑、重复保存或确认关闭；生命周期停用仍不能取消宿主已开始的写入。
+
+本轮只做离线自动检查，未导入真实 ST。此前 Foundation 的草稿跨用户关闭验收仅适用于旧包；当前关闭丢弃确认及统一保存须重新实机验收。Hub 仓库、正式 PNG、Manifest、版本与原 Adapter 的数据安全规则未修改。
+
 ## 启动、并发与 Hub
 
 启动检查 ST 版本字符串、实际管理器方法、事件、live 设置对象，以及 `promptOrder.strategy === 'global'` / `dummyId === 100001`。缺少任一必要能力便在写入前停止。等待原生事件与 Promise 都受超时和停用控制，退出时清理监听器与计时器；停止等待不能取消宿主已经开始的操作。
 
-Adapter 内串行写入，以原始快照、切换代次、当前名称及 live 指纹防止旧操作覆盖新状态。保存响应丢失时先回读磁盘；已落盘但未能应用的结果与完全失败区分。每次操作前保留内存备份，停用、关闭或刷新页面后备份消失。草稿绑定原预设，恢复时必须确认原始数据未改变。
+Adapter 内串行写入，以原始快照、切换代次、当前名称及 live 指纹防止旧操作覆盖新状态。保存响应丢失时先回读磁盘；已落盘但未能应用的结果与完全失败区分。每次操作前保留内存备份，停用、关闭或刷新页面后备份消失。本地暂存绑定读取时的原预设与精确 revision；外部通知和刷新不自动改用新 revision。统一保存仍通过原 Adapter 的预检、磁盘回读与原生应用屏障。
 
 同一控制器和视图在独立入口与 Hub API v1 间切换。通过 `window.__MieMieHub`、`miemie:hub-ready` / `miemie:hub-disposed` 与 `hub.extensions.provide(manifest, factory)` 接入。Hub 不接收 raw、控制器或草稿；失去 Hub 后面板回到独立容器。双模式不构成同源脚本安全隔离。
 
@@ -72,7 +82,7 @@ Prompt 定义采用双向完整对象比较，顺序条目和全部分组（包�
 
 固定两版 `PromptManager.js` 的 `sanitizeServiceSettings()` / `checkForMissingPrompts()` 只为缺失的内建定义补上 `chatCompletionDefaultPrompts` 对象。Adapter 使用这些完整默认对象的固定双指纹，仅放行匹配的缺失内建补项；仅 identifier 匹配不再足够。补项不会写回 raw。`Prompt` 构造器的 Order / Trigger 默认值与编辑表单默认显示值不等于 service settings 的安全补值：既有 Prompt 上新增属性，即使看起来是默认值，也保守地作为未保存变化处理。未知补值／迁移需先在可恢复副本中确认并原生保存。本轮保留既有 1.18 `pollinations_endpoint` 和 1.19 三种模型迁移的比较投影。
 
-UI 的关闭按钮及关闭面板的 Escape 分支统一请求 Dual Mode 的关闭能力。Standalone 本地隐藏；Hub 模式由当前有效实例的 `api.closePanel()` 完成 Surface 过渡与 Launcher 恢复，关闭不 deactivate、不销毁控制器、不清除草稿。生命周期停用仍可执行内部本地隐藏与清理。没有正式 `closePanel` 能力的 Hub API v1 实例注册失败后恢复 Standalone，不猜测其私有 DOM 或状态。
+UI 的关闭按钮及关闭面板的 Escape 分支统一请求 Dual Mode 的关闭能力。Standalone 完成 Native Panel → Orb 动画后隐藏；Hub 模式由当前有效实例的 `api.closePanel()` 完成 Surface 过渡与 Launcher 恢复，关闭不 deactivate、不销毁控制器。本地统一保存候选的用户关闭先检查未保存内容：选否不关闭；选是丢弃本地修改后执行同一正式 closePanel 路由。Hub disposed／ready 等生命周期内部隐藏仍保留暂存和编辑草稿。生命周期停用仍可执行内部本地隐藏与清理。没有正式 `closePanel` 能力的 Hub API v1 实例注册失败后恢复 Standalone，不猜测其私有 DOM 或状态。
 
 Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/EXTENSION-API.md)、同提交 `src/surface-controller.js` / `src/extension-runtime.js`。当前 Hub 源码状态机的补充本地复现仅模拟动画与 Launcher 依赖。另在真实 Hub 0.8.1 中已确认正常关闭返回 Launcher、再次打开、草稿保留及 disposed / ready 重新接入；不要求 Hub 整体退出。RH-01 曾出现一次打开超时，根因未确认，后续同环境重启、重新接入与打开／关闭／重开未再次复现；当前不作为 Foundation Merge blocker，后续继续观察。
 
@@ -95,3 +105,13 @@ Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub
 7. **完整导出含敏感设置。** `proxy_password`、`custom_include_headers`、连接地址及未知字段均保留，备份同样如此。文件不会自动脱敏，分享前需检查；没有 Prompt 遥测不意味着导出文件适合公开。
 
 18 项产品 Golden Path 的真实宿主状态均见 [Testing](TESTING.md)，不能以开发测试替代维护者验收。
+
+## Presentation Alignment · 0.2.0
+
+0.2.0 保留已 Review 的统一保存与 Presentation 内容，升版本前完整构建基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；本次版本收口不改变 `controller.ts` / `model.ts` / `st-adapter.ts` 或 Hub 生命周期。实际应用窗口替代全屏 Overlay，Standalone 与可选 Shortcut 共用64px原生入口和 Floating Presentation；蜂窝继续使用 Hub Surface Motion。Hub 消失/重接入保留同一面板、Controller、Dirty、未保存排序、分类和 Editor 草稿。`registerShortcutLauncher` 为可选能力，没有该能力仍使用蜂窝与 Standalone 双模式。
+
+Manifest 短文本 `预设` 和正式 PNG presentation.icon 不变。入口、窗口动画与避让只处理视觉，不新增 ST API、网络请求、业务存储或 Prompt 传输。新增的浏览器测试执行固定 Hub 原始 Runtime / Surface / Shortcut registry，并使用实际 DOM/WAAPI；宿主与 Launcher依赖仍是 synthetic，不能写作真实 Hub 实机。此前 Foundation 实机结论仅对应其旧交付包。参见 [Application Presentation](APPLICATION-PRESENTATION.md) 与 [Review](PRESENTATION-REVIEW.md)。
+
+## 0.2.0 阶段状态
+
+本阶段完成 Foundation、ST Adapter 基础、Local Dirty Session、Prompt 基础管理与本地拖动排序、官方应用 UI、Native Launcher / Floating Presentation、Hub / Standalone / Shortcut 入口收口。内容已通过 Maintainer Review，本次发布只更新版本与交付元数据，不新增真实宿主验收范围。基础实机环境仍按此前 Foundation 记录；ST 1.19、完整 Round Trip / Unknown Fields、Built-in / Marker 全边界、失败／并发深度实机及物理手机／软键盘仍待验，[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 保持 Open。

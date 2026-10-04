@@ -27,7 +27,7 @@ async function resize(page, width, height) {
   await page.setViewportSize({ width, height });
   await page.waitForFunction(({ width, height }) => {
     const r = document.querySelector('.miemie-pm')?.getBoundingClientRect();
-    return r && Math.abs(r.width - width) <= 1 && Math.abs(r.height - height) <= 1;
+    return r && r.width <= Math.min(600, width - 20) + 1 && r.height <= Math.min(780, height - 20) + 1 && r.left >= 9 && r.top >= 9;
   }, { width, height });
 }
 
@@ -186,6 +186,7 @@ async function checkLayout(page, viewport) {
       await resize(page, viewport.width, viewport.height);
       await page.locator('.miemie-pm').evaluate((panel, safe) => {
         for (const [side, pixels] of Object.entries(safe)) panel.style.setProperty(`--mm-safe-${side}`, `${pixels}px`);
+        window.dispatchEvent(new Event('resize'));
       }, safe);
       await hitVisible(page.getByRole('button', { name: '关闭预设管理', exact: true }), viewport, safe);
       await hitVisible(page.getByRole('button', { name: '新增条目', exact: true }), viewport, safe);
@@ -199,6 +200,7 @@ async function checkLayout(page, viewport) {
       await editor.waitFor({ state: 'hidden' });
       await page.locator('.miemie-pm').evaluate((panel, sides) => {
         for (const side of sides) panel.style.removeProperty(`--mm-safe-${side}`);
+        window.dispatchEvent(new Event('resize'));
       }, safeNames);
     }
     receipts.push('自定义安全区模拟下，竖屏/横屏主面板与编辑保存、关闭按钮均避让四边');
@@ -258,7 +260,7 @@ async function checkLayout(page, viewport) {
     });
     await keyboardPage.waitForFunction(() => {
       const r = document.querySelector('.miemie-pm').getBoundingClientRect();
-      return Math.abs(r.height - 340) <= 1 && Math.abs(r.top - 100) <= 1;
+      return Math.abs(r.height - 320) <= 1 && Math.abs(r.top - 110) <= 1;
     });
     const keyboardState = await keyboardPage.evaluate(() => {
       const r = document.querySelector('.miemie-pm').getBoundingClientRect();
@@ -271,7 +273,7 @@ async function checkLayout(page, viewport) {
       };
     });
     assert.deepEqual(keyboardState, {
-      windowHeight: 844, panel: { x: 0, y: 100, width: 390, height: 340 },
+      windowHeight: 844, panel: { x: 10, y: 110, width: 370, height: 320 },
       sameContent: true, value: contentText, selection: [5, 16, 'forward'], focused: true,
     });
     await hitVisible(keyboardEditor.getByRole('button', { name: '保存', exact: true }),

@@ -15,7 +15,7 @@ class TestElement extends EventTarget {
   children: TestElement[] = [];
   parentNode: TestElement | null = null;
   dataset: Record<string, string> = {};
-  style: Record<string, string> = {};
+  style = Object.assign({} as Record<string, any>, { setProperty(key: string, value: string) { this[key] = value; }, removeProperty(key: string) { delete this[key]; } });
   private hiddenValue = true;
   readonly hiddenObservers = new Set<() => void>();
   get hidden() {
@@ -33,6 +33,7 @@ class TestElement extends EventTarget {
     readonly tag: string,
   ) {
     super();
+    if (tag === 'button') { this.hidden = false; this.inert = false; }
   }
   get isConnected(): boolean {
     return this.tag === 'html' || Boolean(this.parentNode?.isConnected);
@@ -42,6 +43,14 @@ class TestElement extends EventTarget {
     this.children.push(child);
     child.parentNode = this;
     return child;
+  }
+  append(...children: TestElement[]) { children.forEach(child => this.appendChild(child)); }
+  focus() {}
+  querySelector() { return null; }
+  getBoundingClientRect() {
+    const left = parseFloat(this.style.left) || 0, top = parseFloat(this.style.top) || 0;
+    const width = parseFloat(this.style.width) || 600, height = parseFloat(this.style.height) || 780;
+    return { left, top, width, height, right: left + width, bottom: top + height };
   }
   remove() {
     if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this);
@@ -72,6 +81,7 @@ class TestMutationObserver {
     this.target = null;
   }
 }
+async function flushNative() { for (let i = 0; i < 16; i++) await Promise.resolve(); }
 type TestInstance = { activate(): Promise<void>; open(): unknown; deactivate(): void };
 
 function environment() {
@@ -193,23 +203,23 @@ export async function runDualModeTests() {
     await source.settled();
     assert(e.launchers().length === 1, 'Standalone must have one launcher');
     assert(
-      !e.launchers()[0].hidden && e.panel.hiddenObservers.size === 1,
-      'Closed panel must keep a visible observed launcher',
+      !e.launchers()[0].hidden && e.panel.hiddenObservers.size === 0,
+      'Closed panel must keep one visible native launcher without a visibility observer',
     );
-    assert(e.launchers()[0].style.top === '636px', 'Default launcher must sit above the existing Polisher launcher');
+    assert(e.launchers()[0].style.width === '64px' && e.launchers()[0].style.top === '439.59999999999997px', 'Native launcher uses 64px and its own default Dock ratio');
     e.launchers()[0].dispatchEvent(new Event('click'));
-    await Promise.resolve();
+    await flushNative();
     assert(e.counts().opened === 1, 'Standalone click must open shared view');
     assert(
-      e.launchers()[0].hidden && e.launchers()[0].inert,
-      'Open panel must hide the launcher so it cannot cover editor controls',
+      !e.launchers()[0].hidden && !e.launchers()[0].inert,
+      'Native orb remains visible while the shared application window is open',
     );
     e.view.close();
-    await Promise.resolve();
+    await flushNative();
     assert(!e.launchers()[0].hidden, 'Closing through the UI must restore the launcher');
     e.view.open();
-    await Promise.resolve();
-    assert(e.launchers()[0].hidden, 'Opening from another entry must also hide the launcher');
+    await flushNative();
+    assert(!e.launchers()[0].hidden, 'Opening from another entry retains the native orb');
     let rejected = false;
     try {
       startDualMode(e.host, e.frame, e.view);
@@ -299,7 +309,7 @@ export async function runDualModeTests() {
       'Standalone recovery must leave the still-connected hidden Hub container',
     );
     e.launchers()[0].dispatchEvent(new Event('click'));
-    await Promise.resolve();
+    await flushNative();
     assert(
       !e.panel.hidden && e.panel.parentNode === originalParent,
       'Recovered standalone panel must open in its original parent',
@@ -334,6 +344,7 @@ test('B2 UI close routes through the active Hub Surface and returns to standalon
   e.view.open(); await e.requestClose();
   assert(e.panel.hidden, 'Standalone close must hide the panel');
   e.launchers()[0].dispatchEvent(new Event('click'));
+  await flushNative();
   assert(!e.panel.hidden, 'Standalone reopen must work');
   const first = hubMock(); e.host.__MieMieHub = first.hub; e.emit('miemie:hub-ready');
   await source.settled();
@@ -348,8 +359,8 @@ test('B2 UI close routes through the active Hub Surface and returns to standalon
       && getEventListeners(e.host as unknown as EventTarget, 'miemie:hub-disposed').length === 1, 'One host listener per lifecycle event');
   }
   e.host.__MieMieHub = undefined; e.emit('miemie:hub-disposed', first.hub); await source.settled();
-  e.launchers()[0].dispatchEvent(new Event('click')); await e.requestClose();
-  assert(e.panel.hidden && e.launchers().length === 1 && e.panel.hiddenObservers.size === 1, 'Standalone recovers one observer/launcher');
+  e.launchers()[0].dispatchEvent(new Event('click')); await flushNative(); await e.requestClose();
+  assert(e.panel.hidden && e.launchers().length === 1 && e.panel.hiddenObservers.size === 0, 'Standalone recovers one native launcher');
   const second = hubMock(); e.host.__MieMieHub = second.hub; e.emit('miemie:hub-ready'); await source.settled();
   second.instances[0].open(); await e.requestClose();
   assert(second.surface().closeCalls === 1 && first.surface().closeCalls === 5, 'Rejoin uses only the new Hub capability');
@@ -367,7 +378,47 @@ test('B2 Hub without a formal close capability safely falls back to Standalone',
   const source = startDualMode(e.host, e.frame, e.view);
   await source.settled();
   assert(e.launchers().length === 1 && hub.panels.length === 0, 'Do not capture a panel that cannot formally close');
-  e.launchers()[0].dispatchEvent(new Event('click')); await e.requestClose();
+  e.launchers()[0].dispatchEvent(new Event('click')); await flushNative(); await e.requestClose();
   assert(e.panel.hidden, 'Recovered Standalone close must work');
   await source.dispose();
+});
+
+// Native geometry expectations deliberately replace the old 60px/hidden-orb
+// presentation. Business lifecycle assertions above remain unchanged.
+test('native Dock threshold and persistence are isolated from other products', async () => {
+  const e = environment(), storage = new Map<string,string>();
+  e.host.localStorage = {getItem:(key:string)=>storage.get(key) ?? null,setItem:(key:string,value:string)=>storage.set(key,value)};
+  const source = startDualMode(e.host,e.frame,e.view); await source.settled();
+  const orb = e.launchers()[0];
+  const pointer = (name:string,x:number,y:number) => {
+    const event = new Event(name); Object.assign(event,{pointerId:7,isPrimary:true,button:0,clientX:x,clientY:y}); orb.dispatchEvent(event);
+  };
+  pointer('pointerdown',926,450); pointer('pointermove',930,454);
+  assert(orb.style.transform === 'none','Movement below 7px cannot start dragging');
+  pointer('pointermove',30,200); pointer('pointerup',30,200);
+  const click = new Event('click'); Object.assign(click,{detail:1}); orb.dispatchEvent(click); await flushNative();
+  assert(e.panel.hidden && e.counts().opened === 0,'Drag completion cannot also open');
+  assert(orb.style.left === '10px','Drag docks left');
+  const key = 'miemie_preset_manager_dock_v1';
+  assert(JSON.parse(storage.get(key)!).side === 'left' && storage.size === 1,'Only product side/ratio persists');
+  await source.dispose();
+  const again = startDualMode(e.host,e.frame,e.view); await again.settled();
+  assert(e.launchers()[0].style.left === '10px','Recreated presentation restores its Dock'); await again.dispose();
+});
+test('native viewport/disposal cleans listeners without destroying the business view', async () => {
+  const e = environment(), source = startDualMode(e.host,e.frame,e.view); await source.settled();
+  assert(getEventListeners(e.host,'orientationchange').length === 1 && getEventListeners(e.host,'resize').length === 1,'One native viewport listener');
+  e.host.innerWidth = 320; e.host.innerHeight = 420; e.emit('resize');
+  const keyboardClick = new Event('click'); Object.assign(keyboardClick,{detail:0});
+  e.launchers()[0].dispatchEvent(keyboardClick); await flushNative();
+  assert(e.panel.style.width === '300px' && e.panel.style.height === '400px','Actual application window clamps with margins');
+  assert(e.counts().opened === 1 && e.counts().destroyed === 0,'Same view opens after rotation');
+  await source.dispose(); e.emit('resize'); e.emit('orientationchange');
+  assert(getEventListeners(e.host,'orientationchange').length === 0 && getEventListeners(e.host,'resize').length === 0,'Native listeners removed');
+  assert(e.launchers().length === 0 && e.counts().destroyed === 0,'Presentation disposal never disposes business');
+});
+test('native queued opening cannot revive after source disposal', async () => {
+  const e = environment(), source = startDualMode(e.host,e.frame,e.view); await source.settled();
+  e.launchers()[0].dispatchEvent(new Event('click')); await source.dispose(); await flushNative();
+  assert(e.panel.hidden && e.counts().opened === 0 && e.counts().destroyed === 0,'Disposed pending open cannot reopen or recreate the view');
 });
