@@ -32,5 +32,7 @@ These fixtures are used only by the local tests and are excluded from the produc
 
 The harness executes these function bodies using the unchanged production Manifest, synthetic DOM/storage/Launcher dependencies and no visual animation. It checks validation, activation, presentation-image selection/failure fallback, formal close/reopen and invalid oversized launcher metadata. It does not normalize the Manifest or start a real Hub. The excerpts and test helper are excluded from production bundles.
 
+`hub-v1-shortcut-launchers.js` is the complete, byte-identical public `src/shortcut-launchers.js` at the same Hub commit `36aaec46282e67bd01b87035165977a40d23acc9`; Git blob `93436eefe54d4d89be94f40109f3f9dba072d43e`. Its upstream GNU GPL v3 terms and attribution are retained under the license above. `tests/presentation-browser.cjs` executes this real preference/mount/origin registry with the original Runtime and Surface excerpts, the production Manifest and real DOM/WAAPI, while Launcher/storage/host dependencies and all presets are synthetic. This is stronger contract/visual evidence, not real Hub installation or real ST acceptance. These test sources never enter the production bundle.
+
 
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。

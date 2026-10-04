@@ -17,6 +17,8 @@ class Element extends EventTarget{
  replaceChildren(...nodes){[...this.children].forEach(n=>n.remove());this.textContent='';this.append(...nodes);}
  remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(n=>n!==this);this.parentNode=null;}
  contains(n){return n===this||this.children.some(c=>c.contains(n));}
+ getBoundingClientRect(){return {left:10,top:10,width:600,height:780,right:610,bottom:790};}
+ querySelector(){return null;}
  setAttribute(){}getAttribute(){return null;}removeAttribute(){}focus(){this.ownerDocument.activeElement=this;}
 }
 class Observer{constructor(fn){this.fn=fn;}observe(node){this.node=node;this.notify=()=>queueMicrotask(this.fn);node.observers.add(this.notify);}disconnect(){this.node?.observers.delete(this.notify);}}
@@ -32,9 +34,9 @@ function harness(){
  vm.runInContext(code('createSurfaceMotion').replace(/^export /,'')+'\n'+code('createSurfaceController').replace(/^export /,'')+'\n'+code('createExtensionRuntime').replace(/^export /,'')+'\n'+code('registerSource')+'\n'+code('provide')+'\n'+code('renderMenu')+'\nglobalThis.methods={'+['attachPanel','showPanel','closePanel'].map(code).join(',')+'};',context);
  context.surface=context.createSurfaceController({host,shell,root,launcher,panels,resolve:key=>extensionPanels.get(key),place(){},onState(){},onError:context.onError});context.go=(...args)=>context.surface.go(...args);
  context.hubUI={...context.methods,refresh:()=>context.renderMenu()};context.sources=new Map();context.withdrawing=new Set();context.bundledPolicies=new Map();context.savedHubState={extensions:{}};context.hubDisposed=false;
- context.extensionRuntime=context.runtime=context.createExtensionRuntime({onChange:()=>context.hubUI.refresh(),onPanel(id,title,p,opts){presentation=opts.icon;return context.hubUI.attachPanel(id,title,p,opts);},onShowPanel:id=>context.hubUI.showPanel(id),onClosePanel:id=>context.hubUI.closePanel(id)});
- let provided=null;host.__MieMieHub={apiVersion:1,extensions:{provide(m,f){provided=m;return context.provide(m,api=>{created++;return f(api);});}}};
- return{host,frame,view,panel,context,warnings,launcher,provided:()=>provided,created:()=>created,presentation:()=>presentation,paused:()=>paused,requestClose:()=>closeHandler(),open:()=>context.surface.launch(manifest.id,()=>context.runtime.open(manifest.id),{kind:'shortcut',rect:{left:1,top:1,width:44,height:44}}),cleanup:async source=>{await source.dispose();await context.runtime.dispose();}};
+ context.extensionRuntime=context.runtime=context.createExtensionRuntime({onChange:()=>context.hubUI.refresh(),onPanel(id,title,p,opts){presentation=opts.icon;return context.hubUI.attachPanel(id,title,p,opts);},onShowPanel:id=>context.hubUI.showPanel(id),onClosePanel:id=>context.hubUI.closePanel(id),onShortcut:()=>()=>{}});
+ const instances=[];let provided=null;host.__MieMieHub={apiVersion:1,extensions:{provide(m,f){provided=m;return context.provide(m,api=>{created++;const instance=f(api);instances.push(instance);return instance;});}}};
+ return{host,frame,view,panel,instances,context,warnings,launcher,provided:()=>provided,created:()=>created,presentation:()=>presentation,paused:()=>paused,requestClose:()=>closeHandler(),open:()=>context.surface.launch(manifest.id,()=>context.runtime.open(manifest.id),{kind:'shortcut',rect:{left:1,top:1,width:44,height:44}}),cleanup:async source=>{await source.dispose();await context.runtime.dispose();}};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));async function flush(){for(let i=0;i<8;i++)await tick();}
 test('Hub v1 production manifest passes original validate/provide and activates the factory',async()=>{
@@ -52,4 +54,8 @@ test('Hub v1 original provide rejects oversized SVG launcher metadata before inv
 
 test('Standalone uses the same unmodified official PNG as the production Hub presentation',async()=>{
  const h=harness();h.host.__MieMieHub=undefined;const source=startDualMode(h.host,h.frame,h.view);try{await source.settled();const launcher=h.panel.parentNode.children.find(n=>'miemiePresetManagerStandalone' in n.dataset);assert(launcher);assert.equal(launcher.children[0].src,manifest.icon);assert.deepEqual(Buffer.from(launcher.children[0].src.split(',')[1],'base64'),officialPNG);}finally{await h.cleanup(source);}
+});
+
+test('Hub activation and repeated ready are idempotent for the production source',async()=>{
+ const h=harness(),source=startDualMode(h.host,h.frame,h.view);try{await source.settled();await Promise.all([h.instances[0].activate(),h.instances[0].activate()]);for(let i=0;i<5;i++)h.host.dispatchEvent(new Event('miemie:hub-ready'));await source.settled();assert.equal(h.created(),1);assert.equal(h.context.extensionPanels.size,1);assert.deepEqual(h.warnings,[]);await h.open();assert.equal(h.panel.hidden,false);}finally{await h.cleanup(source);}
 });

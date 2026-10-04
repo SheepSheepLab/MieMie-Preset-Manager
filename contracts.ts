@@ -16,16 +16,28 @@ export interface PresetAdapter {
   create(expected: Snapshot, name: string, raw: RawPreset): Promise<Snapshot>;
   rename(expected: Snapshot, name: string): Promise<Snapshot>;
   remove(expected: Snapshot): Promise<Snapshot>;
+  /** True only when this exact verified read covers every notification and host state is still unchanged. */
+  coversNotifications?(snapshot: Snapshot): boolean;
   subscribe?(callback: () => void): () => void;
   dispose?(): void;
 }
 export type PromptPatch = Partial<Pick<NativePrompt, 'name' | 'role' | 'content' | 'injection_position' | 'injection_depth' | 'injection_order' | 'injection_trigger' | 'forbid_overrides'>>;
 export type Row = { prompt: NativePrompt; enabled: boolean; attached: boolean; category: string; editable: boolean; removable: boolean; canDetach: boolean; toggleable: boolean };
-export interface ManagerState { snapshot: Snapshot | null; recovery: { name: string; raw: RawPreset } | null; busy: boolean; error: string; notice: string; category: string; draft: { id: string; patch: PromptPatch; revision: string } | null; }
+export interface ManagerState { snapshot: Snapshot | null; recovery: { name: string; raw: RawPreset } | null;
+  /** Local session; confirmed snapshot and host revision never become a draft baseline. */
+  pendingRaw: RawPreset | null; dirty: boolean; conflict: boolean; localRevision: number;
+  busy: boolean; error: string; notice: string; category: string;
+  draft: { id: string; patch: PromptPatch; revision: string } | null;
+}
 export interface ManagerController {
   state: ManagerState;
   subscribe(fn: () => void): () => void;
   refresh(): Promise<void>;
+  /** Explicit confirmed discard-and-reload; subscription refresh never discards edits. */
+  reload(): Promise<void>;
+  revision(): string;
+  saveChanges(): Promise<void>;
+  cancelChanges(): void;
   rows(): Row[];
   categories(): string[];
   category(name: string): void;
@@ -56,5 +68,7 @@ export interface ManagerView {
   /** Local hiding for lifecycle cleanup; user actions go through the installed route. */
   close(): void;
   setCloseHandler(handler: (() => unknown) | null): void;
+  /** Visual ownership only; never alters the local edit session. */
+  setPresentation?(mode: 'local' | 'native' | 'hub'): void;
   dispose(): void;
 }

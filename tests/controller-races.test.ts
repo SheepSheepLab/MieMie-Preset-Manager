@@ -54,7 +54,7 @@ test('notification during save synchronizes a later external preset selection', 
   const f = fixture(), controller = createController(f.adapter);
   await controller.refresh();
   const gate = f.holdSave();
-  const pending = controller.toggle('p');
+  await controller.toggle('p'); const pending = controller.saveChanges();
   const savedA = f.snapshot();
   f.externalSelect('B');
   gate.resolve(savedA);
@@ -65,37 +65,18 @@ test('notification during save synchronizes a later external preset selection', 
   controller.dispose();
 });
 
-test('unchanged A → B → A preserves and safely rebases a draft across selection epochs', async () => {
-  const f = fixture(), controller = createController(f.adapter);
-  await controller.refresh();
-  controller.edit('p'); controller.draft({ content: '未保存草稿' });
-  const firstRevision = controller.state.draft?.revision;
-  await controller.select('B');
-  assert.equal(controller.state.draft, null);
-  await controller.select('A');
-  assert.equal(controller.state.draft?.patch.content, '未保存草稿');
-  assert.notEqual(controller.state.draft?.revision, firstRevision);
-  await controller.saveEdit();
-  assert.equal(f.saveCalls, 1);
-  assert.equal(controller.state.draft, null);
-  assert.equal(controller.state.snapshot?.raw.prompts[0].content, '未保存草稿');
-  assert.deepEqual(controller.state.snapshot?.raw.future_root, { keep: ['unchanged'] });
-  controller.dispose();
+test('dirty editor blocks internal preset switching until explicitly cancelled', async () => {
+  const f = fixture(), controller = createController(f.adapter); await controller.refresh();
+  controller.edit('p'); controller.draft({ content: '未保存草稿' }); await controller.select('B');
+  assert.equal(controller.state.snapshot?.name, 'A'); assert.equal(controller.state.draft?.patch.content, '未保存草稿'); assert.equal(f.saveCalls, 0);
+  controller.cancelChanges(); await controller.select('B'); assert.equal(controller.state.snapshot?.name, 'B'); controller.dispose();
 });
-
-test('a changed raw baseline keeps the original draft conflict instead of rebasing it', async () => {
-  const f = fixture(), controller = createController(f.adapter);
-  await controller.refresh();
+test('a changed raw baseline never rebases staged work onto external data', async () => {
+  const f = fixture(), controller = createController(f.adapter); await controller.refresh();
   controller.edit('p'); controller.draft({ content: '不得覆盖外部改动' });
-  await controller.select('B');
-  f.presets.get('A')!.future_root = { external: 'also matters' };
-  await controller.select('A');
-  await controller.saveEdit();
-  assert.equal(f.saveCalls, 0);
-  assert.equal(controller.state.draft?.patch.content, '不得覆盖外部改动');
-  assert.match(controller.state.error, /改变|草稿/);
-  assert.deepEqual(controller.state.snapshot?.raw.future_root, { external: 'also matters' });
-  controller.dispose();
+  f.presets.get('A')!.future_root = { external: 'also matters' }; await controller.refresh(); await controller.saveChanges();
+  assert.equal(f.saveCalls, 0); assert.equal(controller.state.draft?.patch.content, '不得覆盖外部改动'); assert.equal(controller.state.conflict, true);
+  controller.cancelChanges(); await controller.refresh(); assert.deepEqual(controller.state.snapshot?.raw.future_root, { external: 'also matters' }); controller.dispose();
 });
 
 test('notification during export refreshes the selected preset after rejecting stale export', async () => {

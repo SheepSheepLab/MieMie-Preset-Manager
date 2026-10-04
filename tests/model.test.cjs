@@ -45,6 +45,11 @@ test('category detection is local and never mutates titles', () => {
   const raw = fixture(), before = structuredClone(raw); const cats = m.categoriesFor(raw.prompts);
   assert.equal(cats.get('A1'), 'A'); assert.equal(cats.get('main'), '未分类'); assert.deepEqual(raw, before);
   assert.deepEqual([...m.categoriesFor([{ identifier: 'a', name: '【文风】正文' }, { identifier: 'b', name: '【文风】限制' }]).values()], ['文风', '文风']);
+  const mixed = ['🕋难度-地狱(多选一)', '🕋难度:普通', '📕文风:FateZero', '📕文风-简洁', '📕文风：叙事',
+    'Language::English', 'Language : 中文', '单条:保持未分类', '无前缀'].map((name, i) => ({ identifier: String(i), name }));
+  const untouched = structuredClone(mixed);
+  assert.deepEqual([...m.categoriesFor(mixed).values()], ['🕋难度', '🕋难度', '📕文风', '📕文风', '📕文风', 'Language', 'Language', '未分类', '未分类']);
+  assert.deepEqual(mixed, untouched, 'category parsing never rewrites original names');
 });
 test('filtered reorder only permutes visible slots including all per-entry metadata', () => {
   const raw = fixture(); const next = m.movePrompt(raw, 100001, 'A3', 'A1', ['A1', 'A2', 'A3']);
@@ -107,22 +112,23 @@ function fakeAdapter() {
 test('cancelled edit does not invoke persistence; successful edit does', async () => {
   const adapter = fakeAdapter(), controller = createController(adapter); await controller.refresh();
   controller.edit('A1'); controller.draft({ content: 'draft' }); controller.cancelEdit(); assert.equal(adapter.saves, 0);
-  controller.edit('A1'); controller.draft({ content: 'saved' }); await controller.saveEdit();
+  controller.edit('A1'); controller.draft({ content: 'saved' }); await controller.saveEdit(); await controller.saveChanges();
   assert.equal(adapter.saves, 1); assert.equal(controller.state.draft, null);
   assert.equal(controller.state.snapshot.raw.prompts[1].content, 'saved');
 });
 test('failed save preserves actual state and unsaved draft without success notice', async () => {
   const adapter = fakeAdapter(), controller = createController(adapter); await controller.refresh(); const before = controller.state.snapshot.raw;
-  controller.edit('A1'); controller.draft({ content: 'draft' }); adapter.fail(); await controller.saveEdit();
-  assert.deepEqual(controller.state.snapshot.raw, before); assert.equal(controller.state.draft.patch.content, 'draft');
+  controller.edit('A1'); controller.draft({ content: 'draft' }); adapter.fail(); await controller.saveEdit(); await controller.saveChanges();
+  assert.deepEqual(controller.state.snapshot.raw, before); assert.equal(controller.state.pendingRaw.prompts[1].content, 'draft');
   assert.match(controller.state.error, /失败/); assert.equal(controller.state.notice, '');
 });
-test('stale snapshot cannot write another preset and re-reads actual selection', async () => {
+test('stale snapshot cannot write another preset; pending work survives until explicit reload', async () => {
   const adapter = fakeAdapter(), controller = createController(adapter); await controller.refresh();
-  controller.edit('A1'); controller.draft({ content: 'draft A' }); adapter.switch('B'); await controller.saveEdit();
-  assert.equal(controller.state.snapshot.name, 'B'); assert.notEqual(controller.state.snapshot.raw.prompts[1].content, 'draft A');
-  assert.match(controller.state.error, /冲突/); assert.equal(controller.state.draft, null);
-  await controller.select('A'); assert.equal(controller.state.draft.patch.content, 'draft A');
+  controller.edit('A1'); controller.draft({ content: 'draft A' }); adapter.switch('B'); await controller.saveEdit(); await controller.saveChanges();
+  assert.equal(controller.state.snapshot.name, 'A'); assert.equal(controller.state.conflict, true);
+  assert.equal(controller.state.pendingRaw.prompts[1].content, 'draft A'); assert.match(controller.state.error, /外部/);
+  await controller.reload(); assert.equal(controller.state.snapshot.name, 'B'); assert.notEqual(controller.state.snapshot.raw.prompts[1].content, 'draft A');
+  assert.equal(controller.state.dirty, false); assert.equal(controller.state.draft, null);
 });
 test('invalid import cannot create or replace a preset', async () => {
   const adapter = fakeAdapter(), controller = createController(adapter); await controller.refresh();

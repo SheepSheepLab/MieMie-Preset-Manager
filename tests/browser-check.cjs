@@ -26,6 +26,8 @@ const receipts = [];
     receipts.push('正式 PNG 产品图标原样内嵌并在浏览器加载成功');
     const card = id => page.locator(`.mm-card[data-id="${id}"]`);
     const exported = async () => {
+      const save = page.getByRole('button', { name: '保存修改', exact: true });
+      if (await save.isEnabled()) await save.click();
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '导出完整预设', exact: true }).click()]);
       return JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     };
@@ -105,15 +107,17 @@ const receipts = [];
     await panelPage.locator('.mm-card').first().waitFor();
     // The editor overlay blocks header pointer taps; dispatch exercises that UI
     // close route while retaining a draft, rather than claiming a physical tap.
-    const closeManager = (withDraft = false) => {
+    const closeManager = async (withDraft = false) => {
       const button = panelPage.getByRole('button', { name: '关闭预设管理', exact: true });
-      return withDraft ? button.dispatchEvent('click') : button.click();
+      await (withDraft ? button.dispatchEvent('click') : button.click());
+      const confirm = panelPage.getByRole('dialog', { name: '关闭预设管理', exact: true });
+      if (await confirm.isVisible()) await confirm.getByRole('button', { name: '是', exact: true }).click();
     };
     const launcher = () => panelPage.locator('[data-miemie-preset-manager-standalone]');
-    await closeManager(); await launcher().waitFor({ state: 'visible' });
-    await launcher().click(); await panelPage.locator('.mm-card').first().waitFor();
-    await panelPage.keyboard.press('Escape'); await launcher().waitFor({ state: 'visible' });
-    await launcher().click(); receipts.push('B2 Standalone button/Escape close and reopen');
+    await closeManager(); await panelPage.locator('.miemie-pm').waitFor({ state: 'hidden' });
+    await launcher().click(); await panelPage.waitForFunction(() => !document.querySelector('.miemie-pm').inert); await panelPage.locator('.mm-card').first().waitFor();
+    await panelPage.keyboard.press('Escape'); await panelPage.locator('.miemie-pm').waitFor({ state: 'hidden' });
+    await launcher().click(); await panelPage.waitForFunction(() => !document.querySelector('.miemie-pm').inert); receipts.push('B2 Standalone button/Escape close and reopen');
     await panelPage.locator('.mm-card[data-id="demo-0"]').getByRole('button', { name: '编辑条目', exact: true }).click();
     await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).fill('synthetic lifecycle draft');
     await panelPage.evaluate(async () => {
@@ -149,24 +153,33 @@ const receipts = [];
       return { state: r.state, launcherSuspended: r.launcherSuspended, closes: r.closes,
         panels: r.panels.length, instances: r.instances.length, samePanel: r.panels[0] === window.lifecyclePanel };
     });
+    await panelPage.getByRole('button', { name: '关闭预设管理', exact: true }).dispatchEvent('click');
+    const discardPrompt = panelPage.getByRole('dialog', { name: '关闭预设管理', exact: true });
+    assert(await discardPrompt.isVisible());
+    assert.equal((await hubState()).closes, 0); assert.equal((await hubState()).state, 'preset');
+    await discardPrompt.getByRole('button', { name: '否', exact: true }).click();
+    assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).inputValue(), 'synthetic lifecycle draft');
+    receipts.push('Hub 未保存关闭选否不触发closePanel且保留草稿；选是才走正式Surface关闭');
     for (let i = 1; i <= 5; i++) {
       await closeManager(true);
       await panelPage.waitForFunction(() => window.firstTestHub.record.state === 'closed');
       assert.deepEqual(await hubState(), { state: 'closed', launcherSuspended: false, closes: i, panels: 1, instances: 1, samePanel: true });
       await panelPage.evaluate(() => window.firstTestHub.record.instances[0].open());
-      assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).inputValue(), 'synthetic lifecycle draft');
+      assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).count(), 0);
+      await panelPage.locator('.mm-card[data-id="demo-0"]').getByRole('button', { name: '编辑条目', exact: true }).click();
+      await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).fill('synthetic lifecycle draft');
     }
     receipts.push('B2 Hub close restores Surface/Launcher and reopens one panel for five cycles');
-    receipts.push('B2 editor draft survives Hub arrival and repeated close/reopen');
+    receipts.push('B2 editor draft survives Hub arrival; confirmed user close discards it, reopening remains single-instance');
     await panelPage.evaluate(async () => {
       const old = window.__MieMieHub; delete window.__MieMieHub;
       window.dispatchEvent(new CustomEvent('miemie:hub-disposed', { detail: old }));
       await window.__MieMiePresetManagerSource.settled();
     });
     await launcher().waitFor({ state: 'visible' }); assert.equal(await launcher().count(), 1);
-    await launcher().click();
+    await launcher().click(); await panelPage.waitForFunction(() => !document.querySelector('.miemie-pm').inert);
     assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).inputValue(), 'synthetic lifecycle draft');
-    await closeManager(true); await launcher().waitFor({ state: 'visible' });
+    await closeManager(true); await panelPage.locator('.miemie-pm').waitFor({ state: 'hidden' });
     receipts.push('B2 Hub disposal restores Standalone launcher and retained draft');
     await panelPage.evaluate(async () => {
       window.secondTestHub = window.makeTestHub(); window.__MieMieHub = window.secondTestHub.hub;

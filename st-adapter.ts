@@ -153,7 +153,10 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
   const activeGroupId = orderConfig.dummyId;
   const source = ctx.eventSource;
   let disposed = false;
-  let epoch = 0;
+  let epoch = 0, notificationEpoch = 0;
+  // Private receipt metadata, never exported with native presets. Arbitrary/cloned
+  // snapshots cannot suppress a read; only this adapter's own verified read can.
+  const readReceipts = new WeakMap<Snapshot, { notifications: number; epoch: number; live: string; name: string; revision: string }>();
   let tail: Promise<unknown> = Promise.resolve();
   const callbacks = new Set<() => void>();
   const subscriptions: Array<[string, Listener]> = [];
@@ -162,7 +165,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     const event = ctx.eventTypes[key];
     if (event) { source.on(event, listener); subscriptions.push([event, listener]); }
   };
-  const notify = () => { for (const callback of callbacks) callback(); };
+  const notify = () => { notificationEpoch++; for (const callback of callbacks) callback(); };
   listen('OAI_PRESET_CHANGED_BEFORE', () => { epoch++; });
   for (const key of ['PRESET_CHANGED', 'PRESET_DELETED', 'PRESET_RENAMED', 'SETTINGS_UPDATED']) listen(key, notify);
   const alive = () => { if (disposed) throw new Error('预设管理器已停用，本次操作已停止。'); };
@@ -234,6 +237,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
   async function read(): Promise<Snapshot> {
     alive();
     const started = epoch;
+    const notifications = notificationEpoch;
     const name = current();
     if (!name) throw new Error('酒馆尚未选中 Chat Completion 预设。');
     const presets = await disk();
@@ -244,7 +248,12 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       throw new Error('当前预设缺少酒馆使用的 100001 顺序分组，管理器不会自动创建或改写它。');
     }
     checkLive(raw);
-    return { name, names: [...presets.keys()], raw, activeGroupId, version, revision: `${epoch}:${hash([name, raw, stable(liveValues())])}` };
+    const live = stable(liveValues());
+    const result: Snapshot = { name, names: [...presets.keys()], raw, activeGroupId, version, revision: `${epoch}:${hash([name, raw, live])}` };
+    // Capture notifications at read START: an event during HTTP/readback is not
+    // assumed to be covered, even if its live projection happens to look unchanged.
+    readReceipts.set(result, { notifications, epoch: started, live, name, revision: result.revision });
+    return result;
   }
   async function expectedState(expected: Snapshot): Promise<void> {
     const actual = await read();
@@ -366,6 +375,12 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
 
   return {
     read,
+    coversNotifications(snapshot) {
+      const receipt = readReceipts.get(snapshot);
+      if (!receipt || disposed || receipt.notifications !== notificationEpoch || receipt.epoch !== epoch
+        || receipt.name !== current() || receipt.name !== snapshot.name || receipt.revision !== snapshot.revision) return false;
+      try { return receipt.live === stable(liveValues()); } catch { return false; }
+    },
     select: (name, expected) => serialize(async () => {
       await expectedState(expected);
       const started = epoch;
