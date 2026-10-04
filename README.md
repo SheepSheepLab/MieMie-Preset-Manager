@@ -79,13 +79,19 @@ npm run test:browser
 
 ## 授权 / Licensing
 
-软件代码采用 **GNU General Public License v3.0 or later**（SPDX：`GPL-3.0-or-later`）。[LICENSE](LICENSE) 保留完整、未修改的 GNU GPL v3 正文；本说明明确“或任何后续版本”选项。软件不提供担保。
+软件代码采用 **GNU General Public License v3.0 or later**（SPDX：`GPL-3.0-or-later`）。[LICENSE](LICENSE) 保留完整、未修改的 GNU GPL v3 正文；本说明明确“或任何后续版本”选项。遵守 GPL 即可使用、修改、Fork、再分发、商业使用代码，并对自己的 GPL Fork 收费。软件不提供担保。
 
-Software code is licensed under GNU GPL version 3 or, at your option, any later version, without warranty. Contributor authorship and copyright notices remain intact.
+Software code is licensed under GNU GPL version 3 or, at your option, any later version, without warranty. Contributor authorship and copyright notices remain intact. Contributions remain copyright of their respective contributors unless otherwise stated.
 
-MieMie / 咩咩的品牌、Logo、角色形象和指定美术资产不自动纳入软件 GPL 授权。品牌和素材声明不向 GPL 软件代码附加限制。第三方测试源码与夹具保留上游许可，具体范围与来源见以下文件。
+SheepSheep 是 Founder / Project Initiator；SheepSheepLab 是官方 GitHub 开发、维护与发布命名空间。社区 Contributor 保留自己的贡献者身份，包括 louisSSR 的真实历史贡献、版权与提交记录；品牌政策统一不改变贡献归属。
 
-- [BRAND.md](BRAND.md)
-- [ASSETS-LICENSE.md](ASSETS-LICENSE.md)
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+“咩咩”与“MieMie”是地位同级的中文、英文官方品牌，书写顺序不表示主次。品牌、Logo、角色形象及指定视觉资产不因代码采用 GPL 自动开放；当前 Reserved Asset 仅为 `assets/preset-manager-icon.png`，不排除整个 `assets/` 目录。该 PNG 内嵌为 Base64 也不意味着自动取得 GPL 素材授权。
+
+第三方独立 Fork 应使用自己的产品名称、Logo、Icon 与主要视觉身份，明确第三方身份；未获单独素材授权时移除或替换保留 PNG。About / README / Credits 中真实的 “Based on MieMie Preset Manager” 和 “Compatible with MieMie Preset Manager” 等说明允许出现在免费或收费产品中，但不得暗示官方背书。免费原样转载含保留素材的官方包应保留声明并标明官方来源与转载者身份；默认素材许可不授权收费转售该含图包。以上品牌／素材边界不向 GPL 代码附加限制，历史发布版本按其发布时适用的许可处理。
+
+品牌与素材政策已同步至 **MieMie Brand Policy v2.0（2026-09-24 生效）**。详细范围见以下文件；第三方测试源码与夹具继续保留上游许可。
+
+- [品牌身份与正常引用规则](BRAND.md)
+- [指定 PNG 的来源与素材使用范围](ASSETS-LICENSE.md)
+- [第三方声明](THIRD_PARTY_NOTICES.md)
 - [测试夹具来源](tests/fixtures/README.md)
