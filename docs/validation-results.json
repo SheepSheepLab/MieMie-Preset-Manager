@@ -48,13 +48,74 @@
     "sha256": "5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5"
   },
   "realHost": {
-    "sillyTavern118": "not-run",
+    "date": "2026-10-04",
+    "testedHead": "aac26f19db964aeb92b8e2b96b2eb39a142d0410",
+    "extensionSha256": "5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5",
+    "sillyTavern118": "foundation-paths-passed-on-1.18.0-only",
     "sillyTavern119": "not-run",
-    "tavernHelper": "not-run",
-    "mieMieHub": "not-run",
-    "physicalMobileKeyboard": "not-run"
+    "tavernHelper": "foundation-paths-passed-on-4.11.2",
+    "mieMieHub": "foundation-paths-passed-on-0.8.1",
+    "physicalMobileKeyboard": "not-run",
+    "environment": {
+      "sillyTavern": "1.18.0",
+      "stCommit": "8172dcd0ee672d3cd9a5e5f7af134f91a45cd2b8",
+      "tavernHelper": "4.11.2",
+      "mieMieHub": "0.8.1",
+      "browser": "Safari 26.6",
+      "os": "macOS 26.6"
+    },
+    "evidenceKind": "actual host UI and native/persisted-state checks; final RH-01 recheck manually performed and confirmed by Maintainer",
+    "passedPaths": [
+      "standalone-official-PNG-launcher",
+      "standalone-single-instance",
+      "launcher-drag",
+      "open-close-reopen",
+      "current-preset-read-and-name-sync",
+      "preset-switch",
+      "two-complete-preset-copies-and-auto-switch",
+      "prompt-title-cancel-no-write",
+      "prompt-title-save-and-refresh-persistence",
+      "toggle",
+      "prompt-copy-new-identifier-after-original",
+      "desktop-prompt-reorder",
+      "native-JSON-export-equal-to-test-copy",
+      "refresh-persistence",
+      "hub-registration-and-official-PNG",
+      "hub-open-close-launcher-reopen",
+      "draft-retention-across-close",
+      "hub-disposed-to-standalone",
+      "hub-ready-rejoin",
+      "draft-retention-across-hub-transitions",
+      "hub-restart-open-close-reopen",
+      "one-panel-and-business-instance"
+    ],
+    "dataIntegrity": {
+      "originalPresetsByteUnchanged": 11,
+      "recoverableTestCopies": 2,
+      "dataCorruptionObserved": false
+    },
+    "RH-01": {
+      "status": "not-reproduced-in-later-same-environment-rechecks; not-a-foundation-merge-blocker; continue-observation",
+      "priorOpenTimeoutObserved": true,
+      "rootCauseConfirmed": false,
+      "finalRecheck": "Maintainer manually confirmed open -> close -> Launcher -> reopen, no timeout or duplicate panel/business instance",
+      "completeFinalConsoleCapture": false
+    },
+    "remaining": [
+      "ST-1.19-real-host",
+      "other-patch-versions",
+      "complex-native-import-and-round-trip",
+      "deep-unknown-fields",
+      "built-in-marker-all-boundaries",
+      "failure-and-concurrency",
+      "third-party-hooks",
+      "physical-mobile-and-soft-keyboard",
+      "prompt-role-and-content",
+      "remaining-golden-path-items"
+    ],
+    "record": "docs/REAL_HOST_VALIDATION.md"
   },
-  "acceptance": "pending-maintainer-review-and-real-host-testing",
+  "acceptance": "foundation-real-host-paths-passed; full-phase-1-incomplete; issue-1-remains-open",
   "artifactsSha256": {
     "MieMie-Preset-Manager-Extension-0.1.2.json": "5bd899fe9ea776cb7fe50d4149e7dc7b938c6747f4e650354e6e95be900145a5",
     "component-update-manifest.json": "2ec39c059f1f104ff31968bbd55d6ba48454cb27e84afa83dc97dc95add57227",
@@ -92,5 +153,17 @@
       "failedImageSelection": 1
     },
     "realHost": false
+  },
+  "documentationOnlyRecheck": {
+    "date": "2026-10-04",
+    "commands": [
+      "npm run check",
+      "npm test",
+      "npm run build"
+    ],
+    "productionSourceChanged": false,
+    "artifactsChanged": false,
+    "browserSuiteRerun": false,
+    "browserEvidence": "retained fixed-head validation: 18 functional + 9 responsive offline checks"
   }
 }

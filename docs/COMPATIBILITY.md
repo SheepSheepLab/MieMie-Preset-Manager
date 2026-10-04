@@ -1,6 +1,6 @@
 # SillyTavern Compatibility Notes · 0.1.2
 
-目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围，**真实 ST / Tavern Helper / MieMie Hub 尚未验证**。以下 source 和 mock 证据不能代替完整宿主运行，也不覆盖每个补丁或分叉版本。
+目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
 
 ## 固定来源
 
@@ -74,7 +74,7 @@ Prompt 定义采用双向完整对象比较，顺序条目和全部分组（包�
 
 UI 的关闭按钮及关闭面板的 Escape 分支统一请求 Dual Mode 的关闭能力。Standalone 本地隐藏；Hub 模式由当前有效实例的 `api.closePanel()` 完成 Surface 过渡与 Launcher 恢复，关闭不 deactivate、不销毁控制器、不清除草稿。生命周期停用仍可执行内部本地隐藏与清理。没有正式 `closePanel` 能力的 Hub API v1 实例注册失败后恢复 Standalone，不猜测其私有 DOM 或状态。
 
-Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/EXTENSION-API.md)、同提交 `src/surface-controller.js` / `src/extension-runtime.js`。当前 Hub 源码状态机的补充本地复现仅模拟动画与 Launcher 依赖；真实 Hub 尚未验收。测试中 Surface 关闭可返回原 Launcher 菜单，不要求 Hub 整体退出。
+Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub/blob/928362c1eb224afe780801060c6d867e01cf5013/docs/EXTENSION-API.md)、同提交 `src/surface-controller.js` / `src/extension-runtime.js`。当前 Hub 源码状态机的补充本地复现仅模拟动画与 Launcher 依赖。另在真实 Hub 0.8.1 中已确认正常关闭返回 Launcher、再次打开、草稿保留及 disposed / ready 重新接入；不要求 Hub 整体退出。RH-01 曾出现一次打开超时，根因未确认，后续同环境重启、重新接入与打开／关闭／重开未再次复现；当前不作为 Foundation Merge blocker，后续继续观察。
 
 ## Hub Manifest 与正式产品 Icon
 
@@ -86,7 +86,7 @@ Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub
 
 ## 已知限制与需求差距
 
-1. **真实宿主未验。** 尚未验证 ST iframe 执行、真实事件时序、第三方钩子、实际 Hub、物理手机和软键盘。源码／mock 不证明整个 1.18.x 或 1.19.x 系列可用。
+1. **真实宿主仅验基础路径。** 本次 ST 1.18.0 组合中的脚本运行、基础读写、刷新持久化及 Hub 双模式已验；完整 Round Trip、Unknown Fields 深度验证、Built-in / Marker 全边界、失败／并发及第三方钩子仍待验。ST 1.19、物理手机和软键盘未验。此次实机和源码／mock 均不证明整个 1.18.x 或 1.19.x 系列可用。
 2. **删除／解锁／复制比原生更严格。** 当前 `removable` 除要求 `system_prompt === false`，还拒绝 `marker` 或保留 identifier；三个操作共用此判断。即使文件把这些条目标为 `system_prompt:false`，也不会放行。对异常或特殊预设而言，这与原生规则不完全等价，需在真实宿主审查后完善。
 3. **旧格式迁移不自动执行。** 会触发原生迁移的 `main_prompt`、`nsfw_prompt`、`jailbreak_prompt` 旧字段会阻止操作。缺失 `100001`、重复 identifier 或悬空引用也拒绝写入，不自动修复。应先在副本中完成原生迁移。其他历史模型迁移和第三方 BEFORE／AFTER 转换未全面覆盖。
 4. **仅支持全局活动组。** 非全局策略或非 `100001` 活动组停止运行；保留多组数据不等于支持切换任意角色组来编辑。
