@@ -1,6 +1,6 @@
 {
   "name": "miemie-preset-manager",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Native SillyTavern preset manager delivered as a Tavern Helper script",
   "scripts": {
@@ -10,7 +10,8 @@
     "test:browser": "node tests/browser-check.cjs && node tests/mobile-responsive.cjs",
     "test:ui-performance": "node tests/reorder-browser.cjs",
     "test:save-performance": "node tests/save-benchmark.cjs",
-    "test:presentation": "node tests/presentation-browser.cjs"
+    "test:presentation": "node tests/presentation-browser.cjs",
+    "test:package-v1": "node --test tests/package-v1-build.cjs tests/fixtures/hub-package-v1/tests/package-manager.test.mjs"
   },
   "devDependencies": {
     "typescript": "6.0.3",
@@ -22,7 +23,7 @@
     "node": ">=22"
   },
   "license": "GPL-3.0-or-later",
-  "author": "louisSSR",
+  "author": "SheepSheep",
   "repository": {
     "type": "git",
     "url": "https://github.com/SheepSheepLab/MieMie-Preset-Manager.git"

@@ -36,3 +36,13 @@ Issue → Contributor 认领 → Fork / Branch → Development → Pull Request 
 - 自动测试与真实宿主验证分别报告；未测项目明确标注，不虚构 CI 或检查通过。
 - 不提交 Token、API Key、私有预设、会话数据、无关二进制或本地依赖。用于测试的 Extension JSON 应由源码可复现构建，交付位置在源码 PR 中约定。
 - 软件代码沿用 [GPL-3.0-or-later](LICENSE)，品牌与素材见 [BRAND.md](BRAND.md) 和 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。第三方代码及素材记录实际来源、版本与许可，并更新 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+
+## 官方 Extension 发布 Definition of Done
+
+分别完成两道 Gate，不把二者混称为“支持 Hub”：
+
+- **Runtime API Compatibility**：provide/activate、panel、launcher/shortcut、正式关闭、cleanup 和单业务实例，以及既有数据与 UI 回归。
+- **Managed Package Compatibility**：Manifest/Build Identity 同源与版本一致，标准 metadata、Release/Tag/Asset identity、真实大小与 SHA-256、GitHub digest、实际发现、合成宿主安装/更新身份及独立重建。真实在线安装、持久保存和更新另列 Owner 验收，不用 Mock 冒充。
+
+官方构建使用 `npm run build` 和 `npm run test:package-v1`；发布前完整执行 TESTING 文档中的命令，发布后核对 GitHub Asset API。历史发布不可被静默重写；稳定产品/Script ID 与贡献记录保持真实。

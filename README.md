@@ -8,7 +8,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前阶段版本：`0.2.0`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、Prompt 拖动排序及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
+- 当前阶段版本：`0.2.1`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、Prompt 拖动排序及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。固定源码研究与模拟测试以 `1.18.0`、`1.19.0` 为基线；本次基础实机通过的组合为 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**。ST 1.19、其他补丁版本和物理手机仍待验证，不能宣称整个版本系列已通过实测。
@@ -21,9 +21,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.2.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.0/MieMie-Preset-Manager-Extension-0.2.0.json)
+[MieMie-Preset-Manager-Extension-0.2.1.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.1/MieMie-Preset-Manager-Extension-0.2.1.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.0.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.1) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.1.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，重叠关键操作或内部 Dialog 时暂时避让。
@@ -59,12 +59,19 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 ```sh
 npm ci
 npm run build
+npm run test:package-v1
 npm run test:browser
 ```
 
 `npm run build` 执行严格 TypeScript 检查、Node 测试、脚本打包和语法检查。`npm test` 只转译并运行 Node 测试；`npm run check` 只检查生产源码类型。浏览器测试使用 Playwright `1.62.1`，默认启动本机 Chrome；使用 Playwright Chromium 的方法见 [Testing](docs/TESTING.md)。
 
-构建输出位于 `delivery/`。仓库提交当前版本的 Extension JSON 和 `component-update-manifest.json`；`preset-manager.js`、`preview.js`、`preview.html` 由构建生成。组件交付清单记录当前版本、正式 Release Asset URL 和最终 JSON SHA-256；它不等同于 Hub Managed Extension 的更新包，也不新增自动更新能力。预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。
+构建输出位于 `delivery/`。从 **0.2.1** 开始提供 MieMie GitHub Extension Package v1：正式 `manifest.json`、ASCII 文件名 Extension JSON、`MieMie-Extension-update.json` 和 `SHA256SUMS` 均由构建生成或校验。兼容 Hub 可以从本仓库识别、安装、检查更新，并对后续符合 Package v1 的版本原地更新。自动契约已通过；**真实 Hub 在线安装、浏览器 CORS、宿主持久保存和更新仍待 Owner 实机验收**。这与已有 Hub Runtime 接入是两项独立能力。
+
+`manifest.json` 是发布与 Runtime Display Identity 的共同来源；Runtime 顶层图标仍使用内嵌正式 PNG，Launcher 短文本 fallback 为“预设”。Manifest author `SheepSheep` 表示 Founder / Project Initiator / official product author；`SheepSheepLab` 是官方 GitHub 开发、维护与发布命名空间。louisSSR 保留真实 Contributor 身份、贡献版权与提交记录。标准元数据只记录 Asset 名称、原始字节大小与 hash，下载来源由 GitHub Release API 决定。SHA256SUMS 是辅助检查，不能替代 GitHub digest。
+
+**旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装 0.2.1；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
+
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。发布说明见 [0.2.1](docs/RELEASE-0.2.1.md)。
 
 | 文件 | 职责 |
 | --- | --- |

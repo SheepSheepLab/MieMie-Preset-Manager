@@ -35,4 +35,9 @@ The harness executes these function bodies using the unchanged production Manife
 `hub-v1-shortcut-launchers.js` is the complete, byte-identical public `src/shortcut-launchers.js` at the same Hub commit `36aaec46282e67bd01b87035165977a40d23acc9`; Git blob `93436eefe54d4d89be94f40109f3f9dba072d43e`. Its upstream GNU GPL v3 terms and attribution are retained under the license above. `tests/presentation-browser.cjs` executes this real preference/mount/origin registry with the original Runtime and Surface excerpts, the production Manifest and real DOM/WAAPI, while Launcher/storage/host dependencies and all presets are synthetic. This is stronger contract/visual evidence, not real Hub installation or real ST acceptance. These test sources never enter the production bundle.
 
 
+## Hub Package v1 test fixture
+
+`tests/fixtures/hub-package-v1/` retains byte-exact Package source modules and `tests/package-manager.test.mjs` from [MieMie Hub](https://github.com/SheepSheepLab/MieMie-Hub/tree/36aaec46282e67bd01b87035165977a40d23acc9), commit `36aaec46282e67bd01b87035165977a40d23acc9`. Upstream contributors retain attribution, GPL-3.0-or-later; the unmodified GPL text is included in the fixture LICENSE. Paths and SHA-256 are recorded in provenance.json. Test-only imports; no Hub Package implementation or upstream test data enters the production Extension. Synthetic script trees and development HTTP responses are not real-host evidence.
+
+
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。

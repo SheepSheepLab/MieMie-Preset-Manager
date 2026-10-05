@@ -50,4 +50,9 @@ Hub 集成只使用公开生命周期、面板挂载和可选 Shortcut capabilit
 `tests/fixtures/hub-v1-shortcut-launchers.js` 为上述固定 Hub commit 的原始 `src/shortcut-launchers.js`，Git blob `93436eefe54d4d89be94f40109f3f9dba072d43e`，相应作者与贡献者及 GNU GPL v3 许可保持上游归属。此夹具仅用于离线浏览器测试，未进入生产 bundle。
 
 
+## Hub Package v1 test fixture
+
+`tests/fixtures/hub-package-v1/` retains byte-exact Package source modules and `tests/package-manager.test.mjs` from [MieMie Hub](https://github.com/SheepSheepLab/MieMie-Hub/tree/36aaec46282e67bd01b87035165977a40d23acc9), commit `36aaec46282e67bd01b87035165977a40d23acc9`. Upstream contributors retain attribution, GPL-3.0-or-later; the unmodified GPL text is included in the fixture LICENSE. Paths and SHA-256 are recorded in provenance.json. Test-only imports; no Hub Package implementation or upstream test data enters the production Extension. Synthetic script trees and development HTTP responses are not real-host evidence.
+
+
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。
