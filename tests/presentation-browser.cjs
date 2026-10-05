@@ -200,7 +200,7 @@ await headerPage.addInitScript(()=>{
   window.SillyTavern={getContext(){if(window.headerReadFailure)throw Error('synthetic host not ready');return headerContext;}};
 });
 await headerPage.reload();await ready(headerPage);
-const subtitle=headerPage.locator('.mm-subtitle');assert.equal(await headerPage.locator('.mm-brand h2').textContent(),'咩咩预设管理 0.2.0');assert.equal(await subtitle.textContent(),'请打开单人角色聊天');await shot(headerPage,'15-header-no-character.png');
+const subtitle=headerPage.locator('.mm-subtitle');assert.equal(await headerPage.locator('.mm-brand h2').textContent(),'咩咩预设管理 '+require('../manifest.json').version);assert.equal(await subtitle.textContent(),'请打开单人角色聊天');await shot(headerPage,'15-header-no-character.png');
 await headerPage.evaluate(()=>{headerContext.characterId=0;headerContext.characters=[{name:'Synthetic Character A'},{name:'Synthetic Character B'}];headerEvents.emit('chat_id_changed');});assert.equal(await subtitle.textContent(),'当前角色：Synthetic Character A');
 await headerPage.evaluate(()=>{headerContext.characterId='1';headerEvents.emit('chat_id_changed');});assert.equal(await subtitle.textContent(),'当前角色：Synthetic Character B');
 await headerPage.evaluate(()=>{headerContext.characters[1].name='Synthetic Character Renamed';headerEvents.emit('character_renamed');});assert.equal(await subtitle.textContent(),'当前角色：Synthetic Character Renamed');await shot(headerPage,'16-header-current-character.png');

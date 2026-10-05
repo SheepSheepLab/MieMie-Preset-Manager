@@ -48,3 +48,8 @@ Hub 集成只使用公开生命周期、面板挂载和可选 Shortcut capabilit
 `official-presentation.ts` 的悬浮入口避让思路参考 [MieMie Story Director](https://github.com/SheepSheepLab/MieMie-Story-Director/tree/32f34865af156d35b628adc6e66018329026df96)，commit `32f34865af156d35b628adc6e66018329026df96`，GPL-3.0-or-later。该项目的 Native Presentation 同样据实注明 Adapted from Polisher；本次只沿用展示分层与官方应用结构，不复制其业务 Core 或品牌资产。许可文本见本项目 [LICENSE](LICENSE)；固定源文件哈希见 [source-provenance.json](docs/source-provenance.json)。
 
 `tests/fixtures/hub-v1-shortcut-launchers.js` 为上述固定 Hub commit 的原始 `src/shortcut-launchers.js`，Git blob `93436eefe54d4d89be94f40109f3f9dba072d43e`，相应作者与贡献者及 GNU GPL v3 许可保持上游归属。此夹具仅用于离线浏览器测试，未进入生产 bundle。
+
+
+## Hub Package v1 test fixture
+
+`tests/fixtures/hub-package-v1/` retains byte-exact Package source modules and `tests/package-manager.test.mjs` from [MieMie Hub](https://github.com/SheepSheepLab/MieMie-Hub/tree/928362c1eb224afe780801060c6d867e01cf5013), commit `928362c1eb224afe780801060c6d867e01cf5013`. Upstream contributors retain attribution, GPL-3.0-or-later; the unmodified GPL text is included in the fixture LICENSE. Paths and SHA-256 are recorded in provenance.json. Test-only imports; no Hub Package implementation or upstream test data enters the production Extension. Synthetic script trees and development HTTP responses are not real-host evidence.

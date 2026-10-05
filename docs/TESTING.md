@@ -1,4 +1,4 @@
-# Testing · 0.2.0
+# Testing · 0.2.1
 
 自动检查、源码核验和真实宿主验收分别记录。2026-10-04 已完成 ST 1.18.0 + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 的 Foundation 基础实机验收，见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19、物理手机及其余深度验收仍待执行。该实机记录对应此前 Foundation 交付包。Maintainer 已确认统一保存与 Presentation 内容通过 Review，升版本前基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；0.2.0 为此内容的阶段 Pre-release，不据此新增完整宿主或移动端通过结论。
 
@@ -62,7 +62,7 @@ PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 
 仅更改既有展示断言：60px隐藏球改为64px持续原生球、同步显示改为等待animation终点、全屏尺寸改为600×780 Clamp、Footer无按钮改为一个返回按钮；测试夹具补足实际DOM/style及可选Shortcut capability。数据、失败、冲突、写入次数、草稿/选区/单实例断言保留。Header引入PNG后，隔离UI测试bundle新增asset/inline loader，与生产构建一致。
 
-当前 **0.2.0 阶段交付包** Extension JSON SHA-256（见机器可读结果；下方由最终构建更新）：
+历史 **0.2.0 阶段交付包** Extension JSON SHA-256（见机器可读结果；下方由最终构建更新）：
 
 ```text
 b735bb507e7315389afe0197c7c6b56f614e0cdfd87e13a2b5b8b32a0d97c0ca
@@ -196,3 +196,32 @@ Owner录屏显示：Hub Shortcut打开后继续点击同一球会跳成Hub居中
 升版本前先从未改动源码重建0.1.2内容，SHA-256与已确认基线一致；业务、Launcher、动画、图标、Hub integration保持不变。0.2.0版本只写入package、锁文件、Product Identity、Header测试预期和构建元数据；固定Product/Extension ID与Script ID不变。交付目录仅保留当前版本JSON，历史Foundation包仍由真实宿主记录与Git历史标识。组件交付清单给出v0.2.0正式Release Asset URL，不是Hub Managed Package。
 
 本版本按完整命令重新执行自动Gate及独立目录clean rebuild；当前结果与最终产物hash见validation-results.json。该阶段Pre-release不关闭Issue #1；ST1.19真实宿主、深度Round Trip/Unknown Fields、Built-in/Marker边界、失败/并发实机和物理手机/软键盘继续待验。此前候选修复记录为历史自动证据；Maintainer Review通过不等于这些深度项目均已完成。
+
+
+## 0.2.1 Runtime / Managed Package 两道发布 Gate
+
+Runtime gate：严格类型、Node、浏览器功能/响应式、UI/保存性能与 Presentation 检查；Hub provide/activate、panel、launcher/shortcut、closePanel、单实例、Dirty、数据完整性保持既有回归。自动 Mock 和预览测试不能替代真实宿主验收。
+
+Managed Package gate：`npm run test:package-v1` 读取完整生产交付包，使用 Hub commit `928362c1eb224afe780801060c6d867e01cf5013` 的原始 validator/discovery/install/update 源码及原始上游测试（仅测试夹具，带 GPL 和 SHA-256 provenance）。覆盖正式 Manifest、纯三段版本/Tag、稳定 ID/repository、首行身份、空 data、确切 Helper 字段、ASCII Asset 名、16 MiB/64 KiB 限制、双 hash、GitHub digest、禁止 URL/未知 metadata 字段、短 launcher 和安全相对 icon；在合成全局脚本树验证安装、当前版本检查、后续版本原地更新保留实例和设置。不会执行下载脚本，也不写真实 Helper。
+
+构建首先校验 package/manifest 身份、产品 author 与官方 repository 一致性，Runtime 与 Product Identity 直接读取 manifest；构建后自动执行 11 项生产产物契约。Package 专项总 67 项（11 项生产产物 + 56 项原始 Hub 测试）；Node 总 162 项，包含原 157 项和 5 项发布身份/来源检查。
+
+每次正式发布另需：独立目录 npm ci/build，四份机器资产逐字相同；Tag/Release/Repository 一致，非 Draft；上传后确认 Asset API digest 与原始 bytes 一致；使用同一 Hub discovery 读取实际已发布 Release。只有完成这些检查才能报告“发布包符合 Package v1”。实际浏览器在线安装/更新、CORS/安全下载服务及宿主持久保存仍由 Owner 单独验收，不算本轮自动通过。
+
+旧 0.2.0 身份缺少 repository，实际 Hub listInstalled/check 不识别，已锁定反例；不能自动升级。迁移操作见 README，先备份、停用并手动移除旧实例，再安装 0.2.1，不对生产数据尝试猜测升级。
+
+```sh
+npm ci
+npm run check
+npm test
+npm run build
+npm run test:package-v1
+npm run test:browser
+npm run test:ui-performance
+npm run test:save-performance
+npm run test:presentation
+```
+
+Polisher 1.2.1 parity：两者均有正式 manifest、带 repository 的首行 identity、标准 update metadata 和 SHA256SUMS。已核对 Polisher v1.2.1 实际四份 Release Assets 及 GitHub digest；身份、Script ID 和 PNG 各自独立。Preset Manager 继续 TypeScript，不复制 Polisher 产品身份。
+
+依赖审计：当前 tracked 源码和文档、固定 Hub package consumer、Polisher 正式构建中未发现 component-update-manifest 的外部正式消费者；旧清单仅用于本项目历史构建/发布记录。0.2.1 不再生成/发布它，历史记录及 v0.2.0 Release 保留。

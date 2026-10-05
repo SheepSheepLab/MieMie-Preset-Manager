@@ -8,15 +8,18 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const ts = require('typescript');
 const webpack = require('webpack');
-const crypto = require('node:crypto');
+const { validateReleaseIdentity, createPackage, writePackage } = require('./tools/package-v1.cjs');
 const vm = require('node:vm');
 const root = __dirname;
-const version = require('./package.json').version;
+const manifest = require('./manifest.json');
+validateReleaseIdentity(require('./package.json'), manifest);
+const version = manifest.version;
 const licenseBanner = 'MieMie Preset Manager — Copyright (C) 2026 louisSSR\nSPDX-License-Identifier: GPL-3.0-or-later\nDistributed without warranty; see LICENSE.\nSource: https://github.com/SheepSheepLab/MieMie-Preset-Manager\n\nBundled webpack runtime license:\n' + fs.readFileSync(path.join(root, 'licenses', 'webpack-MIT.txt'), 'utf8');
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? (['.git', '.test-build', 'delivery', 'node_modules', 'evidence'].includes(e.name) ? [] : walk(path.join(dir, e.name))) : [path.join(dir, e.name)]); }
 function compileTests() {
   const files = walk(root).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
   fs.mkdirSync(path.join(root, '.test-build', 'assets'), { recursive: true });
+  fs.copyFileSync(path.join(root, 'manifest.json'), path.join(root, '.test-build', 'manifest.json'));
   fs.copyFileSync(path.join(root, 'assets', 'preset-manager-icon.png'), path.join(root, '.test-build', 'assets', 'preset-manager-icon.png'));
   for (const file of files) {
     const out = path.join(root, '.test-build', path.relative(root, file).replace(/\.ts$/, '.js'));
@@ -44,18 +47,11 @@ function bundle(entry, filename) {
   compileTests();
   await bundle('index.ts', 'preset-manager.js');
   await bundle('preview.ts', 'preview.js');
-  const header = '// MieMie-Extension-Build: ' + JSON.stringify({ schemaVersion: 1, productId: 'miemie.preset-manager', version, scriptId: '98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1' }) + '\n';
-  const artifact = { type: 'script', enabled: true, name: `咩咩预设管理 ${version}`, id: '98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1', content: header + fs.readFileSync(path.join(root, 'delivery', 'preset-manager.js'), 'utf8'), info: '咩咩预设管理。原生 Chat Completion 预设、局部编辑、未知字段保留、MieMie Hub API v1 / standalone。测试版；请先使用备份预设验证。', button: { enabled: false, buttons: [] }, data: {}, export_with: { data: true, button: true } };
-  new vm.Script(artifact.content, { filename: `MieMie-Preset-Manager-Extension-${version}.js` });
-  const artifactPath = path.join(root, 'delivery', `MieMie-Preset-Manager-Extension-${version}.json`);
-  fs.writeFileSync(artifactPath, JSON.stringify(artifact, null, 2) + '\n');
-  const artifactName = path.basename(artifactPath);
-  fs.writeFileSync(path.join(root, 'delivery', 'component-update-manifest.json'), JSON.stringify({
-    schemaVersion: 1, deliveryMode: 'component', productId: 'miemie.preset-manager', version, tag: `v${version}`,
-    artifacts: [{ kind: 'helper-script', id: artifact.id, version, relativePath: artifactName,
-      url: `https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v${version}/${artifactName}`,
-      sha256: crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex') }],
-  }, null, 2) + '\n');
+  const built = createPackage(manifest, fs.readFileSync(path.join(root, 'delivery', 'preset-manager.js'), 'utf8'));
+  new vm.Script(built.artifact.content, { filename: `MieMie-Preset-Manager-Extension-${version}.js` });
+  writePackage(path.join(root, 'delivery'), built);
+  const contract = spawnSync(process.execPath, ['--test', 'tests/package-v1-build.cjs'], { stdio: 'inherit', cwd: root });
+  if (contract.status !== 0) process.exit(contract.status || 1);
   fs.writeFileSync(path.join(root, 'delivery', 'preview.html'), '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><title>咩咩预设管理 · 本地预览</title><style>body{margin:0;background:#100d19;color:#d5c9ee;font-family:system-ui}body>p{margin:24px;max-width:38em}</style><p>本地演示数据 · 操作只保存在本页内存。此预览不代表真实酒馆验收。</p><script src="preview.js"></script></html>');
   console.log('Built: ' + path.join(root, 'delivery', `MieMie-Preset-Manager-Extension-${version}.json`));
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

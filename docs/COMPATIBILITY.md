@@ -1,4 +1,4 @@
-# SillyTavern Compatibility Notes · 0.2.0
+# SillyTavern Compatibility Notes · 0.2.1
 
 目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
 
@@ -115,3 +115,10 @@ Manifest 短文本 `预设` 和正式 PNG presentation.icon 不变。入口、�
 ## 0.2.0 阶段状态
 
 本阶段完成 Foundation、ST Adapter 基础、Local Dirty Session、Prompt 基础管理与本地拖动排序、官方应用 UI、Native Launcher / Floating Presentation、Hub / Standalone / Shortcut 入口收口。内容已通过 Maintainer Review，本次发布只更新版本与交付元数据，不新增真实宿主验收范围。基础实机环境仍按此前 Foundation 记录；ST 1.19、完整 Round Trip / Unknown Fields、Built-in / Marker 全边界、失败／并发深度实机及物理手机／软键盘仍待验，[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 保持 Open。
+
+
+## 0.2.1 Managed Distribution
+
+Hub Runtime API v1 与 GitHub Extension Package v1 分别验证。0.2.1 首次提供标准机器包：正式 Manifest 同源、完整 repository Build Identity、标准 metadata、原始 JSON 与 content SHA-256、发布 Asset digest。Runtime 正式 PNG/短文本 fallback、Standalone/Hub/Shortcut 和所有预设业务保持既有行为。测试直接锁定 Hub `928362c1eb224afe780801060c6d867e01cf5013` 的实际 Package 源码，不改 Hub，也不将它打入生产 bundle。
+
+自动安装/更新契约使用合成脚本树；真实 Hub 在线安装/CORS/持久保存和更新尚待 Owner 测试。历史 Foundation 实机结论仅适用于其记录的宿主组合与交付包；不据此声称 0.2.1 已实机通过、ST 1.19 或整个 Phase 1 已完成。旧手工 0.2.0 缺少 repository 身份，不在实际 Hub legacy whitelist 中；不能安全识别自动升级。先备份停用、手动移除旧实例，再安装标准 0.2.1，详见 README。

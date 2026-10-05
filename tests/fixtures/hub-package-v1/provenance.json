@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/SheepSheepLab/MieMie-Hub",
+  "commit": "928362c1eb224afe780801060c6d867e01cf5013",
+  "license": "GPL-3.0-or-later",
+  "scope": "Test only; byte-exact source and upstream tests; excluded from production bundles",
+  "sha256": {
+    "src/extension-packages.js": "271242fdafccf17f78e162842d94176dcffe336909a814a40dd30e6b6bd719d7",
+    "src/script-update-fields.js": "ff227159d79c7e312c1d32af592d3f9d30f392622e40c593ffbaf2037c0a44b5",
+    "src/hub-update-check.js": "5eac691ae4dfd11b2df1a38451dd8a3a7e130a7edbfacf3d0755333936819b36",
+    "src/registry-client.js": "fe4d6c1a0cacccf98c853009730c5937f4472c92c46f91ed9396396757de76ab",
+    "tests/package-manager.test.mjs": "973f40876caa93d2111014308bd6c5b95e85219131912d41737b8fddc763e2c4"
+  }
+}

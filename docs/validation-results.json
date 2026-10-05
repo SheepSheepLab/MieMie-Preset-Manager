@@ -1,6 +1,6 @@
 {
   "date": "2026-10-05",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "environment": {
     "node": "v24.13.1",
     "typescript": "6.0.3",
@@ -10,17 +10,18 @@
     "browser": "Chromium 151.0.7922.34"
   },
   "commands": {
-    "npm ci": "passed from lockfile (--ignore-scripts --no-audit --no-fund); independent clean install passed with --offline",
+    "npm ci": "passed from lockfile; independent clean npm ci passed",
     "npm run check": "passed",
     "npm test": "passed",
     "npm run build": "passed",
     "npm run test:browser": "passed",
     "npm run test:ui-performance": "passed",
     "npm run test:save-performance": "passed",
-    "npm run test:presentation": "passed"
+    "npm run test:presentation": "passed",
+    "npm run test:package-v1": "passed: 11 production artifact tests + 56 unmodified upstream Hub tests"
   },
   "nodeTests": {
-    "passed": 157,
+    "passed": 162,
     "failed": 0,
     "nativeSourceSnippetTestsWithMockedDependencies": 70,
     "hubSourceContractTestsWithMockedDependencies": 6,
@@ -30,7 +31,8 @@
     "nativeBatchSessionTestsPassed": 9,
     "priorImmediateSaveControllerAssertions": "updated to explicit save/discard semantics; data integrity assertions retained",
     "presentationFollowupTestsPassed": 4,
-    "functionalBaselinePassed": 153
+    "functionalBaselinePassed": 153,
+    "packageIdentityTestsPassed": 5
   },
   "browserChecks": {
     "kind": "offline-preview",
@@ -45,17 +47,20 @@
   "independentDirectoryBuild": {
     "freshNpmCi": true,
     "passed": true,
-    "nodeTestsPassed": 157,
+    "nodeTestsPassed": 162,
+    "productionPackageTestsPassed": 11,
     "byteEqual": [
-      "MieMie-Preset-Manager-Extension-0.2.0.json",
-      "component-update-manifest.json",
+      "MieMie-Preset-Manager-Extension-0.2.1.json",
+      "MieMie-Extension-update.json",
+      "manifest.json",
+      "SHA256SUMS",
       "preset-manager.js",
       "preview.js"
     ]
   },
   "artifact": {
-    "path": "delivery/MieMie-Preset-Manager-Extension-0.2.0.json",
-    "sha256": "b735bb507e7315389afe0197c7c6b56f614e0cdfd87e13a2b5b8b32a0d97c0ca"
+    "path": "delivery/MieMie-Preset-Manager-Extension-0.2.1.json",
+    "sha256": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0"
   },
   "realHost": {
     "date": "2026-10-04",
@@ -125,12 +130,14 @@
     ],
     "record": "docs/REAL_HOST_VALIDATION.md"
   },
-  "acceptance": "0.2.0-stage-prerelease; maintainer-approved-content; existing foundation real-host record retained for its own artifact; phase-1-incomplete; issue-1-open",
+  "acceptance": "0.2.1-package-v1-automated-gate-passed; real Hub managed install/update pending Owner; phase-1-incomplete; issue-1-open",
   "artifactsSha256": {
-    "MieMie-Preset-Manager-Extension-0.2.0.json": "b735bb507e7315389afe0197c7c6b56f614e0cdfd87e13a2b5b8b32a0d97c0ca",
-    "component-update-manifest.json": "8898db4a27de6c06bd043c854d612c5d1722b5589afc6b58156dfbecfcdff030",
-    "preset-manager.js": "d992fda8aa1e4746172c28c0c14e60569dcfb42e1861ed395abf9d586adf0b38",
-    "preview.js": "c125d474f76e9475f1345107303dfb9808dcf8cba13e7b04b90b3c4fc4cb807f"
+    "MieMie-Preset-Manager-Extension-0.2.1.json": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0",
+    "MieMie-Extension-update.json": "743e4d40994410a93f48b0f8fc447bfab9f60a825049e6e1c9b01e2927d959c4",
+    "manifest.json": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb",
+    "SHA256SUMS": "e852c4bbea88559c2347e9b5fe657b3d507dd9b758a0a2b9691bf6f4bd525764",
+    "preset-manager.js": "71cd3aac2f1c2a6a5be25a1f40360c57c66dd84e16dbbdf2a8cb1668366c491f",
+    "preview.js": "91befeb217af83e4b4df013382ce759b922b97dc65dde88fba5813a40d4f564e"
   },
   "regressions": {
     "baseHead": "8fb308941753acc5fa90975f4c37f8e54ab1508f",
@@ -590,7 +597,7 @@
       "historicalPreVersionCloseout": true
     }
   },
-  "release": {
+  "previousRelease": {
     "version": "0.2.0",
     "tag": "v0.2.0",
     "prerelease": true,
@@ -622,5 +629,46 @@
     "deliveryUrl": "https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.0/MieMie-Preset-Manager-Extension-0.2.0.json",
     "updateManifestSha256": "8898db4a27de6c06bd043c854d612c5d1722b5589afc6b58156dfbecfcdff030",
     "runtimeSourceFreeze": "all approved source/asset files byte-identical except Product Identity version; build metadata and Header test assertion updated"
+  },
+  "previousArtifact": {
+    "path": "delivery/MieMie-Preset-Manager-Extension-0.2.0.json",
+    "sha256": "b735bb507e7315389afe0197c7c6b56f614e0cdfd87e13a2b5b8b32a0d97c0ca"
+  },
+  "release": {
+    "version": "0.2.1",
+    "tag": "v0.2.1",
+    "prerelease": true,
+    "repository": "SheepSheepLab/MieMie-Preset-Manager",
+    "baseHead": "225f38735dca99111c98afcf96ea9554ae11ae20",
+    "businessLogicChanged": false,
+    "perChatFeaturesIncluded": false,
+    "hubRepositoryChanged": false,
+    "issue1": "open",
+    "realHostConclusionExpanded": false,
+    "note": "Uploaded asset digests and public discovery are verified after publishing and reported separately; no claim of Owner online acceptance"
+  },
+  "managedPackage": {
+    "format": "MieMie GitHub Extension Package v1",
+    "hubSourceCommit": "928362c1eb224afe780801060c6d867e01cf5013",
+    "manifestSourceOfTruth": "manifest.json; Runtime overrides only top-level icon with embedded official PNG",
+    "stableScriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
+    "metadataSize": 1160,
+    "scriptSize": 3032956,
+    "contentSha256": "6cf03fc28c3c09af3cdd261d551de7bfa9f18269605a18c1d8ef87164614aa54",
+    "nodeIdentityTests": 5,
+    "productionArtifactTests": 11,
+    "unmodifiedUpstreamTests": 56,
+    "testsTotal": 72,
+    "validatorDiscoveryInstallUpdate": "passed with original pinned code; synthetic HTTP and script tree; no downloaded content execution",
+    "futureUpdate": "synthetic 0.2.2 package preserves instance ID, data, enabled state and unrelated script",
+    "manual020Migration": "not identified: repository absent; no applicable legacy whitelist; back up, disable and manually remove old instance before installing 0.2.1",
+    "realHostManagedInstallUpdate": "not-run",
+    "componentManifestAudit": "only historical own build/docs found; no consumers in checked project and pinned Hub/Polisher source; retired from current build, old release unchanged",
+    "polisherParity": "manifest, repository Build Identity, metadata and SHA256SUMS match packaging role; product identities independent; v1.2.1 real release assets/digests read",
+    "privacy": "public data empty; no user prompt/chat/credentials or local absolute paths; test modules absent from production",
+    "frozenSource": "business, adapter, UI, drag, native/presentation files and official PNG byte-identical to base main",
+    "productAuthor": "SheepSheep",
+    "officialNamespace": "SheepSheepLab",
+    "productIdentityGate": "package.author = manifest.author = SheepSheep; package and manifest repositories match the official namespace; drift blocks build/test"
   }
 }

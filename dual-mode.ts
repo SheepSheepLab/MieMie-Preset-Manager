@@ -5,23 +5,13 @@
 import type { ManagerView } from './contracts';
 import { ICON } from './product-icon';
 import { createPresetManagerNativeLauncher, type NativeLauncher } from './native-launcher';
-import { PRESET_MANAGER_PRODUCT } from './product-identity';
+import manifest from './manifest.json';
 
 const SOURCE_KEY = '__MieMiePresetManagerSource';
 const WAIT_MS = 1500;
 
-export const PRESET_MANAGER_MANIFEST = Object.freeze({
-  schemaVersion: 1,
-  apiVersion: 1,
-  id: 'miemie.preset-manager',
-  name: PRESET_MANAGER_PRODUCT.name,
-  version: PRESET_MANAGER_PRODUCT.version,
-  description: '直接管理当前酒馆预设及提示词条目。',
-  entry: 'preset-manager.js',
-  icon: ICON,
-  contributes: { launcher: { title: PRESET_MANAGER_PRODUCT.launcherName, icon: '预设' } },
-  hubApi: { min: 1, max: 1 },
-});
+// Package identity comes from the release manifest; Runtime uses the embedded PNG.
+export const PRESET_MANAGER_MANIFEST = Object.freeze({ ...manifest, icon: ICON });
 
 type HubApi = {
   signal: AbortSignal;
