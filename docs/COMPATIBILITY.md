@@ -1,6 +1,12 @@
-# SillyTavern Compatibility Notes · 0.2.2
+# SillyTavern Compatibility Notes · 0.2.3
 
 目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
+
+## Owner-approved compatibility principle · 0.2.3
+
+MieMie 优先兼容 SillyTavern 原生数据格式、数据完整性、externally observable contracts 和 Runtime / API / Event 行为语义；不要求机械复制其 UI 或内部实现。在保持 interoperability 的前提下，可提供更安全、更简单的产品交互。这是 Owner 在固定源码研究后对 Phase 1 需求的正式澄清。
+
+该原则与独立 Prompt 操作资格已纳入 0.2.3，Owner 已验收当前 Candidate。当前验证见 [Release 0.2.3](RELEASE-0.2.3.md)；历史发行与实机记录保留其原范围，不扩大为整个 Phase 1 完成。
 
 ## 固定来源
 
@@ -56,7 +62,18 @@
 
 `prompts` 存定义，`prompt_order[].order` 存引用与开关。当前只编辑宿主全局策略的 `100001` 活动组，保留其余组。解锁只移除活动组引用，保留定义，不改 `system_prompt` 或 `forbid_overrides`。永久删除可删除的自定义条目时，清理所有组的该条目引用；其余内容保留。
 
-Role 为 `system` 不等于内建删除锁。原生物理删除要求 `system_prompt === false`；本实现还有下文所列保守限制。`chatHistory` / `dialogueExamples` 可切换但不编辑文本；允许进入编辑器的 Marker 内容仍不可更改。高级属性包括 `injection_position`、`injection_depth`、`injection_order`、`injection_trigger`、`forbid_overrides`，未知值和其他字段继续保留。规则依据：[PromptManager](https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/PromptManager.js)。
+Role 为 `system` 不等于内建删除锁。Prompt 操作使用独立资格，不能用一个删除资格同时控制三个动作。`chatHistory` / `dialogueExamples` 可切换但不编辑文本；允许进入编辑器的 Marker 内容仍不可更改。高级属性包括 `injection_position`、`injection_depth`、`injection_order`、`injection_trigger`、`forbid_overrides`，未知值和其他字段继续保留。规则依据：[PromptManager](https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/PromptManager.js)。
+
+## Prompt Copy / Detach / Delete 正式政策
+
+- **Edit / Toggle**：固定官方 ST 1.18.0 / 1.19.0 的既有原生规则不变。Marker 内容不可作为普通文本编辑。未假设第三方 `toggleDisabled` 配置。
+- **Copy**：MPM 自己提供的便利功能，原生没有一一对应的单 Prompt Copy。只允许 `system_prompt === false`、非 Marker、非 protected/native ID 的普通自定义 Prompt。复制完整字段及深层未知字段，生成新 UUID，保留 order metadata，放在原条目之后；不复制其原生身份语义。
+- **Detach / Unlock**：对齐两版固定原生 `isPromptDeletionAllowed()` 的挂接资格：严格 `system_prompt === false`。即使 `marker === true` 或使用 protected/native ID，也允许从当前活动组解除挂接，前提是 raw 有效且实际存在引用。只移除当前组的引用；definition、identifier、content、其他组及未知字段不变。
+- **Delete**：Owner 批准的保守破坏性政策。只允许普通自定义 Prompt，继续保护 Marker、protected/native ID 与 `system_prompt === true`，缺失 `system_prompt` 也不放行。先 Detach，再确认物理删除；删除目标 definition 并清理所有组的目标引用，保留无关 entries、metadata、连接／生成设置及未知字段。
+
+`copyable`、`detachable`、`deletable` 分别驱动 Row 和按钮；UI 的 Detach 能力还要求当前组已挂接。所有修改仍暂存于 pendingRaw，只有统一保存才写入宿主。Prompt Delete 与整个 Preset Delete 的 Binding tombstone / fallback 流程独立。
+
+两版固定 PromptManager.js SHA-256 均为 `b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc`。本轮夹具重新摘取 eligibility、detach 与 collection 方法体，检查特殊条目 Detach 的结果与原生一致；依赖为模拟实现，尚不代表完整真实宿主生成通过。
 
 ## 本地统一保存候选（方案 B）
 
@@ -97,7 +114,7 @@ Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub
 ## 已知限制与需求差距
 
 1. **真实宿主仅验基础路径。** 本次 ST 1.18.0 组合中的脚本运行、基础读写、刷新持久化及 Hub 双模式已验；完整 Round Trip、Unknown Fields 深度验证、Built-in / Marker 全边界、失败／并发及第三方钩子仍待验。ST 1.19、物理手机和软键盘未验。此次实机和源码／mock 均不证明整个 1.18.x 或 1.19.x 系列可用。
-2. **删除／解锁／复制比原生更严格。** 当前 `removable` 除要求 `system_prompt === false`，还拒绝 `marker` 或保留 identifier；三个操作共用此判断。即使文件把这些条目标为 `system_prompt:false`，也不会放行。对异常或特殊预设而言，这与原生规则不完全等价，需在真实宿主审查后完善。
+2. **产品政策与原生资格明确分开。** Copy 与 Delete 使用 Owner 批准的普通自定义条目安全边界；Detach 对齐严格 `system_prompt === false` 的原生资格。特殊条目 Detach 的真实宿主保存、重新应用和生成仍需在可恢复测试副本上验收。
 3. **旧格式迁移不自动执行。** 会触发原生迁移的 `main_prompt`、`nsfw_prompt`、`jailbreak_prompt` 旧字段会阻止操作。缺失 `100001`、重复 identifier 或悬空引用也拒绝写入，不自动修复。应先在副本中完成原生迁移。其他历史模型迁移和第三方 BEFORE／AFTER 转换未全面覆盖。
 4. **仅支持全局活动组。** 非全局策略或非 `100001` 活动组停止运行；保留多组数据不等于支持切换任意角色组来编辑。
 5. **没有后端原子事务。** ST 不提供比较后交换或原子重命名；最后一次回读与保存／删除之间仍可能有另一个浏览器写入。重命名可部分成功。磁盘确认不能消除该后端窗口。
@@ -146,3 +163,7 @@ Owner 已认可本地新功能和外观；这与此前有版本、环境和哈�
 参数白名单：`openai_max_context`、`openai_max_tokens`、`n`、`temperature`、`frequency_penalty`、`presence_penalty`、`top_p`、`stream_openai`、`show_thoughts`、`reasoning_effort`。缺失字段明确确认后默认值为 2000000、30000、温度 1、两项惩罚 0、Top P 0.9、两个开关 false、推理 auto；`n` 无额外缺失默认。打开/取消不暂存或写入；Dialog 保存只暂存，统一保存才通过原生接口写入并回读。未知字段、已存在 0/false/未知推理值、扩展、所有 Prompt/order 分组保留。实际模型和原生 context unlock 仍限制可用长度，不自动更改解锁标志。
 
 Runtime API v1 与 Managed Package v1 分开验证。离线 Package 契约使用完整官方 0.2.1 资产（公开 digest `071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0`）验证启用/停用实例到 0.2.2 的更新，检查名称、内嵌 Runtime Manifest、树/持久化回读、data、文件夹及其他脚本保留。公开 discovery 另用发布时当前 Hub 官方源码与真实公开 GitHub API。脚本树和宿主持久化接口仍为隔离合成环境，不将其称为真实 Tavern Helper 安装/CORS/持久化实机通过。
+
+## Native Launcher 本地 SVG 回退 · post-0.2.2 Candidate
+
+Standalone / Shortcut 共用 Native Launcher：正式 PNG 正常加载时保持原图；加载失败时使用内置固定 `createIcon(doc, 'sheep')` SVG，无外部请求、Emoji、文本替代或 HTML 注入。入口维持 64px、圆形、Dock、拖动、动画和 button aria-label；SVG 为 aria-hidden / focusable=false，dispose 移除监听。Hub Launcher 不变，仍由 Host 管理 image failure → Manifest 短文本（`launcher.icon = "预设"`）。

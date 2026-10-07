@@ -1356,5 +1356,698 @@
     "localAbsolutePathsInPublicArtifacts": false,
     "publicDataEmpty": true,
     "debugOrBlockingTodoIntroduced": false
+  },
+  "latestLocalValidation": "release023",
+  "rootSummaryScope": "Historical published baseline; latest unpublished local results are in presetPickerAnchorFollowup. Previous Candidate and release records are unchanged.",
+  "post022CloseoutCandidate": {
+    "date": "2026-10-07",
+    "status": "unpublished implementation candidate; Owner real-host acceptance pending",
+    "baseMain": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "version": "0.2.2",
+    "workingTreeBeforeTask": "clean",
+    "commands": {
+      "npm ci (offline, locked dependencies)": "PASS",
+      "npm run check": "PASS",
+      "npm test": "PASS",
+      "npm run build": "PASS",
+      "npm run test:package-v1": "PASS",
+      "npm run test:browser": "PASS",
+      "npm run test:ui-performance": "PASS",
+      "npm run test:save-performance": "PASS",
+      "npm run test:presentation": "PASS",
+      "npm run test:binding-browser": "PASS",
+      "npm run test:parameters-browser": "PASS",
+      "npm run test:parameter-motion": "PASS"
+    },
+    "nodePassed": 325,
+    "nodeFailed": 0,
+    "addedNodeTests": 31,
+    "packagePassed": 69,
+    "packageProductionChecks": 13,
+    "packageUnmodifiedUpstreamHubTests": 56,
+    "releasePinnedHubPackagePassed": 13,
+    "releasePinnedHubCommit": "9c81bbcbf9b87b5118b92415a34c57783592bccc",
+    "releasePinnedHubSourceSha256": "6c7b0252d60511cb3626137a8d1917423285f7471d6ad46da0a4d373d331ad43",
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 25,
+      "parameters": 32,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 170,
+      "pageErrors": 0,
+      "realHost": false,
+      "physicalMobile": false,
+      "environment": "Chromium 151.0.7922.34 (bundled headless shell)"
+    },
+    "performance": {
+      "dragUiChecksPassed": 23,
+      "saveComparatorCorrectnessPassed": 8,
+      "timingsDiagnosticOnly": true
+    },
+    "promptPolicy": {
+      "edit": "unchanged pinned native policy, Marker content protected",
+      "toggle": "unchanged official pinned native policy, no speculative toggleDisabled support",
+      "copy": "ordinary custom only, new UUID and complete fields",
+      "detach": "strict system_prompt === false plus valid raw and active reference; definition/other groups preserved",
+      "delete": "Owner conservative ordinary custom policy; detach first; delete definition and all target group references"
+    },
+    "nativePolicyEvidence": {
+      "versions": [
+        "1.18.0",
+        "1.19.0"
+      ],
+      "commits": [
+        "51ad27fb86d39a3daca3adaa970375c9670c12df",
+        "7e8663cd9c184a550b37238218bdd32c6efc68e9"
+      ],
+      "sourceSha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "methodsExecuteWithMockedDependencies": true,
+      "fullNativeGenerateExecuted": false
+    },
+    "bindingProductionFilesChanged": false,
+    "dirtyUnifiedSaveChanged": false,
+    "regressions": [
+      "Copy/Detach/Delete zero writes before unified save",
+      "Cancel/Reload/save failure/conflict preserve session safety",
+      "Binding registry/defaultBindingId/presetBindingId/tombstone/target unchanged by Prompt commands",
+      "Both fixed ST versions: dirty chat switch retains A, blocks generation, Save/Discard applies latest B only",
+      "Special detach: native save, disk readback, apply confirmation and generation gate",
+      "Unknown Fields and exact detach preservation/all-group deletion cleanup",
+      "PNG success/error in both Standalone and Shortcut, normal/reduced motion, drag/Dock/repeat/single-instance/dispose/late error"
+    ],
+    "independentBuild": {
+      "freshLockedDependencyInstall": true,
+      "candidateOutputsCopiedIntoCleanBuild": false,
+      "historical021UpdateFixture": "unchanged tracked official 0.2.1 artifact only; required by package update tests",
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+          "equal": true,
+          "sha256": "db8d765c9f667b95eb78a8fb2bcc6dd772280f0716bab7af400e3e211312c6fa"
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "equal": true,
+          "sha256": "f041e2568dcde738e54abb0982d569e39f609318464b57dc9fe6076280be3e58"
+        },
+        {
+          "file": "manifest.json",
+          "equal": true,
+          "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70"
+        },
+        {
+          "file": "SHA256SUMS",
+          "equal": true,
+          "sha256": "edde181841e4d5da740a6ddb78c90b36d215b877ff17b3cbdc00969abdbba035"
+        },
+        {
+          "file": "preset-manager.js",
+          "equal": true,
+          "sha256": "f6cb36d139d3bc0a17693a071b9225c40fa4c08ea5f86446a0760737355678a8"
+        },
+        {
+          "file": "preview.js",
+          "equal": true,
+          "sha256": "021948861546717b112edfab1351e1bf0e7c617250953ca68a837b0d6190fce9"
+        }
+      ]
+    },
+    "candidate": {
+      "file": "delivery/phase1-closeout-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "db8d765c9f667b95eb78a8fb2bcc6dd772280f0716bab7af400e3e211312c6fa",
+      "contentSha256": "a23a149568880c11f16894cbdda2ea72b1789831386854b292a8235637d32aee",
+      "publicReleaseAssetsReplaced": false
+    },
+    "author": "SheepSheep",
+    "repository": "https://github.com/SheepSheepLab/MieMie-Preset-Manager",
+    "originalContributor": "louisSSR",
+    "scope": {
+      "hubChanged": false,
+      "registryChanged": false,
+      "versionBumped": false,
+      "commit": false,
+      "push": false,
+      "tag": false,
+      "release": false,
+      "issueCommentPublished": false,
+      "issue1": "Open"
+    },
+    "limitations": [
+      "New Candidate has not been tested in real SillyTavern/Safari/Helper/Hub or physical mobile",
+      "Fixed source method tests use synthetic dependencies, not complete ST generation",
+      "Existing Foundation real-host evidence remains historical and is not extended to this Candidate"
+    ]
+  },
+  "presetPickerFollowup": {
+    "date": "2026-10-07",
+    "status": "unpublished post-0.2.2 Candidate; Owner real-host review pending",
+    "baseMain": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "version": "0.2.2",
+    "scope": "UI-only preset picker follow-up; previous Closeout policies and binding production code retained",
+    "changes": [
+      "Top native select replaced by in-page combobox/listbox using parameter picker shared visuals",
+      "Selected checkmark, hover, open animation and rotating chevron",
+      "Full-width dropdown, integrated default segment, long-name wrapping and scrollable bounded menu",
+      "Mouse selection closes and removes lingering mouse focus highlight",
+      "Arrow/Home/End/Enter/Escape/Tab and outside click; busy/dirty states remain disabled",
+      "UI IDs do not require secure-context crypto.randomUUID; no binding schema or Controller changes"
+    ],
+    "commands": {
+      "npm run check": "PASS",
+      "npm test": "PASS",
+      "npm run build": "PASS",
+      "npm run test:package-v1": "PASS",
+      "npm run test:browser": "PASS",
+      "npm run test:binding-browser": "PASS",
+      "npm run test:parameters-browser": "PASS",
+      "npm run test:parameter-motion": "PASS",
+      "npm run test:ui-performance": "PASS",
+      "npm run test:presentation": "PASS",
+      "npm run test:save-performance": "PASS"
+    },
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "releasePinnedHubPackagePassed": 13,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 30,
+      "parameters": 32,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 175,
+      "pageErrors": 0,
+      "realHost": false,
+      "physicalMobile": false
+    },
+    "performance": {
+      "dragUiChecksPassed": 24,
+      "saveComparatorCorrectnessPassed": 8,
+      "timingsDiagnosticOnly": true
+    },
+    "independentBuild": {
+      "freshLockedDependencyInstall": true,
+      "candidateOutputsCopiedIntoCleanBuild": false,
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+          "sha256": "b5c916cb78d0f9dcea98113dbaf5750431965a470ede1c4d640c1c678a6fa571",
+          "equal": true
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "sha256": "4417f954a022653fc78cbc916ff3a4b5f340aeaa72d08e8b8f8b66f51c608684",
+          "equal": true
+        },
+        {
+          "file": "manifest.json",
+          "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+          "equal": true
+        },
+        {
+          "file": "SHA256SUMS",
+          "sha256": "7157b7d1d948ffa10f8db8fbe61dc074bf3ff9cdd06a14e378ef6be54bebe946",
+          "equal": true
+        },
+        {
+          "file": "preset-manager.js",
+          "sha256": "7f0a61aa793a415f32f343bff3ee59ce37f9f4fd99bc2a8dad2157998cb122f5",
+          "equal": true
+        },
+        {
+          "file": "preview.js",
+          "sha256": "107d2e790ada31918fc73f933ca4d94694b897c212555dbb80c79b5548adb585",
+          "equal": true
+        }
+      ]
+    },
+    "candidate": {
+      "file": "delivery/phase1-closeout-selector-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "b5c916cb78d0f9dcea98113dbaf5750431965a470ede1c4d640c1c678a6fa571",
+      "contentSha256": "8dfc1004d00f2861a78aea2356b88300ea069dab45bf26a0caf99a5e63f7ed49",
+      "published": false
+    },
+    "scopeRestrictions": {
+      "bindingBusinessChanged": false,
+      "hubChanged": false,
+      "versionBumped": false,
+      "commit": false,
+      "push": false,
+      "release": false
+    }
+  },
+  "presetPickerAnchorFollowup": {
+    "date": "2026-10-07",
+    "version": "0.2.2",
+    "status": "unpublished Candidate; Owner real-host review pending",
+    "change": "Native-style selected-row anchored popup with shared parameter picker styling; preserve source order, adaptive height and scroll within panel",
+    "productionFiles": [
+      "ui.ts"
+    ],
+    "bindingBusinessChanged": false,
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 32,
+      "parameters": 32,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 177,
+      "pageErrors": 0,
+      "realHost": false
+    },
+    "dragUiChecksPassed": 24,
+    "saveComparatorCorrectnessPassed": 8,
+    "check": "PASS",
+    "build": "PASS",
+    "independentFreshLockedBuild": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "sha256": "66405cea73110a50c8a56fa4f807c7579f476eac70b89b669416d25104be9f14",
+        "equal": true
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "sha256": "dd3f5eb1ff35c04d88af22ba12619bcbb21f528e43dc2103358a648d5097c460",
+        "equal": true
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+        "equal": true
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "e1c00184e3598bfcb38e6fde0ddbc1012728b55b4535ad3cb38e9c66367da4d6",
+        "equal": true
+      },
+      {
+        "file": "preset-manager.js",
+        "sha256": "e910ad388fd0bab68aede747d5f209c9ed18d5f16c4333cd0d6803b35564526b",
+        "equal": true
+      },
+      {
+        "file": "preview.js",
+        "sha256": "cef41cf5937f8587386d61d758ef73a26b44b90a86bdc69f03392604fc4efcb3",
+        "equal": true
+      }
+    ],
+    "candidate": {
+      "file": "delivery/phase1-closeout-selector-anchor-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "66405cea73110a50c8a56fa4f807c7579f476eac70b89b669416d25104be9f14",
+      "contentSha256": "0948826df520d4d52a5c7090b97bec413bdc343de16741d0dfa1d8839ff29610"
+    },
+    "published": false,
+    "commit": false,
+    "push": false,
+    "versionBumped": false
+  },
+  "reasoningPickerAnchorFollowup": {
+    "date": "2026-10-07",
+    "version": "0.2.2",
+    "sourceHead": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "change": "Reasoning intensity shares selected-row anchored floating positioning with preset picker; no form layout shift, original order/highlight, adaptive bounds and lifecycle cleanup",
+    "productionFiles": [
+      "ui.ts",
+      "styles.ts"
+    ],
+    "bindingBusinessChanged": false,
+    "parameterSavingChanged": false,
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 32,
+      "parameters": 38,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 183,
+      "pageErrors": 0,
+      "realHost": false
+    },
+    "dragUiChecksPassed": 24,
+    "saveComparatorCorrectnessPassed": 8,
+    "check": "PASS",
+    "build": "PASS",
+    "independentFreshLockedBuild": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "sha256": "39c3387b77115f7a2afad995905a2315f137eb915adaf3cc3eedd622ccdbcf7f",
+        "equal": true
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "sha256": "bdabb534a1bd5d17183e02ee7c35ccd200d3395b6f5ce60dcbbdd360206379e0",
+        "equal": true
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+        "equal": true
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "072cbd5d9a1405e0aa4479a10b31763e3ebe7f24efcf28628e7f7b074df1ff8f",
+        "equal": true
+      },
+      {
+        "file": "preset-manager.js",
+        "sha256": "444a5fd5f83c7828bbfd32f39e6fa6f2b4cea6b7a5035d3ffd73557fc872cb7f",
+        "equal": true
+      },
+      {
+        "file": "preview.js",
+        "sha256": "87e2c8cbbf988ceba8e8c2bcdd5efae55089c350140b15d062ad2c713ce46fb4",
+        "equal": true
+      }
+    ],
+    "candidate": {
+      "file": "delivery/phase1-closeout-reasoning-anchor-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "39c3387b77115f7a2afad995905a2315f137eb915adaf3cc3eedd622ccdbcf7f",
+      "contentSha256": "f225b2eddab92763cdc12ba8cefbbd0ccd37c91c21f865a8c9aeaf58ea23f7e5"
+    },
+    "published": false,
+    "commit": false,
+    "push": false,
+    "versionBumped": false
+  },
+  "reasoningPickerCompactFollowup": {
+    "date": "2026-10-07",
+    "version": "0.2.2",
+    "sourceHead": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "change": "Preserve settings order; reasoning popup prefers about five visible rows, shifts up at lower edge, keeps selected full hit area visible and scrolls remaining options",
+    "productionFiles": [
+      "ui.ts"
+    ],
+    "bindingBusinessChanged": false,
+    "parameterSavingChanged": false,
+    "settingsOrderChanged": false,
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 32,
+      "parameters": 42,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 187,
+      "pageErrors": 0,
+      "realHost": false
+    },
+    "check": "PASS",
+    "test": "PASS",
+    "build": "PASS",
+    "independentRebuildFromPreviouslyLockedDependencies": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "sha256": "d81417ffc16cf420d7826aa3fbf94ba771b15a8496b4a0e4b268a25ad0f5806c",
+        "equal": true
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "sha256": "e86d709efb7a2ab5ca0fcb0ee50aa70503d42f37a2b66ff8ecb97c767af98885",
+        "equal": true
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+        "equal": true
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "26dfcfb1a97082d140a5453e7eccaa852736dca3a61e1951bdb3673fa94746d3",
+        "equal": true
+      },
+      {
+        "file": "preset-manager.js",
+        "sha256": "cf02f3c0c9b9909ef4b08824e6affbf2369c4ce25e1ac4f0de9b65cd62a0fba9",
+        "equal": true
+      },
+      {
+        "file": "preview.js",
+        "sha256": "029ca1690ab71bb9d4f5c8adb46c16f463d41378ef50cf42e6d0d99d3cf927aa",
+        "equal": true
+      }
+    ],
+    "unchangedBaselineChecks": {
+      "validation": "reasoningPickerAnchorFollowup",
+      "dragUiChecksPassed": 24,
+      "saveComparatorCorrectnessPassed": 8,
+      "rerunThisFollowup": false
+    },
+    "candidate": {
+      "file": "delivery/phase1-closeout-reasoning-compact-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "d81417ffc16cf420d7826aa3fbf94ba771b15a8496b4a0e4b268a25ad0f5806c",
+      "contentSha256": "44c7409b68f170aed79d1469e01a096ce1249c8eb1ce215bfcceefe5c795cf10"
+    },
+    "published": false,
+    "commit": false,
+    "push": false,
+    "versionBumped": false
+  },
+  "pickerScrollShadowFollowup": {
+    "date": "2026-10-07",
+    "version": "0.2.2",
+    "sourceHead": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "change": "Reasoning menu shows three full options plus part of a fourth; both menus gain pointer-transparent top/bottom scroll shadows with fades. Preset menu height and placement preserved.",
+    "productionFiles": [
+      "ui.ts",
+      "styles.ts"
+    ],
+    "bindingBusinessChanged": false,
+    "parameterSavingChanged": false,
+    "settingsOrderChanged": false,
+    "presetHeightAndPlacementChanged": false,
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 35,
+      "parameters": 44,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 192,
+      "pageErrors": 0,
+      "realHost": false
+    },
+    "dragUiChecksPassed": 24,
+    "saveComparatorCorrectnessPassed": 8,
+    "presetLayoutComparison": {
+      "baselineCandidateSha256": "d81417ffc16cf420d7826aa3fbf94ba771b15a8496b4a0e4b268a25ad0f5806c",
+      "passed": 6,
+      "desktopAnd390pxFirstMiddleLast": true,
+      "menuGeometryScrollAndSelectedAnchorEqual": true
+    },
+    "check": "PASS",
+    "test": "PASS",
+    "build": "PASS",
+    "independentRebuildFromPreviouslyLockedDependencies": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "sha256": "4c8a3d29705cba5b817691a4d72d080f2aeb00265dbaea5b806ccb99a1ba497e",
+        "equal": true
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "sha256": "2fd2b3411ed577d123c6eda0bed1bae08e50f96e7d2a0979ddc6cb1d6dd1bcae",
+        "equal": true
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+        "equal": true
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "a36d01e229022c69faa563da2dd495d5518a0bbcb65e6e66591367de69d50beb",
+        "equal": true
+      },
+      {
+        "file": "preset-manager.js",
+        "sha256": "186b352264a6db94ee7530e68d0a65c2e286b9147c0982763a1c392cd2af0657",
+        "equal": true
+      },
+      {
+        "file": "preview.js",
+        "sha256": "b0fad8a5b2edec540336c0e629b4af5e3f1ba7a4f679dffd5b926e39cd58df47",
+        "equal": true
+      }
+    ],
+    "candidate": {
+      "file": "delivery/phase1-closeout-picker-shadows-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "4c8a3d29705cba5b817691a4d72d080f2aeb00265dbaea5b806ccb99a1ba497e",
+      "contentSha256": "3a941c8d593f6bb0437fb648f22f8661effa64c255d61c6203f25c54f548cf74"
+    },
+    "published": false,
+    "commit": false,
+    "push": false,
+    "versionBumped": false
+  },
+  "ownerReasoningReferenceFollowup": {
+    "date": "2026-10-07",
+    "version": "0.2.2",
+    "sourceHead": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "change": "Restore reasoning picker adaptive positioning and height from Owner attached Candidate, retain scroll shadows on both menus, no fixed visible row count",
+    "productionFiles": [
+      "ui.ts"
+    ],
+    "bindingBusinessChanged": false,
+    "parameterSavingChanged": false,
+    "settingsOrderChanged": false,
+    "presetHeightAndPlacementChanged": false,
+    "nodePassed": 325,
+    "packagePassed": 69,
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 35,
+      "parameters": 44,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 192,
+      "pageErrors": 0,
+      "realHost": false
+    },
+    "ownerReferenceComparison": {
+      "attachmentSha256": "39c3387b77115f7a2afad995905a2315f137eb915adaf3cc3eedd622ccdbcf7f",
+      "generatedPositionFunctionMatchesReference": true,
+      "passed": 24,
+      "sixOptionsAcrossFourViewports": true,
+      "menuGeometryScrollAndSelectedAnchorEqual": true
+    },
+    "check": "PASS",
+    "test": "PASS",
+    "build": "PASS",
+    "independentRebuildFromPreviouslyLockedDependencies": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "sha256": "7f739c10bc994ccfd8cf3c3119138dc2aab6b1c8047bc2c0d993463fa5dd7129",
+        "equal": true
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "sha256": "a954dde890b4e2c5576ef61a6a99499938410dcf28c3ab730ec485686a8e8603",
+        "equal": true
+      },
+      {
+        "file": "manifest.json",
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+        "equal": true
+      },
+      {
+        "file": "SHA256SUMS",
+        "sha256": "216c1c55f5a05f8eaf62b4d7a00d71cb498b409fafe036b0a0b800cabb85450b",
+        "equal": true
+      },
+      {
+        "file": "preset-manager.js",
+        "sha256": "f9487fa8d70543be9d1a544f0b76ef1f2114c81480df2af39dfb8c47ae3be812",
+        "equal": true
+      },
+      {
+        "file": "preview.js",
+        "sha256": "642d4a4ca870faaaac79a4e5a58b8ac7dfa48d2310f127b1f2826535416ba1e5",
+        "equal": true
+      }
+    ],
+    "unchangedBaselineChecks": {
+      "validation": "pickerScrollShadowFollowup",
+      "dragUiChecksPassed": 24,
+      "saveComparatorCorrectnessPassed": 8,
+      "rerunThisFollowup": false
+    },
+    "candidate": {
+      "file": "delivery/phase1-closeout-owner-reasoning-20261007/MieMie-Preset-Manager-Extension-0.2.2.json",
+      "sha256": "7f739c10bc994ccfd8cf3c3119138dc2aab6b1c8047bc2c0d993463fa5dd7129",
+      "contentSha256": "7d66a76c4cc75aee7fe43011e8dff5036318971b4a025b6fc4f329d3b45e79c2"
+    },
+    "published": false,
+    "commit": false,
+    "push": false,
+    "versionBumped": false
+  },
+  "release023": {
+    "date": "2026-10-07",
+    "version": "0.2.3",
+    "baselineMain": "428140cab137f54ade06f5777b5a621fdcc04a7c",
+    "ownerTestedAnchor": {
+      "version": "0.2.2",
+      "sourceReproducedBeforeBump": true,
+      "sha256": "7f739c10bc994ccfd8cf3c3119138dc2aab6b1c8047bc2c0d993463fa5dd7129",
+      "contentSha256": "7d66a76c4cc75aee7fe43011e8dff5036318971b4a025b6fc4f329d3b45e79c2"
+    },
+    "freshCommandsPassed": [
+      "npm ci (locked offline cache)",
+      "npm run check",
+      "npm test",
+      "npm run build",
+      "npm run test:package-v1",
+      "npm run test:browser",
+      "npm run test:binding-browser",
+      "npm run test:parameters-browser",
+      "npm run test:parameter-motion",
+      "npm run test:presentation",
+      "npm run test:ui-performance",
+      "npm run test:save-performance"
+    ],
+    "nodePassed": 325,
+    "packagePassed": 71,
+    "packageProductionPassed": 15,
+    "packageUpstreamPassed": 56,
+    "currentOfficialHubCommit": "9c81bbcbf9b87b5118b92415a34c57783592bccc",
+    "currentOfficialHubPackagePassed": 15,
+    "browserPassed": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 35,
+      "parameters": 44,
+      "parameterMotion": 28,
+      "presentation": 57,
+      "total": 192,
+      "pageErrors": 0
+    },
+    "uiPerformancePassed": 24,
+    "saveComparatorCorrectnessPassed": 8,
+    "artifactsSha256": {
+      "MieMie-Preset-Manager-Extension-0.2.3.json": "a1bffdf271b03ad618f8cf90d99346fd4298e116337f315943bb3cceb23231b7",
+      "MieMie-Extension-update.json": "c4cec49a52e4a4ba2bcb84bac46ecb28ffa95670f3deb1cd3f6825e446107585",
+      "manifest.json": "76c3d628f20aabc64b43d8c58a9eab2897c5a5232764d84fe801b88161981873",
+      "SHA256SUMS": "165eaa176720929b32f413a13b5800be276ab6fea7cc5f39bef7304d7a836c4f",
+      "preset-manager.js": "0e652b680e050cda697b931f179dd88e0ba844e444ebda8ec60d5440ac3cf0a0",
+      "preview.js": "0c12617970e119b66a51aea4ddccc47f77127fd1af073ef8c04a17fb02b85d75"
+    },
+    "contentSha256": "5060feb3ccbe4c76d3d1dd2c305ff843e8d66882ceea9f13190605b15e52a46b",
+    "uiScopeAudit": {
+      "visual": "unified picker styles and dynamic pointer-transparent edge shadows",
+      "interaction": "selected-row anchoring, adaptive height, original order, keyboard/outside/escape cleanup",
+      "accessibility": "combobox/listbox/option aria and reduced motion",
+      "state": "view-local open/focus/scroll/confirmed-label only",
+      "businessSourcesUnchanged": [
+        "controller.ts",
+        "st-adapter.ts",
+        "preset-binding.ts",
+        "chat-binding-host.ts",
+        "automatic-regex-display.ts"
+      ]
+    },
+    "finalReleaseGates": [
+      "independent clean checkout: fresh locked install, build, package and six byte-identical outputs",
+      "real public GitHub: current Hub discovery, four asset digests, fresh install, official 0.2.2/0.2.1 updates",
+      "old tag/release/notes/assets unchanged; Issue #1 untouched and Open"
+    ],
+    "boundaries": {
+      "hubModified": false,
+      "registryModified": false,
+      "issue1MustRemainOpen": true,
+      "newPreciseRealHostMatrix": false,
+      "fullPhase1Complete": false
+    }
   }
 }

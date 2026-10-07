@@ -49,3 +49,7 @@ The harness executes the native EventEmitter, saveMetadata/saveChatConditional, 
 ## Preset regex notifications and message display
 
 `st-regex-contracts.json` contains unchanged `notifyReloadCurrentChat`, `checkPresetEmbeddedRegexScripts`, and `updateMessageBlock` functions from the same pinned official 1.18.0 and 1.19.0 commits listed above. Full source hashes, URLs, and one-based line ranges are recorded in the fixture. Tests execute these functions with mocked dependencies; they do not represent real-host acceptance. The source retains AGPL-3.0 and never enters the production bundle.
+
+## Prompt policy closeout contracts
+
+`st-prompt-policy-contracts.json` contains exact PromptManager.js method bodies re-extracted from official ST 1.18.0 `51ad27fb86d39a3daca3adaa970375c9670c12df` and 1.19.0 `7e8663cd9c184a550b37238218bdd32c6efc68e9`. Full source SHA-256, snippet SHA-256 and line ranges are recorded. Both full files hash to `b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc`. These are upstream AGPL-3.0 excerpts; see SillyTavern-LICENSE.txt. Eligibility, detach and collection methods execute with synthetic dependencies; this is not a full ST Generate or real-host test.

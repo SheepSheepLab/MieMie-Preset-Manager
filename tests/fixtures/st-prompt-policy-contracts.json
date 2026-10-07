@@ -1,0 +1,119 @@
+{
+  "license": "AGPL-3.0",
+  "licenseFile": "SillyTavern-LICENSE.txt",
+  "purpose": "Unmodified fixed upstream eligibility, detach and generation collection methods; dependencies mocked, not real host acceptance",
+  "baselines": [
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/PromptManager.js",
+      "sourceSha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "snippets": {
+        "isPromptEditAllowed": {
+          "startLine": 1082,
+          "endLine": 1092,
+          "sha256": "0912ab477d08ccca88e45aa574c49338c6d46d6697ecedd831ec4b5f693f5c2b",
+          "text": "isPromptEditAllowed(prompt) {\n        const forceEditPrompts = [\n            'charDescription',\n            'charPersonality',\n            'scenario',\n            'personaDescription',\n            'worldInfoBefore',\n            'worldInfoAfter',\n        ];\n        return forceEditPrompts.includes(prompt.identifier) || !prompt.marker;\n    }"
+        },
+        "isPromptToggleAllowed": {
+          "startLine": 1099,
+          "endLine": 1112,
+          "sha256": "aa89792e7af35d358da941907649c841d5ebdc74f2b0393c32097ea1d1d23838",
+          "text": "isPromptToggleAllowed(prompt) {\n        const forceTogglePrompts = [\n            'charDescription',\n            'charPersonality',\n            'scenario',\n            'personaDescription',\n            'worldInfoBefore',\n            'worldInfoAfter',\n            'main',\n            'chatHistory',\n            'dialogueExamples',\n        ];\n        return prompt.marker && !forceTogglePrompts.includes(prompt.identifier) ? false : !this.configuration.toggleDisabled.includes(prompt.identifier);\n    }"
+        },
+        "isPromptDeletionAllowed": {
+          "startLine": 1073,
+          "endLine": 1075,
+          "sha256": "4861439a665b2ff4a0f408e497486f085658f3abc631881b48af03776b11a0ee",
+          "text": "isPromptDeletionAllowed(prompt) {\n        return false === prompt.system_prompt;\n    }"
+        },
+        "detachPrompt": {
+          "startLine": 975,
+          "endLine": 980,
+          "sha256": "9fa6b5f6bb2942859486184899fcce0c92ea115132cf822a890db58f0001c093",
+          "text": "detachPrompt(prompt, character) {\n        const promptOrder = this.getPromptOrderForCharacter(character);\n        const index = promptOrder.findIndex(entry => entry.identifier === prompt.identifier);\n        if (-1 === index) return;\n        promptOrder.splice(index, 1);\n    }"
+        },
+        "getPromptOrderForCharacter": {
+          "startLine": 1207,
+          "endLine": 1209,
+          "sha256": "9512a32dbc0e7a555908e4899ded5d412e6ff8fb0bea2e8cd558f783f944e790",
+          "text": "getPromptOrderForCharacter(character) {\n        return !character ? [] : (this.serviceSettings.prompt_order.find(list => String(list.character_id) === String(character.id))?.order ?? []);\n    }"
+        },
+        "getPromptById": {
+          "startLine": 1257,
+          "endLine": 1259,
+          "sha256": "7381595e980db0e0a99b4c5c38c766957e1ec6ef277edcb0dba09635860fae6c",
+          "text": "getPromptById(identifier) {\n        return this.serviceSettings.prompts.find(item => item && item.identifier === identifier) ?? null;\n    }"
+        },
+        "getPromptCollection": {
+          "startLine": 1516,
+          "endLine": 1541,
+          "sha256": "4e2cafa6b0cfc2838a7b664ef97a8675eb2637d2df5eb62cd9b0f1424c586a39",
+          "text": "getPromptCollection(generationType) {\n        generationType = String(generationType || 'normal').toLowerCase().trim();\n        const promptCollection = new PromptCollection();\n        const promptOrder = this.getPromptOrderForCharacter(this.activeCharacter);\n\n        promptOrder.forEach(entry => {\n            const prompt = this.getPromptById(entry.identifier);\n            const allowedTrigger = entry.enabled && this.shouldTrigger(prompt, generationType);\n\n            if (!prompt) {\n                return;\n            }\n\n            if (allowedTrigger) {\n                promptCollection.add(this.preparePrompt(prompt));\n            } else if (entry.identifier === 'main') {\n                // Some extensions require main prompt to be present for relative inserts.\n                // So we make a GMO-free vegan replacement.\n                const replacementPrompt = structuredClone(prompt);\n                replacementPrompt.content = '';\n                promptCollection.add(this.preparePrompt(replacementPrompt));\n            }\n        });\n\n        return promptCollection;\n    }"
+        },
+        "shouldTrigger": {
+          "startLine": 1549,
+          "endLine": 1553,
+          "sha256": "bfc50dea695969b44cf0b416ae29b7b50e6f0542315a7bfc553f94a4ff2cc119",
+          "text": "shouldTrigger(prompt, generationType) {\n        if (!Array.isArray(prompt?.injection_trigger)) return true;\n        if (!prompt.injection_trigger.length) return true;\n        return prompt.injection_trigger.includes(generationType);\n    }"
+        }
+      }
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/PromptManager.js",
+      "sourceSha256": "b0054793b763d92b265f5f487645b68b4eca0867cb5ad6b5deb1034004b2c1cc",
+      "snippets": {
+        "isPromptEditAllowed": {
+          "startLine": 1082,
+          "endLine": 1092,
+          "sha256": "0912ab477d08ccca88e45aa574c49338c6d46d6697ecedd831ec4b5f693f5c2b",
+          "text": "isPromptEditAllowed(prompt) {\n        const forceEditPrompts = [\n            'charDescription',\n            'charPersonality',\n            'scenario',\n            'personaDescription',\n            'worldInfoBefore',\n            'worldInfoAfter',\n        ];\n        return forceEditPrompts.includes(prompt.identifier) || !prompt.marker;\n    }"
+        },
+        "isPromptToggleAllowed": {
+          "startLine": 1099,
+          "endLine": 1112,
+          "sha256": "aa89792e7af35d358da941907649c841d5ebdc74f2b0393c32097ea1d1d23838",
+          "text": "isPromptToggleAllowed(prompt) {\n        const forceTogglePrompts = [\n            'charDescription',\n            'charPersonality',\n            'scenario',\n            'personaDescription',\n            'worldInfoBefore',\n            'worldInfoAfter',\n            'main',\n            'chatHistory',\n            'dialogueExamples',\n        ];\n        return prompt.marker && !forceTogglePrompts.includes(prompt.identifier) ? false : !this.configuration.toggleDisabled.includes(prompt.identifier);\n    }"
+        },
+        "isPromptDeletionAllowed": {
+          "startLine": 1073,
+          "endLine": 1075,
+          "sha256": "4861439a665b2ff4a0f408e497486f085658f3abc631881b48af03776b11a0ee",
+          "text": "isPromptDeletionAllowed(prompt) {\n        return false === prompt.system_prompt;\n    }"
+        },
+        "detachPrompt": {
+          "startLine": 975,
+          "endLine": 980,
+          "sha256": "9fa6b5f6bb2942859486184899fcce0c92ea115132cf822a890db58f0001c093",
+          "text": "detachPrompt(prompt, character) {\n        const promptOrder = this.getPromptOrderForCharacter(character);\n        const index = promptOrder.findIndex(entry => entry.identifier === prompt.identifier);\n        if (-1 === index) return;\n        promptOrder.splice(index, 1);\n    }"
+        },
+        "getPromptOrderForCharacter": {
+          "startLine": 1207,
+          "endLine": 1209,
+          "sha256": "9512a32dbc0e7a555908e4899ded5d412e6ff8fb0bea2e8cd558f783f944e790",
+          "text": "getPromptOrderForCharacter(character) {\n        return !character ? [] : (this.serviceSettings.prompt_order.find(list => String(list.character_id) === String(character.id))?.order ?? []);\n    }"
+        },
+        "getPromptById": {
+          "startLine": 1257,
+          "endLine": 1259,
+          "sha256": "7381595e980db0e0a99b4c5c38c766957e1ec6ef277edcb0dba09635860fae6c",
+          "text": "getPromptById(identifier) {\n        return this.serviceSettings.prompts.find(item => item && item.identifier === identifier) ?? null;\n    }"
+        },
+        "getPromptCollection": {
+          "startLine": 1516,
+          "endLine": 1541,
+          "sha256": "4e2cafa6b0cfc2838a7b664ef97a8675eb2637d2df5eb62cd9b0f1424c586a39",
+          "text": "getPromptCollection(generationType) {\n        generationType = String(generationType || 'normal').toLowerCase().trim();\n        const promptCollection = new PromptCollection();\n        const promptOrder = this.getPromptOrderForCharacter(this.activeCharacter);\n\n        promptOrder.forEach(entry => {\n            const prompt = this.getPromptById(entry.identifier);\n            const allowedTrigger = entry.enabled && this.shouldTrigger(prompt, generationType);\n\n            if (!prompt) {\n                return;\n            }\n\n            if (allowedTrigger) {\n                promptCollection.add(this.preparePrompt(prompt));\n            } else if (entry.identifier === 'main') {\n                // Some extensions require main prompt to be present for relative inserts.\n                // So we make a GMO-free vegan replacement.\n                const replacementPrompt = structuredClone(prompt);\n                replacementPrompt.content = '';\n                promptCollection.add(this.preparePrompt(replacementPrompt));\n            }\n        });\n\n        return promptCollection;\n    }"
+        },
+        "shouldTrigger": {
+          "startLine": 1549,
+          "endLine": 1553,
+          "sha256": "bfc50dea695969b44cf0b416ae29b7b50e6f0542315a7bfc553f94a4ff2cc119",
+          "text": "shouldTrigger(prompt, generationType) {\n        if (!Array.isArray(prompt?.injection_trigger)) return true;\n        if (!prompt.injection_trigger.length) return true;\n        return prompt.injection_trigger.includes(generationType);\n    }"
+        }
+      }
+    }
+  ]
+}

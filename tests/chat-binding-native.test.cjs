@@ -274,3 +274,55 @@ for(const version of ['1.18.0','1.19.0']){
     assert.equal(f.controls.settingsSaved,0);
   });
 }
+
+// Closeout policies operate on prompt raw data, never on preset binding identity.
+for (const version of ['1.18.0','1.19.0']) {
+  for (const action of ['copy','detach','delete']) for (const finish of ['save','discard']) {
+    test(`Prompt ${action} ${version}: binding identity unchanged, dirty switch gated, ${finish} resolves latest chat`, async t => {
+      const f=await setup(t,version);
+      await f.controller.select('B');await f.settle();
+      await f.changeChat('single','two');await f.settle(); // editing A; one overrides B
+      const registry=structuredClone(f.diskGlobal()[NS]), chats=structuredClone([...f.files]), b=structuredClone(f.records.get('B'));
+      const writes=()=>f.controls.http.filter(x=>x.pathname==='/api/presets/save').length;
+      const startWrites=writes(), settings=f.controls.settingsSaved, metadata=f.controls.metadataSaved.length;
+      if(action==='copy')await f.controller.copyPrompt('custom');
+      else {await f.controller.detach('custom');if(action==='delete')await f.controller.deletePrompt('custom');}
+      assert.equal(f.controller.state.error,'');assert(f.controller.state.dirty);assert(f.controller.state.pendingRaw);
+      const pending=structuredClone(f.controller.state.pendingRaw), anchor=structuredClone(f.controller.state.snapshot);
+      assert.equal(writes(),startWrites);assert.equal(f.controls.settingsSaved,settings);assert.equal(f.controls.metadataSaved.length,metadata);
+      assert.deepEqual(f.diskGlobal()[NS],registry);assert.deepEqual([...f.files],chats);assert.equal(f.binding.state.targetName,'A');
+      await f.changeChat('single','three');await f.changeChat('single','one');await f.settle(); // latest B only
+      assert.equal(f.binding.state.status,'paused-dirty');assert.deepEqual(f.controller.state.snapshot,anchor);
+      assert.deepEqual(f.controller.state.pendingRaw,pending);assert.equal(f.live.preset_settings_openai,'A');
+      await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);assert.equal(writes(),startWrites);
+      if(finish==='save')await f.controller.saveChanges();else f.controller.cancelChanges();
+      await f.settle();assert.equal(f.controller.state.dirty,false);assert.equal(f.binding.state.status,'ready');
+      assert.equal(f.binding.state.chat.filename,'one');assert.equal(f.binding.state.targetName,'B');assert.equal(f.live.preset_settings_openai,'B');
+      assert.deepEqual(f.records.get('B'),b);assert.deepEqual(f.diskGlobal()[NS],registry);assert.deepEqual([...f.files],chats);
+      assert.equal(writes(),startWrites+(finish==='save'?1:0));
+      assert.deepEqual(f.records.get('A'),finish==='save'?pending:anchor.raw);
+      await f.generate();assert.equal(f.controls.sent.length,1);
+    });
+  }
+  for(const attrs of [{marker:true},{identifier:'jailbreak'}]) {
+    test(`Special detach ${version} ${JSON.stringify(attrs)}: native save/readback/apply and generation gate retained`,async t=>{
+      const id=attrs.identifier??'custom';
+      const f=await setup(t,version,f=>{
+        const raw=structuredClone(f.records.get('A'));Object.assign(raw.prompts.find(p=>p.identifier==='custom'),attrs);
+        for(const g of raw.prompt_order)for(const e of g.order)if(e.identifier==='custom')e.identifier=id;
+        f.records.set('A',structuredClone(raw));f.presets[f.names.A]=structuredClone(raw);
+        f.live.prompts=structuredClone(raw.prompts);f.live.prompt_order=structuredClone(raw.prompt_order);
+      });
+      const original=structuredClone(f.records.get('A')), registry=structuredClone(f.diskGlobal()[NS]);
+      await f.controller.detach(id);assert.equal(f.controller.state.error,'');const pending=structuredClone(f.controller.state.pendingRaw);
+      assert.deepEqual(pending.prompts,original.prompts);assert(f.controller.state.dirty);
+      const held=f.gate('before');const saving=f.controller.saveChanges();await held.entered;
+      await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);
+      held.release();held.remove();await saving;await f.settle();
+      assert.equal(f.controller.state.error,'');assert.equal(f.binding.state.status,'ready');assert.equal(f.binding.state.targetName,'A');
+      assert.deepEqual(f.records.get('A'),pending);assert.deepEqual(f.controller.state.snapshot.raw,pending);
+      assert.deepEqual(f.live.prompts,pending.prompts);assert.deepEqual(f.live.prompt_order,pending.prompt_order);assert.deepEqual(f.diskGlobal()[NS],registry);
+      await f.generate();assert.equal(f.controls.sent.length,1);
+    });
+  }
+}

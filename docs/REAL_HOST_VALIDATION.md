@@ -55,3 +55,9 @@ Maintainer 判定本次 Foundation 基础实机 Gate 为通过；结合基础自
 ## 0.2.2 Owner Review（2026-10-07）
 
 Owner 在真实酒馆试用当前候选，确认聊天切换带动各聊天最后选择的预设，指出原生正则随预设切换产生重载提示；随后认可参数窗口、统一清透紫外观及只变形外框的设置动画，并授权收口发布。此处记录 Owner 反馈及认可，不推断新的 ST/Helper/Hub 精确版本，不声称所有新增路径已获得独立完整宿主回执。0.2.2 的自动/固定原生源码契约、Package 更新与公开发现检查单独见 [Release 0.2.2](RELEASE-0.2.2.md)。历史 Foundation 的实际组合和 SHA-256 不变；ST 1.19 全宿主、完整 Phase 1、移动软键盘等深度验收仍待完成。
+
+## 0.2.3 Owner acceptance（2026-10-07）
+
+Owner 明确确认当前 Phase 1 Closeout Candidate 及后续 UI 细节已完成真实使用验收，并授权发布 0.2.3。升版前源码重新生成的 0.2.2 JSON SHA-256 为 `7f739c10bc994ccfd8cf3c3119138dc2aab6b1c8047bc2c0d993463fa5dd7129`，contentSha256 为 `7d66a76c4cc75aee7fe43011e8dff5036318971b4a025b6fc4f329d3b45e79c2`，与 Owner 指定 Acceptance Anchor 完全一致。
+
+本次反馈没有提供新的精确 ST／Helper／Hub／浏览器版本矩阵，不据此宣称 ST 1.19 全宿主、物理移动端或整个 Phase 1 完成。历史 Foundation 组合及其包摘要不变；Issue #1 保持 Open。自动与公开 Package 契约验证分别见 [Release 0.2.3](RELEASE-0.2.3.md)。

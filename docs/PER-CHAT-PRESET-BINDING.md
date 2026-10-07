@@ -1,6 +1,6 @@
 # Per-Chat Preset Binding · Phase A
 
-**0.2.2 阶段版本**，基于已发布 0.2.1 main `e9f9dfd9c8d8ce5029f79356db506d791a8b1fab`，收口 Owner 已认可的本地功能。自动/native-contract、Owner Review 与带环境的真实宿主验收分别记录；不扩大历史 Foundation 实机结论。
+**0.2.2 引入，0.2.3 保持原契约**，基于已发布 0.2.1 main `e9f9dfd9c8d8ce5029f79356db506d791a8b1fab`，收口 Owner 已认可的本地功能。自动/native-contract、Owner Review 与带环境的真实宿主验收分别记录；不扩大历史 Foundation 实机结论。
 
 ## 模型与最终 authority
 

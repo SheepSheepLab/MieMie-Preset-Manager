@@ -1,6 +1,8 @@
-# Testing · 0.2.2
+# Testing · 0.2.3
 
 自动检查、源码核验和真实宿主验收分别记录。2026-10-04 已完成 ST 1.18.0 + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 的 Foundation 基础实机验收，见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19、物理手机及其余深度验收仍待执行。该实机记录对应此前 Foundation 交付包。Maintainer 已确认统一保存与 Presentation 内容通过 Review，升版本前基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；0.2.0 为此内容的阶段 Pre-release，不据此新增完整宿主或移动端通过结论。
+
+最新正式检查见文末 [0.2.3 release validation](#023-release-validation2026-10-07)；下方历次 Candidate 及发行结果保留对应日期、版本和范围。
 
 ## 可复现命令
 
@@ -40,7 +42,7 @@ PLAYWRIGHT_CHANNEL=chromium npm run test:browser
 
 浏览器检查打开生成的 `delivery/preview.html`，使用内存 Adapter 和人工演示数据。截图与检查回执写入本地 `evidence/`，不作为预设数据上传。演示入口不进入 Tavern Helper 交付脚本。
 
-## 自动检查结果
+## 历史自动检查结果 · 0.2.0（2026-10-05）
 
 2026-10-05，在独立依赖安装后执行以下检查，使用 Node `24.13.1`、Playwright `1.62.1` 与其 Chromium `151.0.7922.34`。这些结果是开发测试，不是真实 ST 运行记录；机器可读结果见 [validation-results.json](validation-results.json)。
 
@@ -294,3 +296,142 @@ Check, 294 Node tests, build including 11 Package checks PASS. Offline browser r
 新增两项完整官方 0.2.1→0.2.2 更新测试，固定旧资产公开摘要；检查启用与停用实例、实例 ID、data、文件夹及顺序、其他脚本、显示版本、内嵌 Runtime Manifest 和保存回读。宿主树/持久保存及运行版本接口为模拟依赖，不代表真实 Helper 安装已通过。发布后 `tools/verify-public-package.cjs` 以当前 Hub Package 原始源码和真实公开 GitHub API 验证最新版本 installable、四份 Asset digest、本地字节、隔离 fresh install 和官方 0.2.1 更新；不执行下载脚本、不写真实宿主、不修改 Hub/Registry。
 
 绑定/生成安全、参数和正则的 native 契约固定两版 ST 源码；普通请求边界及相关群聊控制流配合模拟依赖验证。完整 ST Generate/群成员循环/SSE、真实 Safari/CORS/Helper 持久保存、ST 1.19 全宿主和物理键盘仍须独立验收，不能把自动测试改称实机结果。Owner 认可见 REAL_HOST_VALIDATION.md；Issue #1 不关闭。
+
+
+## Phase 1 Closeout Candidate（2026-10-07）
+
+最新本地回执为 `validation-results.json.post022CloseoutCandidate`。基线 main `428140cab137f54ade06f5777b5a621fdcc04a7c`，开始时工作区干净。版本仍为 0.2.2，未 Commit / Push / Tag / Release；此 Candidate 不替换公开 0.2.2。Issue #1 保持 Open。
+
+| 检查 | 本轮真实结果 |
+| --- | --- |
+| npm ci（锁文件全新离线安装）、check、test、build | PASS |
+| Node | 325 / 325（新增 31） |
+| Package v1 | 69 / 69：13 生产包检查 + 56 未改动上游 Hub 测试 |
+| 发布时固定 Hub `9c81bbcb…` Package 源码 | 额外 13 / 13 |
+| Browser functional / responsive | 19 / 19、9 / 9 |
+| Binding / parameters / parameter motion | 25 / 25、32 / 32、28 / 28 |
+| Presentation | 57 / 57（新增 8 个 SVG 路径回执） |
+| Drag/UI performance / save comparison correctness | 23 / 23、8 / 8 |
+| 独立目录重新安装锁定依赖与 build | 六份产物逐字一致 |
+
+170 个功能／展示浏览器检查页面错误为 0；性能回执是合成本机诊断，不代表真实酒馆端到端速度。使用已有 Playwright Chromium 151.0.7922.34 headless shell。Node suite 包含原生生成 Gate、正则显示和 Package Update 回归；Runtime Hub / B1 / B2 closePanel 及合成 Mobile 在现有 Node／浏览器套件内通过。
+
+新增 eligibility matrix 对照两版重新摘取的 PromptManager 方法体；覆盖角色为 system 的自定义条目、system_prompt=true、缺失 flag、Marker、protected ID、malformed raw。Copy 保留完整字段并生成 UUID；Detach 只移除活动组引用；Delete 先 Detach 再清理所有组目标引用，未知字段及无关数据逐对象相等。Controller 测试覆盖零提前写入、取消／重新读取、保存失败和冲突。两版原生生命周期模拟分别对 Copy／Detach／Delete 检查绑定 registry、默认 ID、当前 chat binding ID、tombstone 与 target；Dirty 跨聊天保留 A，Generation fail closed，Save／Discard 后仅应用最新聊天。特殊条目 Detach 保存期间同样受 Gate 保护，并核对磁盘回读和原生应用。
+
+Standalone／Shortcut 各验证正常 PNG、真实 PNG decode error 后本地 SVG、64px 入口及与 PNG 相同的内容尺寸、aria-hidden / focusable=false、拖动／Dock、重复打开关闭、同一业务实例、normal／reduced motion、dispose 与延迟 error。Hub Host image fallback 与 Manifest 未改。
+
+独立干净目录没有复制 Candidate 输出或依赖；仅保留 Package Update 所需、已固定摘要的历史官方 0.2.1 tracked 测试资产。四份 Package 资产及 production / preview JS 均由新安装依赖重新生成，与工作区逐字一致。
+
+本地 [Candidate JSON](../delivery/phase1-closeout-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+- SHA-256：`db8d765c9f667b95eb78a8fb2bcc6dd772280f0716bab7af400e3e211312c6fa`
+- contentSha256：`a23a149568880c11f16894cbdda2ea72b1789831386854b292a8235637d32aee`
+
+这不是新的真实宿主验收：完整 ST Generate／群成员循环／SSE、Safari、Helper 持久化／CORS、ST 1.19、物理 Mobile 和软键盘仍待对应实机验证。既有 Foundation 与公开 0.2.2 记录保持原范围。Owner 下一步仅在可恢复测试副本验 Copy／Detach／Delete、特殊条目解除后定义／保存刷新、PNG／SVG 入口，以及 Chat A/B 的 Default／Override。
+
+
+## Preset picker follow-up（2026-10-07）
+
+Owner 实机发现顶部选择框仍弹出系统菜单。本地 UI 改为参数设置同款页面内 combobox/listbox，使用同一选项颜色、勾选、hover、展开动画与箭头。整个选择外框及右侧 Default 独立点击区域保留，列表覆盖完整框宽；长名称换行、多条目滚动且高度限制在窗口内。选择后收起；鼠标选择不留常亮外框；支持方向键、Home/End、Enter、Escape、Tab 与点击外部。UI ID 不依赖安全页面的 crypto.randomUUID。Controller、Binding、统一保存及 Closeout Prompt policy 不变。
+
+本轮 check、325/325 Node、build、69/69 Package 和发布固定 Hub 额外 13/13 PASS。离线 Chromium：functional 19、responsive 9、binding 30、parameters 32、parameter motion 28、Presentation 57（175 项，页面错误 0）；UI/拖拽 24、保存比较正确性 8 PASS。新增检查覆盖自定义菜单、选中状态、键盘关闭/焦点、Tab、外部关闭、320px 长名称与多预设，以及非安全隔离页面初始化。独立干净目录重新安装锁定依赖并 build，六份产物逐字一致。
+
+本轮 [更新 Candidate JSON](../delivery/phase1-closeout-selector-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+
+- SHA-256：`b5c916cb78d0f9dcea98113dbaf5750431965a470ede1c4d640c1c678a6fa571`
+- contentSha256：`8dfc1004d00f2861a78aea2356b88300ea069dab45bf26a0caf99a5e63f7ed49`
+
+机器回执：`validation-results.json.presetPickerFollowup`。先前 Closeout Candidate 与历史验证记录保留。本轮未 Commit / Push / 升版本 / 发布；没有新增 Safari／ST 实机通过结论，待 Owner 复核。
+
+
+## Selected-row popup follow-up（2026-10-07）
+
+Owner 希望保留系统菜单的展开定位方式，但统一页面内紫色样式。预设列表保持原顺序，展开时选中行对齐原选择框，可同时向上／向下展开；不把选中项强行排到第一位。窗口边界和首尾条目采用高度／滚动调整，保留可见高亮；不改变默认按钮、选择逻辑或 Binding。两项新增 desktop／390px 回归断言完整顺序、选中行对齐、相邻项与首尾边界。
+
+Check、325/325 Node、build、69/69 Package PASS。功能 19、responsive 9、binding 32、parameters 32、motion 28、Presentation 57（177 项，页面错误 0），UI/拖拽 24、保存比较正确性 8 PASS。重新安装锁定依赖的独立干净构建，六份文件逐字一致。机器回执为 `validation-results.json.presetPickerAnchorFollowup`；先前 Candidate 回执保留。
+
+[最新 Candidate JSON](../delivery/phase1-closeout-selector-anchor-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+
+- SHA-256：`66405cea73110a50c8a56fa4f807c7579f476eac70b89b669416d25104be9f14`
+- contentSha256：`0948826df520d4d52a5c7090b97bec413bdc343de16741d0dfa1d8839ff29610`
+
+仍是本地未发布 0.2.2，未 Commit / Push / 升版本；尚待 Owner 实机复核。
+
+
+## Reasoning picker anchor follow-up · 2026-10-07
+
+推理强度改为预设选择框同款选中行定位浮层。两者共用垂直定位逻辑，保持选项顺序、选中高亮和统一动画；推理菜单位于弹窗中、不占表单高度，以表单可视区域为边界，避免遮挡底部取消／保存。首尾选项在边缘时保留可用滚动高度。点击外部、Escape、滚动离开、窗口变化、取消／保存、关闭和 dispose 都不会留下旧浮层。只修改 View／CSS，参数草稿、统一保存、Binding 和业务规则未改变。
+
+新增桌面／390px 共六项浏览器检查：中间选中行与控件对齐、选项顺序和可见高亮、展开前后表单高度／滚动位置不变、首尾边界、resize／scroll／外部点击／关闭清理，以及取消／保存按钮仍可直接命中。其余参数取消不写入、统一保存写入、默认和未知值保留检查继续通过。
+
+重新执行 `check`、`test`、`build`、Package v1 69、功能 19、响应式 9、Binding 32、参数设置 38、参数动画 28、Presentation 57、UI 性能 24、保存比较正确性 8，全部通过。Node 325，功能／展示浏览器合计 183，无页面错误。独立干净目录使用 lockfile 离线安装后重建，六产物字节一致。性能结果为本地合成测试，未新增真实宿主／Safari 验收结论。
+
+Candidate：`delivery/phase1-closeout-reasoning-anchor-20261007/MieMie-Preset-Manager-Extension-0.2.2.json`
+
+SHA-256：`39c3387b77115f7a2afad995905a2315f137eb915adaf3cc3eedd622ccdbcf7f`
+
+内容 SHA-256：`f225b2eddab92763cdc12ba8cefbbd0ccd37c91c21f865a8c9aeaf58ea23f7e5`
+
+保留此前 Candidate 和回执。本轮未提交、未推送、未发布、未升版本；等待 Owner Review。
+
+
+## Compact reasoning popup follow-up · 2026-10-07
+
+Owner 保留原来的“流式传输 → 请求思维链 → 推理强度”顺序。推理菜单优先显示约五行，下方空间不足时向上让位；首尾选中项保留完整点击范围，余下选项可滚动。仅窗口确实更短时进一步缩小菜单，始终限制在表单可视范围中，不遮挡底部取消／保存。顶部预设选择框保持此前选中行定位策略，保存、Binding 和业务逻辑不变。
+
+参数浏览器新增原排序与短窗口末项可滚动触达断言，并更新展开断言为：普通桌面／390px 显示四到五个完整选项，“自动”选中时菜单上移，第一项／最后一项均可见，表单高度和滚动位置不变。缩放回归等待浏览器 resize 布局完成，再测几何；不以瞬时旧位置作为结果。
+
+本轮重新执行 `check`、`test`、`build`，Node 325；Package v1 69；功能 19、响应式 9、Binding 32、参数设置 42、参数动画 28、Presentation 57，共 187 项功能／展示浏览器检查，全部通过、无页面错误。独立目录使用此前锁定安装的依赖重建，六产物字节一致。UI 性能 24／保存比较正确性 8 沿用前一 Candidate 的回执，本次未重复执行；未新增真实宿主／Safari 验收结论。
+
+Candidate：`delivery/phase1-closeout-reasoning-compact-20261007/MieMie-Preset-Manager-Extension-0.2.2.json`
+
+SHA-256：`d81417ffc16cf420d7826aa3fbf94ba771b15a8496b4a0e4b268a25ad0f5806c`
+
+内容 SHA-256：`44c7409b68f170aed79d1469e01a096ce1249c8eb1ce215bfcceefe5c795cf10`
+
+未提交、未推送、未发布、未升版本；保留此前 Candidate，等待 Owner Review。
+
+
+## Scroll shadow follow-up · 2026-10-07
+
+Owner 确认效果预览后，只把推理强度改成三个完整选项及下一项的一部分。预设列表保留原高度、展开锚点、顺序；两个菜单新增顶部／底部渐深滚动阴影，上／下仍有内容时对应阴影显示，到达端点后淡出，无溢出时均隐藏。阴影采用不占布局、`aria-hidden`、pointer-transparent 的独立覆盖层，尺寸跟随菜单，关闭时隐藏、编辑器替换／销毁时解绑观察器及监听。减少动画设置下取消过渡。仅 View／CSS 改动，设置顺序、参数保存、Binding 业务和既有 Closeout 规则保持不变。
+
+共新增五项 desktop／390px／短预设浏览器回执，覆盖顶部／中部／底部／无溢出的实际阴影透明度、gradient、与菜单矩形对齐、遮罩显示／隐藏时菜单尺寸位置不变、遮罩下的选项可命中、参数取消后无残留和 reduced motion。原有参数键盘、短窗口、保存／取消、默认值检查继续通过。
+
+另与前一 Candidate `d81417ffc16cf420d7826aa3fbf94ba771b15a8496b4a0e4b268a25ad0f5806c` 的真实 preview 构建做六项同环境对照：桌面及 390px、首／中／末预设的菜单 top／left／width／height／maxHeight／scrollTop 及选中行位置逐项完全一致。此对照回执保存在新 Candidate 的 `preset-layout-comparison.json`，不依赖公开发布或改写历史 Candidate。
+
+重新执行 `check`、`test`、`build`，Node 325；Package v1 69；功能 19、响应式 9、Binding 35、参数设置 44、参数动画 28、Presentation 57，共 192 项功能／展示浏览器检查，全部通过、无页面错误。UI 性能 24、保存比较正确性 8 也重新执行并通过。独立目录使用此前锁定安装的依赖重建，六产物字节一致。以上为本地合成检查，没有新增真实酒馆／Safari 验收结论。
+
+Candidate：`delivery/phase1-closeout-picker-shadows-20261007/MieMie-Preset-Manager-Extension-0.2.2.json`
+
+SHA-256：`4c8a3d29705cba5b817691a4d72d080f2aeb00265dbaea5b806ccb99a1ba497e`
+
+内容 SHA-256：`3a941c8d593f6bb0437fb648f22f8661effa64c255d61c6203f25c54f548cf74`
+
+本轮未提交、未推送、未发布、未升版本；保留此前 Candidate，等待 Owner Review。
+
+
+## Owner reasoning reference follow-up · 2026-10-07
+
+Owner 提供桌面 `MieMie-Preset-Manager-Extension-0.2.2.json`，要求完全恢复其推理菜单展开方式并保留阴影。附件 SHA-256 为 `39c3387b77115f7a2afad995905a2315f137eb915adaf3cc3eedd622ccdbcf7f`，与已保存的 reasoning-anchor Candidate 一致。恢复其选中项锚定、自适应边界和高度算法；不再指定显示几行。构建后定位函数与附件去除注释／空白后的生成函数一致。两个菜单的动态阴影、淡入淡出、pointer-transparent 及生命周期清理保留；预设高度／位置、设置顺序与业务不变。
+
+新增直接对照：使用与附件摘要一致的已保存 preview 构建作为基线，在 1280×844、390×844、1280×420、390×420 中逐个选择六种推理强度，共 24 项；菜单位置、宽高、maxHeight、scrollTop、选中行矩形、原控制位置和表单滚动高度完全一致。结果见新 Candidate 的 `owner-reference-comparison.json`。参数回归进一步断言同窗口中“自动”与“中”的菜单高度不同，防止重新引入固定数量；原滚动阴影和点击命中测试继续通过。
+
+重新执行 `check`、`test`、`build`，Node 325；Package v1 69；功能 19、响应式 9、Binding 35、参数设置 44、参数动画 28、Presentation 57，共 192 项功能／展示浏览器检查，全部通过、无页面错误。独立目录使用此前锁定安装的依赖重建，六产物字节一致。UI 性能 24、保存比较正确性 8 沿用前一阴影 Candidate 的通过回执，本次未重复执行。没有新增真实酒馆／Safari 验收结论。
+
+Candidate：`delivery/phase1-closeout-owner-reasoning-20261007/MieMie-Preset-Manager-Extension-0.2.2.json`
+
+SHA-256：`7f739c10bc994ccfd8cf3c3119138dc2aab6b1c8047bc2c0d993463fa5dd7129`
+
+内容 SHA-256：`7d66a76c4cc75aee7fe43011e8dff5036318971b4a025b6fc4f329d3b45e79c2`
+
+未提交、未推送、未发布、未升版本；保留此前 Candidate，等待 Owner Review。
+
+## 0.2.3 release validation（2026-10-07）
+
+当前回执为 `validation-results.json.release023`。升版前已从源码逐字重现 Owner 指定 0.2.2 Anchor；随后以正式 0.2.3 身份重新执行锁定安装、check／test／build 及全部当前专项。
+
+Node 325／325；Package 71／71（15 production + 56 upstream）；当前正式 Hub `9c81bbcbf9b87b5118b92415a34c57783592bccc` 额外 15／15。功能 19、响应式 9、Binding 35、参数 44、外框动画 28、Presentation 57，共 192；页面错误 0。UI／拖拽 24、保存比较正确性 8 本轮重新执行 PASS，未沿用旧回执。
+
+0.2.2→0.2.3 与 0.2.1→0.2.3 更新均使用完整官方历史资产，启用／停用实例分别检查 instance ID、data、folder/order、其他脚本、内容／显示／运行版本与磁盘回读。安装树和持久保存依赖仍为隔离合成环境。独立 clean checkout 的新安装 build／package 和六产物字节比较，以及发布后的真实 GitHub discovery／digest／fresh install／update 为最终发布门槛，结果由发布回执记录。
+
+UI Scope Audit、资格 Matrix、完整摘要和当前宿主边界见 [Release 0.2.3](RELEASE-0.2.3.md)。Owner 已确认当前 Candidate 真实使用验收；没有新的 ST 1.19／物理移动端全宿主矩阵，Issue #1 继续 Open。历次 Candidate 的日期、摘要和当时状态保留，公开旧 Release 不替换。
