@@ -680,3 +680,14 @@ Phase 7 — Compatibility / Round Trip Tests\
 ② 用户操作明显比原版简单\
 ③ MieMie Hub / Standalone 标准一致\
 任何为了 UI 简化而导致 Preset 数据丢失的实现，都视为不合格。\
+
+
+## Owner-approved compatibility clarification（2026-10-07）
+
+本节为固定 ST 1.18.0 / 1.19.0 源码研究后，Owner 对 Phase 1 Done Definition 的正式澄清；上方原始计划保留。
+
+兼容核心是原生数据、数据完整性、externally observable contracts 与 Runtime / API / Event 语义，不要求机械复制原生 UI 或内部结构。在保持 interoperability 的前提下，MPM 可以提供更安全、更简单的交互。
+
+Copy 是 MPM own UX，只复制普通自定义 Prompt。Detach 遵循原生严格 `system_prompt === false` 资格，只移除活动组引用并保留 definition 与其他组。Delete 使用 Owner 批准的保守安全边界，保护 Marker／protected/native ID；普通自定义条目先 Detach 再确认删除，清理全部组的目标引用并保留无关数据。Edit／Toggle、raw authority、Round Trip、未知字段、统一保存和 Binding / Generation 安全契约不变。
+
+此次实现与 Owner 后续 UI 调整已收口为 0.2.3，Owner 已完成当前 Candidate 真实使用验收。不能据此宣称完整 Phase 1 实机矩阵已完成；Issue #1 保持 Open，后续 Closeout Audit 单独处理。

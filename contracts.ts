@@ -24,7 +24,7 @@ export interface PresetAdapter {
   dispose?(): void;
 }
 export type PromptPatch = Partial<Pick<NativePrompt, 'name' | 'role' | 'content' | 'injection_position' | 'injection_depth' | 'injection_order' | 'injection_trigger' | 'forbid_overrides'>>;
-export type Row = { prompt: NativePrompt; enabled: boolean; attached: boolean; category: string; editable: boolean; removable: boolean; canDetach: boolean; toggleable: boolean };
+export type Row = { prompt: NativePrompt; enabled: boolean; attached: boolean; category: string; editable: boolean; copyable: boolean; detachable: boolean; deletable: boolean; toggleable: boolean };
 export interface ManagerState { snapshot: Snapshot | null; recovery: { name: string; raw: RawPreset } | null;
   /** Local session; confirmed snapshot and host revision never become a draft baseline. */
   pendingRaw: RawPreset | null; dirty: boolean; conflict: boolean; localRevision: number;

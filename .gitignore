@@ -58,6 +58,7 @@ evidence/
 delivery/*
 !delivery/MieMie-Preset-Manager-Extension-0.2.1.json
 !delivery/MieMie-Preset-Manager-Extension-0.2.2.json
+!delivery/MieMie-Preset-Manager-Extension-0.2.3.json
 !delivery/MieMie-Extension-update.json
 !delivery/manifest.json
 !delivery/SHA256SUMS

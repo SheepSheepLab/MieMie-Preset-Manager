@@ -1,6 +1,6 @@
 {
   "name": "miemie-preset-manager",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Native SillyTavern preset manager delivered as a Tavern Helper script",
   "scripts": {

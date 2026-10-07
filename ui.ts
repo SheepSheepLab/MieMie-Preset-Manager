@@ -20,6 +20,7 @@ const TRIGGERS = [
   ['quiet', '静默生成'],
 ] as const;
 const INTERACTIVE = 'button,input,select,textarea,a,summary,[role="switch"],[contenteditable="true"]';
+let pickerSequence = 0;
 
 export function createManagerView(host: Window, controller: ManagerController): ManagerView {
   const doc = host.document;
@@ -27,6 +28,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   let localError = '';
   let fileBusy = false;
   let editorKey = '';
+  let parameterPicker: { position: () => void; close: () => void; dispose: () => void; contains: (node: Node | null) => boolean } | null = null;
   let cardPreset: string | undefined;
   const cardCache = new Map<string, { key: string; node: HTMLElement }>();
   let returnFocus: HTMLElement | null = null;
@@ -42,6 +44,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (text) node.textContent = text;
     return node;
   }
+  function pickerId(prefix: string): string {
+    let id: string;
+    do { id = `mm-${prefix}-${++pickerSequence}`; } while (doc.getElementById(id));
+    return id;
+  }
   function listen(target: EventTarget, type: string, listener: EventListener, options?: AddEventListenerOptions) {
     target.addEventListener(type, listener, options);
     cleanup.push(() => target.removeEventListener(type, listener, options));
@@ -55,6 +62,27 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (!className.split(/\s+/).includes('mm-icon')) node.append(doc.createTextNode(label));
     if (action) node.addEventListener('click', action);
     return node;
+  }
+  function pickerScrollShadows(choices: HTMLElement) {
+    // A separate, pointer-transparent overlay leaves menu flow/anchoring untouched.
+    const layer = el('div', 'mm-picker-scroll-shadows');
+    layer.setAttribute('aria-hidden', 'true'); layer.hidden = true;
+    let removed = false;
+    const hide = () => { layer.hidden = true; delete layer.dataset.top; delete layer.dataset.bottom; };
+    const update = () => {
+      if (removed) return;
+      if (choices.hidden || !choices.isConnected || !choices.getClientRects().length) { hide(); return; }
+      layer.style.left = `${choices.offsetLeft}px`; layer.style.top = `${choices.offsetTop}px`;
+      layer.style.width = `${choices.offsetWidth}px`; layer.style.height = `${choices.offsetHeight}px`;
+      layer.dataset.top = String(choices.scrollTop > 1);
+      layer.dataset.bottom = String(choices.scrollHeight - choices.clientHeight - choices.scrollTop > 1);
+      layer.hidden = false;
+    };
+    choices.addEventListener('scroll', update, { passive: true });
+    const observerCtor = (host as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+    const observer = observerCtor ? new observerCtor(update) : null;
+    observer?.observe(choices);
+    return { layer, update, hide, dispose() { removed = true; observer?.disconnect(); choices.removeEventListener('scroll', update); hide(); layer.remove(); } };
   }
   function writeControl<T extends HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
     node: T,
@@ -132,22 +160,92 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const toolbar = el('div', 'mm-toolbar');
   const presetField = el('div', 'mm-preset-field');
   const presetControl = el('div', 'mm-preset-control');
-  const presetSelect = writeControl(el('select'));
-  presetSelect.setAttribute('aria-label', '当前使用预设');
-  presetSelect.addEventListener('change', () => {
-    delete presetControl.dataset.keyboardFocus;
-    cancelDrag();
-    void run(() => controller.select(presetSelect.value));
+  const presetSelect = writeControl(button('当前使用预设', undefined, undefined, 'mm-parameter-picker mm-preset-picker'));
+  presetSelect.setAttribute('role', 'combobox'); presetSelect.setAttribute('aria-haspopup', 'listbox');
+  presetSelect.setAttribute('aria-expanded', 'false');
+  const presetValue = el('span', 'mm-parameter-picker-value');
+  presetSelect.replaceChildren(presetValue, createIcon(doc, 'chevron'));
+  const presetChoices = el('div', 'mm-parameter-picker-menu mm-preset-options'); presetChoices.hidden = true;
+  presetChoices.id = pickerId('presets'); presetChoices.setAttribute('role', 'listbox');
+  presetChoices.setAttribute('aria-label', '预设选项'); presetSelect.setAttribute('aria-controls', presetChoices.id);
+  const presetShadows = pickerScrollShadows(presetChoices);
+  cleanup.push(() => presetShadows.dispose());
+  function closePresetChoices(focus = false) {
+    presetChoices.hidden = true; presetShadows.hide(); presetSelect.setAttribute('aria-expanded', 'false');
+    if (focus && !presetSelect.disabled) presetSelect.focus({ preventScroll: true });
+  }
+  function showPresetValue(name: string) {
+    presetSelect.dataset.value = name;
+    presetValue.textContent = name || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
+    presetSelect.title = presetValue.textContent;
+    for (const node of presetChoices.querySelectorAll<HTMLButtonElement>('[role=option]'))
+      node.setAttribute('aria-selected', String(node.dataset.value === name));
+  }
+  function positionChoices(choices: HTMLElement, picker: HTMLButtonElement, origin: HTMLElement, bounds: DOMRect, minimumHeight = 44) {
+    // Native-style placement: the selected row meets the collapsed field.
+    // Keep source order; scroll only as needed to fit within the visible panel.
+    const control = origin.getBoundingClientRect();
+    const anchor = picker.getBoundingClientRect();
+    const topEdge = bounds.top + 8, bottomEdge = bounds.bottom - 8;
+    choices.style.maxHeight = `${Math.max(44, bottomEdge - topEdge)}px`;
+    const options = [...choices.querySelectorAll<HTMLButtonElement>('[role=option]')];
+    const current = options.find(node => node.dataset.value === picker.dataset.value) ?? options[0];
+    const center = anchor.top + anchor.height / 2;
+    if (current) {
+      const before = current.offsetTop + current.offsetHeight / 2 + choices.clientTop;
+      const after = choices.scrollHeight + 2 * choices.clientTop - before;
+      // Near either end, shorten the menu instead of forcing the selected row
+      // away from the field when the scroll range runs out.
+      choices.style.maxHeight = `${Math.min(bottomEdge - topEdge, Math.max(minimumHeight, Math.min(center - topEdge + after, bottomEdge - center + before)))}px`;
+    }
+    const height = choices.getBoundingClientRect().height;
+    const rowCenter = current ? current.offsetTop + current.offsetHeight / 2 + choices.clientTop : height / 2;
+    const top = Math.max(topEdge, Math.min(center - rowCenter, Math.max(topEdge, bottomEdge - height)));
+    choices.style.top = `${top - control.top - origin.clientTop}px`;
+    choices.scrollTop = Math.max(0, Math.min(choices.scrollHeight - choices.clientHeight, top + rowCenter - center));
+  }
+  function positionPresetChoices() {
+    positionChoices(presetChoices, presetSelect, presetControl, frame.getBoundingClientRect());
+    presetShadows.update();
+  }
+  function openPresetChoices(keyboard = false) {
+    if (presetSelect.disabled) return;
+    closePresetMenu(); presetChoices.hidden = false; presetSelect.setAttribute('aria-expanded', 'true');
+    positionPresetChoices();
+    const options = [...presetChoices.querySelectorAll<HTMLButtonElement>('[role=option]:not(:disabled)')];
+    const current = options.find(node => node.dataset.value === presetSelect.dataset.value) ?? options[0];
+    if (keyboard) current?.focus({ preventScroll: true });
+  }
+  presetSelect.addEventListener('click', () => presetChoices.hidden ? openPresetChoices() : closePresetChoices());
+  presetControl.addEventListener('keydown', event => {
+    if (!presetSelect.contains(event.target as Node) && !presetChoices.contains(event.target as Node)) return;
+    if (event.key === 'Escape' && !presetChoices.hidden) {
+      event.preventDefault(); event.stopPropagation(); closePresetChoices(true); return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation();
+    if (presetChoices.hidden) { openPresetChoices(true); return; }
+    const options = [...presetChoices.querySelectorAll<HTMLButtonElement>('[role=option]:not(:disabled)')];
+    const index = options.indexOf(doc.activeElement as HTMLButtonElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 :
+      (Math.max(0, index) + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length;
+    options[next]?.focus(); options[next]?.scrollIntoView({ block: 'nearest' });
   });
-  // Native selects retain focus after their picker closes. Only keyboard
-  // navigation should draw our shared focus ring, never a settled mouse pick.
+  presetControl.addEventListener('focusout', event => {
+    const next = event.relatedTarget as Node | null;
+    if (!presetSelect.contains(next) && !presetChoices.contains(next)) closePresetChoices();
+  });
+  listen(doc, 'pointerdown', ((event: PointerEvent) => {
+    if (!presetSelect.contains(event.target as Node) && !presetChoices.contains(event.target as Node)) closePresetChoices();
+  }) as EventListener, { capture: true });
+  // Only keyboard navigation draws the shared focus ring, not a settled mouse pick.
   listen(doc, 'keydown', ((event: KeyboardEvent) => {
     if (event.key === 'Tab' || presetControl.contains(event.target as Node))
       presetControl.dataset.keyboardFocus = 'true';
   }) as EventListener);
   listen(doc, 'pointerdown', (() => { delete presetControl.dataset.keyboardFocus; }) as EventListener, { capture: true });
   const presetLabel = el('span', 'mm-preset-label', '当前使用预设');
-  presetControl.append(presetSelect);
+  presetControl.append(presetSelect, presetChoices, presetShadows.layer);
   presetField.append(presetLabel, presetControl);
   const actions = el('div', 'mm-actions');
   const defaultButton = button('将当前预设设为默认', 'default', () => void run(async () => { await controller.binding?.setDefault(); }));
@@ -274,6 +372,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
   panel.append(editorLayer, confirmLayer);
   const parameterPresentation = createParameterPresentation(host, editorLayer, parametersButton);
   let parameterMotionEpoch = 0;
+  listen(doc, 'pointerdown', ((event: PointerEvent) => {
+    if (parameterPicker && !parameterPicker.contains(event.target as Node)) parameterPicker.close();
+  }) as EventListener, { capture: true });
   cleanup.push(() => parameterPresentation.dispose());
   doc.documentElement.append(panel);
 
@@ -422,6 +523,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (editorKey === key && editorLayer.dataset.parameterMotion !== 'closing') return;
     const motionEpoch = ++parameterMotionEpoch;
     parameterPresentation.cancel();
+    parameterPicker?.dispose(); parameterPicker = null;
     editorKey = key;
     const base = state.pendingRaw ?? state.snapshot.raw;
     const raw = { ...base, ...missingParameterDefaults(base), ...draft.patch };
@@ -488,36 +590,54 @@ export function createManagerView(host: Window, controller: ManagerController): 
     picker.setAttribute('role', 'combobox'); picker.setAttribute('aria-haspopup', 'listbox'); picker.setAttribute('aria-expanded', 'false');
     const pickerValue = el('span', 'mm-parameter-picker-value'), arrow = createIcon(doc, 'chevron');
     picker.replaceChildren(pickerValue, arrow);
-    const choices = el('div', 'mm-parameter-picker-menu'); choices.hidden = true;
-    choices.id = `mm-reasoning-${crypto.randomUUID()}`; choices.setAttribute('role', 'listbox'); choices.setAttribute('aria-label', '推理强度选项');
+    const choices = el('div', 'mm-parameter-picker-menu mm-reasoning-options'); choices.hidden = true;
+    const shadows = pickerScrollShadows(choices);
+    choices.id = pickerId('reasoning'); choices.setAttribute('role', 'listbox'); choices.setAttribute('aria-label', '推理强度选项');
     picker.setAttribute('aria-controls', choices.id);
     const values: Array<readonly [string, string]> = [...REASONING_EFFORTS];
     let selected = String(raw.reasoning_effort ?? '');
     if (!values.some(([id]) => id === selected)) values.push([selected, `保留原值：${selected}`]);
     const options: HTMLButtonElement[] = [];
-    const closePicker = (focus = false) => { choices.hidden = true; picker.setAttribute('aria-expanded', 'false'); if (focus) picker.focus({ preventScroll: true }); };
+    const closePicker = (focus = false) => { choices.hidden = true; shadows.hide(); picker.setAttribute('aria-expanded', 'false'); if (focus) picker.focus({ preventScroll: true }); };
     const showValue = () => {
       pickerValue.textContent = values.find(([id]) => id === selected)?.[1] ?? selected;
       picker.dataset.value = selected;
       options.forEach((node, index) => node.setAttribute('aria-selected', String(values[index][0] === selected)));
     };
+    const containsPicker = (node: Node | null) => pickerField.contains(node) || choices.contains(node);
+    const positionPicker = () => {
+      if (choices.hidden) return;
+      const bounds = form.getBoundingClientRect(), anchor = picker.getBoundingClientRect(), origin = box.getBoundingClientRect();
+      if (!box.isConnected || panel.hidden || editorLayer.hidden || anchor.bottom <= bounds.top + 8 || anchor.top >= bounds.bottom - 8) {
+        closePicker(); return;
+      }
+      choices.style.left = `${anchor.left - origin.left - box.clientLeft}px`;
+      choices.style.width = `${anchor.width}px`;
+      // Restore the Owner reference's adaptive height and selected-row placement.
+      positionChoices(choices, picker, box, bounds, 144);
+      shadows.update();
+    };
+    parameterPicker = { position: positionPicker, close: closePicker, contains: containsPicker,
+      dispose() { closePicker(); form.removeEventListener('scroll', positionPicker); shadows.dispose(); } };
+    form.addEventListener('scroll', positionPicker);
     const openPicker = (keyboard = false) => {
       if (picker.disabled) return;
+      picker.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       choices.hidden = false; picker.setAttribute('aria-expanded', 'true');
+      positionPicker();
       const current = Math.max(0, values.findIndex(([id]) => id === selected && REASONING_EFFORTS.some(([known]) => known === id)));
       if (keyboard) options[current]?.focus({ preventScroll: true });
-      choices.scrollIntoView({ block: 'nearest' });
     };
     values.forEach(([id, label]) => {
       const known = REASONING_EFFORTS.some(([value]) => value === id);
       const item = writeControl(button(label, undefined, () => {
         selected = id; showValue(); controller.draftParameters({ reasoning_effort: id }); closePicker(true);
       }, 'mm-parameter-option'), known);
-      item.setAttribute('role', 'option'); item.tabIndex = -1;
+      item.setAttribute('role', 'option'); item.tabIndex = -1; item.dataset.value = id;
       item.append(createIcon(doc, 'check')); choices.append(item); options.push(item);
     });
     picker.addEventListener('click', () => choices.hidden ? openPicker() : closePicker());
-    pickerField.addEventListener('keydown', event => {
+    const pickerKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !choices.hidden) { event.preventDefault(); event.stopPropagation(); closePicker(true); return; }
       if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault(); event.stopPropagation();
@@ -525,18 +645,20 @@ export function createManagerView(host: Window, controller: ManagerController): 
       const enabled = options.filter(item => !item.disabled), index = enabled.indexOf(doc.activeElement as HTMLButtonElement);
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabled.length - 1 :
         (Math.max(0, index) + (event.key === 'ArrowDown' ? 1 : enabled.length - 1)) % enabled.length;
-      enabled[next]?.focus();
-    });
-    pickerField.addEventListener('focusout', event => { if (!pickerField.contains(event.relatedTarget as Node | null)) closePicker(); });
-    box.addEventListener('pointerdown', event => { if (!pickerField.contains(event.target as Node)) closePicker(); });
-    showValue(); pickerField.append(el('span', 'mm-parameter-label', '推理强度'), picker, choices); outputGroup.append(pickerField);
+      enabled[next]?.focus({ preventScroll: true }); enabled[next]?.scrollIntoView({ block: 'nearest' });
+    };
+    for (const target of [pickerField, choices]) {
+      target.addEventListener('keydown', pickerKeydown);
+      target.addEventListener('focusout', event => { if (!containsPicker(event.relatedTarget as Node | null)) closePicker(); });
+    }
+    showValue(); pickerField.append(el('span', 'mm-parameter-label', '推理强度'), picker); outputGroup.append(pickerField);
     form.append(el('p', 'mm-hint', '实际支持情况沿用酒馆和模型规则，未显示的参数保持不变。'));
     const error = el('div', 'mm-inline-error'); error.dataset.editorError = 'true'; error.setAttribute('role', 'alert'); form.append(error);
     const actions = el('div', 'mm-dialog-actions');
     actions.append(button('取消', undefined, () => controller.cancelParameters(), 'mm-secondary'),
       writeControl(button('保存', undefined, () => { if (form.reportValidity()) void run(() => controller.saveParameters()); }, 'mm-primary')));
     form.addEventListener('submit', event => event.preventDefault());
-    box.append(head, form, actions); editorLayer.replaceChildren(box); editorLayer.hidden = false;
+    box.append(head, form, actions, choices, shadows.layer); editorLayer.replaceChildren(box); editorLayer.hidden = false;
     form.scrollTop = 0;
     void parameterPresentation.run(box, true).then(() => {
       if (!disposed && motionEpoch === parameterMotionEpoch && !panel.hidden && controller.state.parametersDraft && box.isConnected)
@@ -546,6 +668,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   function renderEditor() {
     const state = controller.state;
     if (state.parametersDraft) { renderParametersEditor(); return; }
+    parameterPicker?.dispose(); parameterPicker = null;
     const draft = state.draft;
     const key = draft ? `${state.snapshot?.name}\0${draft.id}` : '';
     if (!draft) {
@@ -744,14 +867,14 @@ export function createManagerView(host: Window, controller: ManagerController): 
     );
     const copy = writeControl(
       button('复制条目', 'copy', () => void run(() => controller.copyPrompt(prompt.identifier))),
-      row.removable,
+      row.copyable,
     );
     if (copy.dataset.permitted === 'false') copy.title = '内建与 Marker 条目不支持直接复制';
     controls.append(copy);
     if (row.attached) {
       const unlock = writeControl(
         button('解锁并移出当前发送顺序', 'unlock', () => void run(() => controller.detach(prompt.identifier))),
-        row.canDetach,
+        row.detachable,
       );
       controls.append(unlock);
     } else {
@@ -765,7 +888,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
               () => controller.deletePrompt(prompt.identifier),
             ),
           ),
-          row.removable,
+          row.deletable,
         ),
       );
     }
@@ -793,6 +916,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     refreshButton.disabled = state.busy || fileBusy;
     for (const node of panel.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('[data-clean]'))
       node.disabled = state.busy || fileBusy || !state.snapshot || state.dirty || state.conflict || Boolean(controller.binding && controller.binding.state.status !== 'ready');
+    if (presetSelect.disabled || state.draft || state.parametersDraft) closePresetChoices();
     sessionActions.dataset.dirty = String(state.dirty);
     refreshButton.title = state.dirty ? '放弃未保存修改并重新读取酒馆实际状态' : '重新读取实际状态';
     const binding = controller.binding?.state;
@@ -814,7 +938,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const labels = { 'no-chat': '无对话', inherit: '跟随默认', override: '此对话', missing: '此对话 · 绑定缺失' };
     presetLabel.textContent = `当前使用预设 · ${labels[binding.mode]}`;
     const applied = binding.appliedName;
-    presetSelect.value = applied ?? ''; presetSelect.title = applied ?? '正在确认酒馆实际状态';
+    showPresetValue(applied ?? '');
     const isDefault = Boolean(applied && applied === binding.defaultName);
     defaultButton.setAttribute('aria-pressed', String(isDefault));
     defaultButton.title = isDefault ? '当前为默认预设' : '将当前预设设为默认';
@@ -834,16 +958,22 @@ export function createManagerView(host: Window, controller: ManagerController): 
       cancelDrag();
     const namesKey = JSON.stringify([state.snapshot?.name, state.snapshot?.names]);
     if (presetSelect.dataset.names !== namesKey) {
-      presetSelect.replaceChildren();
-      for (const name of state.snapshot?.names ?? []) option(presetSelect, name, name);
-      if (controller.binding) option(presetSelect, '', '正在确认实际预设…');
-      if (!state.snapshot) option(presetSelect, '', '尚未读取预设');
-      presetSelect.value = state.snapshot?.name ?? '';
-      presetSelect.title = state.snapshot?.name ?? '';
+      closePresetChoices(); presetChoices.replaceChildren();
+      for (const name of state.snapshot?.names ?? []) {
+        const choice = writeControl(button(name, undefined, () => {
+          if (presetSelect.disabled) return;
+          const changed = name !== presetSelect.dataset.value;
+          closePresetChoices(true); delete presetControl.dataset.keyboardFocus; cancelDrag();
+          if (changed) void run(() => controller.select(name));
+        }, 'mm-parameter-option'));
+        choice.dataset.clean = 'true'; choice.dataset.value = name;
+        choice.setAttribute('role', 'option'); choice.tabIndex = -1;
+        choice.append(createIcon(doc, 'check')); presetChoices.append(choice);
+      }
       presetSelect.dataset.names = namesKey;
     }
-    // A native select briefly changes before its asynchronous operation; reset it to the confirmed state.
-    presetSelect.value = state.snapshot?.name ?? '';
+    // Show only the confirmed state; selection still goes through Controller/Binding.
+    showPresetValue(state.snapshot?.name ?? '');
     const categories = [...new Set(['全部', ...controller.categories()])];
     const tabsKey = JSON.stringify([state.category, categories]);
     if (tabs.dataset.key !== tabsKey) {
@@ -869,7 +999,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const nodes = (items: Row[]) => items.map(item => {
       // Only displayed properties; never serialize full Prompt bodies for UI keys.
       const key = JSON.stringify([item.prompt.name, item.prompt.role, item.prompt.marker, item.prompt.system_prompt,
-        item.enabled, item.attached, item.editable, item.removable, item.canDetach, item.toggleable]);
+        item.enabled, item.attached, item.editable, item.copyable, item.detachable, item.deletable, item.toggleable]);
       let cached = cardCache.get(item.prompt.identifier);
       if (!cached || cached.key !== key) {
         cached = { key, node: card(item) }; cardCache.set(item.prompt.identifier, cached);
@@ -1204,6 +1334,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
     panel.dataset.compact = String(width <= 600);
     panel.dataset.short = String(height <= 500);
     if (!panel.hidden && !menu.hidden) positionMenu();
+    if (!panel.hidden && !presetChoices.hidden) positionPresetChoices();
+    parameterPicker?.position();
     const active = doc.activeElement as HTMLElement | null;
     if (resized && active && editorLayer.contains(active) && active.matches('input,select,textarea'))
       active.scrollIntoView({ block: 'nearest' });
@@ -1247,6 +1379,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     } else void run(reloadActual);
   }
   function requestClose() {
+    closePresetChoices();
     if (disposed || controller.state.busy || fileBusy) return;
     cancelDrag();
     menu.hidden = true;
@@ -1262,6 +1395,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (closeHandler) closeHandler(); else close();
   }
   function close() {
+    closePresetChoices();
+    parameterPicker?.close();
     parameterPresentation.cancel();
     cancelDrag();
     panel.hidden = true;
@@ -1283,6 +1418,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     dispose() {
       if (disposed) return;
       disposed = true;
+      parameterPicker?.dispose(); parameterPicker = null;
       closeHandler = null;
       cancelDrag();
       unsubscribe();

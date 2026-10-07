@@ -5,6 +5,7 @@
 import { createNativeFloatingPresentation, type NativeBounds, type NativePresentation } from './native-floating-presentation';
 import { PRESET_MANAGER_DOCK_KEY, PRESET_MANAGER_PRODUCT } from './product-identity';
 import { nativeLauncherStyles } from './presentation-styles';
+import { createIcon } from './icons';
 export type NativeLauncher = {
   presentation: NativePresentation; getOrigin(): HTMLButtonElement | null;
   setActive(active: boolean): void; highlight(): void;
@@ -19,7 +20,14 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
   if (mode === 'standalone') orb.dataset.miemiePresetManagerStandalone = '';
   orb.dataset.miemiePresetManagerNative = ''; orb.dataset.miemiePresetManagerMode = mode;
   orb.title = PRESET_MANAGER_PRODUCT.launcherName; orb.setAttribute('aria-label',`打开${PRESET_MANAGER_PRODUCT.name}`);
-  const image = doc.createElement('img'); image.src = icon; image.alt = ''; image.draggable = false; orb.append(image);
+  const image = doc.createElement('img'); image.alt = ''; image.draggable = false;
+  const imageFailed = () => {
+    if (disposed || image.parentElement !== orb) return;
+    const fallback = createIcon(doc, 'sheep');
+    fallback.dataset.presetManagerIconFallback = '';
+    image.replaceWith(fallback);
+  };
+  image.addEventListener('error', imageFailed, { once: true }); image.src = icon; orb.append(image);
   (doc.head || doc.documentElement).append(style); (doc.body || doc.documentElement).append(orb);
   let dock: { side:'left' | 'right'; ratio:number } = { side:'right', ratio:.6 };
   type Drag = { id:number; x:number; y:number; left:number; top:number; bounds:NativeBounds; moved:boolean; leftNow:number; topNow:number };
@@ -114,7 +122,7 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
       for (const [name,fn] of Object.entries(listeners)) orb.removeEventListener(name,fn);
       for (const name of ['resize','orientationchange']) host.removeEventListener(name,resize);
       host.visualViewport?.removeEventListener('resize',resize); host.visualViewport?.removeEventListener('scroll',resize);
-      orb.remove(); style.remove();
+      image.removeEventListener('error', imageFailed); orb.remove(); style.remove();
     },
   };
 }

@@ -52,6 +52,11 @@ async function dragTo(page, id, target) {
     const oldShadow = await page.getByRole('button', { name: '保存', exact: true }).evaluate(n => getComputedStyle(n).textShadow);
     assert.notEqual(oldShadow, 'none', 'baseline reproduces host theme shadow'); await page.close();
     page = await pageFor();
+    assert.equal(await page.evaluate(()=>isSecureContext),false);
+    const picker=page.getByRole('combobox',{name:'当前使用预设',exact:true});await picker.click();
+    assert(await page.getByRole('listbox',{name:'预设选项',exact:true}).getByRole('option',{name:'Synthetic',exact:true}).isVisible());
+    await picker.press('Escape');assert.equal(await picker.getAttribute('aria-expanded'),'false');
+    receipts.push('非安全隔离页面无需 crypto.randomUUID，预设菜单仍能初始化并打开/收起');
     await page.locator('.mm-card[data-id=a]').getByRole('button', { name: '编辑条目', exact: true }).click();
     const saveButton = page.getByRole('button', { name: '保存', exact: true });
     assert.equal(await saveButton.evaluate(n => getComputedStyle(n).textShadow), 'none');

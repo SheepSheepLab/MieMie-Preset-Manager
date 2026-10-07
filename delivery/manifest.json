@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "miemie.preset-manager",
   "name": "咩咩预设管理",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "SheepSheep",
   "description": "直接管理当前酒馆预设及提示词条目。",
   "entry": "preset-manager.js",

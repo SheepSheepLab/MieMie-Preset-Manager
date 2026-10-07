@@ -20,7 +20,7 @@ function fixture(t, {version=manifest.version, trees:initial=[],metadataBytes,mi
  const r={...release,tag_name:'v'+version,assets:[asset(301,f.m.asset.name,f.b),asset(302,'MieMie-Extension-update.json',mb)]};
  return hub.then(({createExtensionPackageManager})=>{
  const response=(b,url)=>{const r=new Response(b);Object.defineProperty(r,'url',{value:url});return r;};
- const manager=createExtensionPackageManager({crypto:webcrypto,randomUUID:()=> 'test-only-install-instance',getScriptTrees:()=>clone(trees),updateScriptTreesWith:fn=>{trees=fn(clone(trees));writes++;return clone(trees);},readSavedScript:async id=>clone(trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id===id)||null),getRunningVersion:running?()=>{const x=trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id==='official-021-installed-instance');return x?parseRuntimeVersion(x.content):null;}:undefined,backup:async()=>{},fetch:async(url,init)=>{
+ const manager=createExtensionPackageManager({crypto:webcrypto,randomUUID:()=> 'test-only-install-instance',getScriptTrees:()=>clone(trees),updateScriptTreesWith:fn=>{trees=fn(clone(trees));writes++;return clone(trees);},readSavedScript:async id=>clone(trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id===id)||null),getRunningVersion:running?()=>{const x=trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id==='official-release-installed-instance');return x?parseRuntimeVersion(x.content):null;}:undefined,backup:async()=>{},fetch:async(url,init)=>{
  assert.equal(init.credentials,'omit');assert.equal(init.headers.Authorization,undefined);
  let b;if(url===api)b=encode({private:false,full_name:'SheepSheepLab/MieMie-Preset-Manager'});else if(url.startsWith(api+'/releases?'))b=encode([r]);else if(url===api+'/releases/201')b=encode(r);else if(url===api+'/releases/assets/301')b=f.b;else if(url===api+'/releases/assets/302')b=mb;else throw Error('Unexpected URL: '+url);return response(b,url);
  }});t.after(()=>manager.dispose());return {manager,read:()=>clone(trees),writes:()=>writes};});
@@ -75,32 +75,33 @@ test('Package build and pinned Hub modules never enter production runtime',()=>{
  assert.deepEqual(script.data,{});for(const forbidden of ['/Users/','/.codex/','/private/var/','CODEX_HOME'])assert.equal(script.content.includes(forbidden),false,forbidden);
 });
 
-// The retained historical artifact is the full official v0.2.1 release package,
+// The retained historical artifacts are full official v0.2.1/v0.2.2 release packages,
 // verified against its public GitHub Asset digest; not a rewritten new bundle.
 function parseRuntimeVersion(content) {
  const match=content.match(/JSON\.parse\('([^{\n]*\{[^\n]*"id":"miemie.preset-manager"[^\n]*\})'\)/);
  assert.ok(match,'production embedded Runtime Manifest exists');
  return JSON.parse(match[1]).version;
 }
-for(const enabled of [false,true])test(`Official 0.2.1 -> 0.2.2 Hub update preserves folder/order/settings and confirms display/runtime (enabled=${enabled})`,async t=>{
- const h=await hub,oldBytes=read('MieMie-Preset-Manager-Extension-0.2.1.json');
- assert.equal(hash(oldBytes),'071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0');
- const old=JSON.parse(oldBytes);assert.equal(h.parseExtensionBuildIdentity(old.content).version,'0.2.1');
- assert.equal(old.id,SCRIPT_ID);assert.equal(parseRuntimeVersion(old.content),'0.2.1');
- old.id='official-021-installed-instance';old.enabled=enabled;
+const officialSources=[['0.2.1','071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0'],['0.2.2','7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58']];
+for(const [oldVersion,oldDigest] of officialSources) for(const enabled of [false,true])test(`Official ${oldVersion} -> ${manifest.version} Hub update preserves folder/order/settings and confirms display/runtime (enabled=${enabled})`,async t=>{
+ const h=await hub,oldBytes=read(`MieMie-Preset-Manager-Extension-${oldVersion}.json`);
+ assert.equal(hash(oldBytes),oldDigest);
+ const old=JSON.parse(oldBytes);assert.equal(h.parseExtensionBuildIdentity(old.content).version,oldVersion);
+ assert.equal(old.id,SCRIPT_ID);assert.equal(parseRuntimeVersion(old.content),oldVersion);
+ old.id='official-release-installed-instance';old.enabled=enabled;
  old.data={syntheticSetting:7,'miemie.preset-manager':{syntheticPreference:true}};
  const other={...clone(old),id:'unrelated-script',name:'Synthetic unrelated script',content:'void 0;'};
  const folder={type:'folder',enabled:true,name:'Synthetic folder',id:'existing-folder',icon:'',color:'',scripts:[other,old]};
  const before=clone(folder);const f=await fixture(t,{trees:[folder],running:enabled});
  const candidate=await f.manager.check(manifest.id);
- assert.equal(candidate.currentVersion,'0.2.1');assert.equal(candidate.version,'0.2.2');assert.equal(candidate.available,true);assert.equal(candidate.compatibility,'installable');
+ assert.equal(candidate.currentVersion,oldVersion);assert.equal(candidate.version,manifest.version);assert.equal(candidate.available,true);assert.equal(candidate.compatibility,'installable');
  const result=await f.manager.update(manifest.id,candidate);assert.equal(result.ok,true);assert.equal(result.persistence,'confirmed');assert.equal(result.runtimeConfirmed,enabled);
  const saved=f.read();assert.equal(saved.length,1);assert.deepEqual({...saved[0],scripts:undefined},{...before,scripts:undefined});
  assert.deepEqual(saved[0].scripts[0],other);const updated=saved[0].scripts[1];
  assert.deepEqual({...updated,name:old.name,content:old.content},old);
  assert.equal(updated.id,old.id);assert.equal(updated.enabled,enabled);assert.deepEqual(updated.data,old.data);
- assert.equal(updated.name,'咩咩预设管理 0.2.2');assert.equal(updated.content,script.content);
- assert.equal(h.parseExtensionBuildIdentity(updated.content).version,'0.2.2');assert.equal(parseRuntimeVersion(updated.content),'0.2.2');
- const rows=await f.manager.listInstalled();assert.equal(rows.length,1);assert.equal(rows[0].version,'0.2.2');assert.equal(rows[0].memoryVersion,'0.2.2');assert.equal(rows[0].persistenceError,'');
+ assert.equal(updated.name,manifest.name+' '+manifest.version);assert.equal(updated.content,script.content);
+ assert.equal(h.parseExtensionBuildIdentity(updated.content).version,manifest.version);assert.equal(parseRuntimeVersion(updated.content),manifest.version);
+ const rows=await f.manager.listInstalled();assert.equal(rows.length,1);assert.equal(rows[0].version,manifest.version);assert.equal(rows[0].memoryVersion,manifest.version);assert.equal(rows[0].persistenceError,'');
  assert.equal((await f.manager.check(manifest.id)).available,false);assert.equal(f.writes(),1);
 });

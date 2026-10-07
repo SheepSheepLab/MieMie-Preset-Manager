@@ -76,6 +76,42 @@ async function checkShortcutIdentity(page) {
   assert.equal(await page.evaluate(()=>reorderTest.writes),0);
   assert.deepEqual(await page.evaluate(()=>pinnedHub.warnings),[]);
 }
+
+// Local SVG must preserve the real launcher lifecycle in both ownership modes.
+for(const mode of ['standalone','shortcut'])for(const motion of ['no-preference','reduce']){
+  const p=await pageAt({width:390,height:844},{reducedMotion:motion});
+  if(mode==='shortcut')await installShortcut(p);else await returnWindow(p);
+  await p.waitForFunction(()=>{const i=document.querySelector('[data-miemie-preset-manager-native] img');return i?.complete&&i.naturalWidth>0;});
+  assert.equal(await p.locator(`${native} svg`).count(),0);
+  const bounds=await p.locator(native).evaluate(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height,label:n.getAttribute('aria-label'),imageWidth:n.querySelector('img').getBoundingClientRect().width,imageHeight:n.querySelector('img').getBoundingClientRect().height}));
+  assert.equal(bounds.width,64);assert.equal(bounds.height,64);assert.equal(bounds.label,'打开咩咩预设管理');
+  receipts.push(`${mode}/${motion}: successful official PNG remains visible, no fallback, accessible 64px native entry`);
+  await p.evaluate(()=>{window.fallbackRefs={panel:presentationTest.view.panel,controller:presentationTest.controller,image:document.querySelector('[data-miemie-preset-manager-native] img')};fallbackRefs.image.src='data:image/png;base64,AA==';});
+  await p.locator(`${native} [data-preset-manager-icon-fallback]`).waitFor();
+  assert.equal(await p.locator(`${native} img`).count(),0);
+  assert.deepEqual(await p.locator(`${native} svg`).evaluate(n=>({hidden:n.getAttribute('aria-hidden'),focus:n.getAttribute('focusable'),width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})),{hidden:'true',focus:'false',width:bounds.imageWidth,height:bounds.imageHeight});
+  await p.locator(native).evaluate(n=>{
+    const r=n.getBoundingClientRect();const e=(t,x,y)=>n.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerId:71,pointerType:'mouse',button:0,isPrimary:true,clientX:x,clientY:y}));
+    e('pointerdown',r.left+20,r.top+20);e('pointermove',30,220);e('pointerup',30,220);n.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}));
+  });
+  assert.equal(await p.locator('.miemie-pm').isVisible(),false);
+  assert.equal(await p.evaluate(()=>JSON.parse(localStorage.getItem('miemie_preset_manager_dock_v1')).side),'left');
+  for(let i=0;i<2;i++){
+    await p.locator(native).click();await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
+    await p.locator(native).evaluate(n=>n.click());
+    await p.evaluate(()=>presentationTest.source.settled());
+    assert(await p.evaluate(()=>fallbackRefs.panel===presentationTest.view.panel&&fallbackRefs.controller===presentationTest.controller));
+    assert.equal(await p.locator('.miemie-pm').count(),1);assert.equal(await p.locator(native).count(),1);
+    await returnWindow(p);
+  }
+  assert.equal(await p.evaluate(()=>reorderTest.writes),0);
+  if(mode==='shortcut'){assert.equal(await p.evaluate(()=>pinnedHub.counts().factoryCount),1);assert.deepEqual(await p.evaluate(()=>pinnedHub.warnings),[]);}
+  await p.evaluate(async()=>{await presentationTest.source.dispose();fallbackRefs.image.dispatchEvent(new Event('error'));dispatchEvent(new Event('resize'));});
+  assert.equal(await p.locator(native).count(),0);assert.equal(await p.locator('[data-preset-manager-icon-fallback]').count(),0);
+  receipts.push(`${mode}/${motion}: real PNG decode error uses local SVG; drag/Dock, repeated open/close, same instance and dispose/late error remain safe`);
+  await p.close();
+}
+
 for (const width of [1512,390]) {
   const p=await pageAt({width,height:844},{reducedMotion:'reduce'});
   await installShortcut(p);await shortcutOpen(p);

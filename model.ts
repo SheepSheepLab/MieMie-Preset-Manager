@@ -79,14 +79,19 @@ export function categoriesFor(prompts: NativePrompt[]): Map<string, string> {
   return new Map(prompts.map((p, i) => [p.identifier, candidates[i] && (counts.get(candidates[i]!) || 0) >= 2 ? candidates[i]! : '未分类']));
 }
 
-export const removable = (p: NativePrompt): boolean => p.system_prompt === false && !p.marker && !PROTECTED_IDS.has(p.identifier);
+/** MPM convenience policy: a new ID cannot preserve native Marker identity. */
+export const copyable = (p: NativePrompt): boolean => p.system_prompt === false && p.marker !== true && !PROTECTED_IDS.has(p.identifier);
+/** Pinned ST detach eligibility; removing a reference never removes its definition. */
+export const detachable = (p: NativePrompt): boolean => p.system_prompt === false;
+/** Owner-approved destructive policy, independent of native detach eligibility. */
+export const deletable = (p: NativePrompt): boolean => p.system_prompt === false && p.marker !== true && !PROTECTED_IDS.has(p.identifier);
 export const editable = (p: NativePrompt): boolean => !p.marker || MARKER_EDITABLE.has(p.identifier);
 export function rowsFor(raw: RawPreset, groupId: string | number): Row[] {
   const active = group(raw, groupId).order;
   const byId = new Map(raw.prompts.map(p => [p.identifier, p]));
   const cats = categoriesFor(raw.prompts);
   const attached = new Set(active.map(e => e.identifier));
-  const make = (p: NativePrompt, enabled: boolean, linked: boolean): Row => ({ prompt: p, enabled, attached: linked, category: cats.get(p.identifier) || '未分类', editable: editable(p), removable: removable(p), canDetach: removable(p), toggleable: !p.marker || MARKER_TOGGLEABLE.has(p.identifier) });
+  const make = (p: NativePrompt, enabled: boolean, linked: boolean): Row => ({ prompt: p, enabled, attached: linked, category: cats.get(p.identifier) || '未分类', editable: editable(p), copyable: copyable(p), detachable: linked && detachable(p), deletable: deletable(p), toggleable: !p.marker || MARKER_TOGGLEABLE.has(p.identifier) });
   return [...active.map(e => make(byId.get(e.identifier)!, e.enabled, true)), ...raw.prompts.filter(p => !attached.has(p.identifier)).map(p => make(p, false, false))];
 }
 
@@ -134,7 +139,7 @@ export function addPrompt(raw: RawPreset, groupId: string | number, id: string):
 
 export function copyPrompt(raw: RawPreset, groupId: string | number, id: string, newId: string): RawPreset {
   const next = clone(raw), original = prompt(next, id), order = group(next, groupId).order;
-  if (!removable(original)) throw Error('内建 Prompt 与 Marker 不按普通条目复制。');
+  if (!copyable(original)) throw Error('内建 Prompt 与 Marker 不按普通条目复制。');
   const duplicate = { ...clone(original), identifier: newId, name: uniqueName(original.name || '未命名', next.prompts.map(p => p.name || ''), true) };
   next.prompts.splice(next.prompts.indexOf(original) + 1, 0, duplicate);
   const position = order.findIndex(p => p.identifier === id);
@@ -151,9 +156,11 @@ export function togglePrompt(raw: RawPreset, groupId: string | number, id: strin
 }
 
 export function detachPrompt(raw: RawPreset, groupId: string | number, id: string): RawPreset {
+  validatePreset(raw);
   const next = clone(raw);
-  if (!removable(prompt(next, id))) throw Error('内建条目保持原生保护，可通过开关关闭。');
+  if (!detachable(prompt(next, id))) throw Error('该条目不能移出当前发送顺序，可通过原生允许的开关关闭。');
   const g = group(next, groupId);
+  if (!g.order.some(e => e.identifier === id)) throw Error('条目不在当前发送顺序中。');
   g.order = g.order.filter(e => e.identifier !== id);
   return next;
 }
@@ -165,7 +172,7 @@ export function attachPrompt(raw: RawPreset, groupId: string | number, id: strin
 }
 export function deletePrompt(raw: RawPreset, id: string, groupId: string | number): RawPreset {
   const next = clone(raw);
-  if (!removable(prompt(next, id))) throw Error('酒馆内建条目不能永久删除。');
+  if (!deletable(prompt(next, id))) throw Error('内建身份与 Marker 受咩咩安全策略保护，不能永久删除。');
   if (group(next, groupId).order.some(e => e.identifier === id)) throw Error('请先解锁条目，再确认删除。');
   next.prompts = next.prompts.filter(p => p.identifier !== id);
   // Delete references in every group, retaining all unrelated entries and group metadata.
