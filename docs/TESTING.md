@@ -1,4 +1,4 @@
-# Testing · 0.2.1
+# Testing · 0.2.2
 
 自动检查、源码核验和真实宿主验收分别记录。2026-10-04 已完成 ST 1.18.0 + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 的 Foundation 基础实机验收，见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19、物理手机及其余深度验收仍待执行。该实机记录对应此前 Foundation 交付包。Maintainer 已确认统一保存与 Presentation 内容通过 Review，升版本前基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；0.2.0 为此内容的阶段 Pre-release，不据此新增完整宿主或移动端通过结论。
 
@@ -204,7 +204,7 @@ Runtime gate：严格类型、Node、浏览器功能/响应式、UI/保存性能
 
 Managed Package gate：`npm run test:package-v1` 读取完整生产交付包，使用 Hub commit `928362c1eb224afe780801060c6d867e01cf5013` 的原始 validator/discovery/install/update 源码及原始上游测试（仅测试夹具，带 GPL 和 SHA-256 provenance）。覆盖正式 Manifest、纯三段版本/Tag、稳定 ID/repository、首行身份、空 data、确切 Helper 字段、ASCII Asset 名、16 MiB/64 KiB 限制、双 hash、GitHub digest、禁止 URL/未知 metadata 字段、短 launcher 和安全相对 icon；在合成全局脚本树验证安装、当前版本检查、后续版本原地更新保留实例和设置。不会执行下载脚本，也不写真实 Helper。
 
-构建首先校验 package/manifest 身份、产品 author 与官方 repository 一致性，Runtime 与 Product Identity 直接读取 manifest；构建后自动执行 11 项生产产物契约。Package 专项总 67 项（11 项生产产物 + 56 项原始 Hub 测试）；Node 总 162 项，包含原 157 项和 5 项发布身份/来源检查。
+构建首先校验 package/manifest 身份、产品 author 与官方 repository 一致性，Runtime 与 Product Identity 直接读取 manifest；构建后自动执行 11 项生产产物契约。Package 专项总 67 项（11 项生产产物 + 56 项原始 Hub 测试）；已发布 0.2.1 基线的 Node 总 162 项，包含原 157 项和 5 项发布身份/来源检查。当前本地功能候选结果见下文。
 
 每次正式发布另需：独立目录 npm ci/build，四份机器资产逐字相同；Tag/Release/Repository 一致，非 Draft；上传后确认 Asset API digest 与原始 bytes 一致；使用同一 Hub discovery 读取实际已发布 Release。只有完成这些检查才能报告“发布包符合 Package v1”。实际浏览器在线安装/更新、CORS/安全下载服务及宿主持久保存仍由 Owner 单独验收，不算本轮自动通过。
 
@@ -225,3 +225,72 @@ npm run test:presentation
 Polisher 1.2.1 parity：两者均有正式 manifest、带 repository 的首行 identity、标准 update metadata 和 SHA256SUMS。已核对 Polisher v1.2.1 实际四份 Release Assets 及 GitHub digest；身份、Script ID 和 PNG 各自独立。Preset Manager 继续 TypeScript，不复制 Polisher 产品身份。
 
 依赖审计：当前 tracked 源码和文档、固定 Hub package consumer、Polisher 正式构建中未发现 component-update-manifest 的外部正式消费者；旧清单仅用于本项目历史构建/发布记录。0.2.1 不再生成/发布它，历史记录及 v0.2.0 Release 保留。
+
+
+## Per-Chat Preset Binding · Phase A 本地 Candidate
+
+基线 `e9f9dfd9c8d8ce5029f79356db506d791a8b1fab`，版本保持 0.2.1；未 Commit / Push / 发布。完整状态及边界见 [Binding](PER-CHAT-PRESET-BINDING.md)，当前回执见 `validation-results.json` 的 `perChatBindingCandidate`。已发布基线的 162 项安全/功能 Node 回归保留，新测覆盖最小 namespace、native persistence+target readback、默认/override/UUID/tombstone、Native manual 与 auto-select 相同输入、队列 latest-wins、原生晚完成、持续争夺与有限等待、单份 dirty、两版普通生成 Gate。
+
+`st-binding-contracts.json` 保存两版 22 个固定原生方法/函数；上下文与 HTTP 是模拟依赖。生成执行范围是原生前段、EventEmitter、stopGeneration 和请求边界，完整 Generate/group wrapper 用于信号控制流审阅；没有执行真实 ST 服务、完整提示词组装、群成员循环或 SSE。错误状态不得发送正常生成；ready 请求正常。该证据不覆盖 Helper/direct quiet 或扩展绕过原生 Generate 的请求。
+
+`npm run test:binding-browser` 需先 build。它在 `preview.html?binding=1` 上执行真实 Core/Controller/UI，配合合成聊天存储、固定 Hub Runtime/Surface/Shortcut 与合成 Launcher。检查默认 SVG/键盘、inherit/override/missing、footer dirty、重读、关闭时继续绑定、Hub disposed/ready 单实例与草稿、320/390px/桌面/短窗口、44px 和页面错误。回执和截图位于忽略目录 `evidence/perchat-phase-a/`，不包含真实数据。现有 browser/responsive/drag/presentation/品牌回归另行全部运行。
+
+独立目录用锁文件离线安装后重新构建，比较 Extension JSON、Package v1 metadata、manifest、SHA256SUMS、production JS、preview JS 的字节。Candidate manifest 只是本地生成文件，不代表线上 v0.2.1 下载内容已更新。
+
+新功能 real-host 状态：**not run**。此前 Foundation 与发布记录保持历史范围，不能泛化为 Per-Chat Binding 实机通过。
+
+### 当前 0.2.1 基础上的重验证（2026-10-06）
+
+`npm ci`、`npm run check`、`npm test`、`npm run build` 全部通过。Node 261/261（已发布基线 162 + 绑定新增 99）；Package v1 专项 67/67；绑定浏览器 25/25；原有功能 19/19、响应式 9/9、UI/拖拽 23/23、Presentation 49/49、保存比较正确性 8/8 全部通过，页面错误为 0。独立目录 clean build 的四份 Package 机器资产及 production/preview JS 全部逐字相同。
+
+本地 Extension JSON SHA-256：`337c878ec83370ffde15ea32906175e78d011890f8f698c9f6a5df6a1c73ad17`。正式发布的 0.2.1 资产未变；该候选只是供 Owner Review 的本地文件，同版本号不代表线上已发布该功能。新的对话绑定实机验收尚未执行。
+
+Owner 布局跟进：预设选择和默认 SVG 按钮共用外框，保持独立键盘控制；导出完整预设和复制当前预设移入更多菜单，原有功能检查实际执行两项操作。增加共框/Tab/菜单入口断言，并在桌面、390px、320px、短窗口检查默认按钮始终位于外框内；低高度检查逐项确认全部六个普通菜单操作可滚动触达。业务逻辑未改变。
+
+选择框展开跟进：原生 select 恢复完整外框宽度，默认按钮保留在右侧独立命中区，选择文字为按钮/箭头预留空间；焦点框高亮整个区域，原生 options 恢复深色背景。新增全宽锚点/统一焦点断言，在全部四个视口检查默认按钮中心和箭头区域分别命中按钮/选择框。此明确安排的共框覆盖之外，其他控件仍执行不重叠检查。
+
+默认操作区外观跟进：保留完整宽度原生选择框，右端设默认按钮使用常驻淡紫色块，平直左边缘/分隔线与贴合外框的右圆角；hover 更亮、按压变暗，中心点/aria-pressed 的默认状态语义不变。仅 CSS 外观改变。重新执行 check/build（261 Node + 11 Package 产物）、绑定浏览器 24、功能 19、响应式 9；独立重建六产物一致。UI 性能、保存基准和 Presentation 专项保留本次候选前序通过记录，没有因这次色块样式重复运行。
+
+预设确认后焦点跟进：共享外框高亮只在键盘导航时显示，鼠标/触屏操作和 change 确认清除高亮标记，保留实际 DOM focus 和 Tab 可达性。新增确认预设后 outline 消失断言与键盘聚焦提示断言。25 项绑定、19 功能、9 响应式、49 Presentation、261 Node 和 build/11 Package 产物检查通过；独立构建逐字一致。球在上层可见才避让、面板在上层则清空的既有层级代码与已发布基线逐字相同，未调整 z-index。
+
+
+## 2026-10-07 local Candidate: preset parameters and automatic regex display
+
+This is an unpublished 0.2.1 Candidate, not an update to the public release. The centered gear/title row is the first child of the Prompt scroll area and never participates in prompt_order or dragging. The duplicate recovery/follow/reconcile menu entries are removed; selecting the current default preset restores inheritance, and the existing reload button also explicitly reconciles the current chat binding.
+
+The parameter dialog patches native root field names only. Existing values, unknown fields, extensions, every order group and Prompt remain intact. For absent fields, Owner defaults are context 2000000, response 30000, temperature 1, frequency/presence penalties 0, top_p 0.9, streaming false, show_thoughts false and reasoning_effort auto. Merely opening/cancelling does not write or stage defaults. Confirming the parameter dialog stages them; the global Save confirms native persistence. Existing zero/false values and unfamiliar reasoning values are retained. The model and native context-unlock settings still govern usable lengths; the Candidate does not secretly change that unlock flag.
+
+Automatic binding selections temporarily defer only the exact translated native authorized-regex reload notice for the expected preset and native reload callback. After confirmed selection, visible messages are redrawn through updateMessageBlock using copies, without clearing/reloading/saving chat content. A changed chat/session, active message editor, unsupported host, display error, timeout or disposal restores the native notice. Manual selection, first regex permissions and unrelated notifications are unchanged. Pinned 1.18.0/1.19.0 native functions run with mocked dependencies; this is not real-host validation.
+
+Initial parameter Candidate verification: check PASS; 294 Node tests; build PASS including 11 Package checks; 19 functional browser checks; 9 responsive checks; 25 binding browser checks; 22 parameter browser checks; 49 Presentation checks; zero page errors. Independent clean output build reused the locked dependencies and reproduced all six delivery assets byte-for-byte. No fresh npm ci is claimed for this follow-up. Further Owner testing of native settings and regex display is required.
+
+
+## 2026-10-07 parameter dialog presentation follow-up
+
+The settings dialog keeps the existing absent-only defaults, local draft and global Save semantics. Lengths, sampling and output/reasoning are grouped; explicit WebKit/Firefox tracks and thumbs prevent the invisible-track appearance under host range resets. Streaming/show-thoughts use animated switches with left labels and right tracks. Reasoning uses a local combobox/listbox with selected markers, keyboard navigation, Escape and focus handling; it contains no native select. The header close is removed and bottom Cancel/Save share the full width equally. Motion reduction and shortened viewports are covered.
+
+Check PASS; 294 Node tests; build PASS including 11 Package checks; functional 19, responsive 9, binding 25, parameter 32 and Presentation 49 browser checks PASS, with no page errors. Parameter checks run at 1280px and 390px and exercise host range CSS reset, keyboard changes, switch states, dialog cancellation, staged/native persistence and default preservation. All six delivery assets were reproduced in an independent clean output build with locked dependencies reused. These are offline Chromium checks, not native Safari/SillyTavern acceptance. No version bump, commit, push or release.
+
+
+## 2026-10-07 parameter entry/dialog morph Candidate
+
+Presentation-only transition: an opaque shell expands from the visible settings entry into the dialog in 360ms. The gear/title moves into the header while the real form fades in without text scaling. Cancel and successful dialog Save retract in 280ms; validation failure keeps the dialog open. The controller's staging, missing defaults and global native Save logic are unchanged. Focus stays in the manager while the form is inert and returns to the entry after close. Interrupt reversal uses current geometry. Resize or Presentation handoff cancels owned animations and settles at the current endpoint. Reduced motion skips or cancels motion; off-screen/detached origins use a fade without scrolling the list; disposal removes ghosts and cancels animations.
+
+Check, 294 Node tests and build (including 11 Package checks) PASS. Offline browser checks: functional 19, responsive 9, binding 25, parameter 32, parameter motion 26, Presentation 49; no page errors. The motion suite covers both 1280px and 390px, open/cancel/save, validation failure, focus/Escape, interrupted/repeated cycles, resize, Presentation handoff, changing reduced-motion preference, off-screen/detached origins, missing animation API and disposal. A GIF uses paused production-animation screenshots. All six assets match an independent clean output build with locked dependencies reused. This is not real Safari/SillyTavern acceptance. Version remains 0.2.1; no commit, push or release.
+
+
+## 2026-10-07 Owner follow-up: shell-only settings morph
+
+The transition now resizes only the opaque shell. The moving gear/title clone and its styles are removed. The real dialog heading stays at its normal position and font size and fades with the form; it never transforms into the entry title. The entry returns after the closing shell finishes. Controller, defaults, staging, native writes and all previous animation safeguards are unchanged. Desktop and 390px regressions additionally assert no cloned title and constant heading geometry/font throughout expansion.
+
+Check, 294 Node tests, build including 11 Package checks PASS. Offline browser results: functional 19, responsive 9, binding 25, parameter 32, motion 28, Presentation 49, zero page errors. All six delivery assets reproduce byte-for-byte in a separate clean output build using the existing locked dependencies. This remains an unpublished 0.2.1 Candidate, not real Safari/SillyTavern acceptance. No commit, push, release or version change.
+
+## 0.2.2 release validation（2026-10-07）
+
+历史 Candidate 记录保留其测试范围和版本，本节与 `validation-results.json.release022` 为最终 0.2.2 回执。锁文件全新离线 `npm ci`、check、294/294 Node、build 全部通过。Package 专项 69/69（13 个生产产物检查 + 56 个未改动 Hub 上游测试）；额外通过发布时当前 Hub `9c81bbcbf9b87b5118b92415a34c57783592bccc` 的 13/13 生产包检查。
+
+功能 19、响应式 9、绑定 25、参数 32、参数外框动画 28、Presentation 49，共 162 个离线浏览器检查通过，页面错误为 0。UI/拖拽 23、保存对象比较正确性 8 通过；耗时为本机诊断，不作为真实宿主总延迟保证。独立目录重新安装锁定依赖并 build，四份发布资产和 production/preview JS 共六个文件逐字一致。
+
+新增两项完整官方 0.2.1→0.2.2 更新测试，固定旧资产公开摘要；检查启用与停用实例、实例 ID、data、文件夹及顺序、其他脚本、显示版本、内嵌 Runtime Manifest 和保存回读。宿主树/持久保存及运行版本接口为模拟依赖，不代表真实 Helper 安装已通过。发布后 `tools/verify-public-package.cjs` 以当前 Hub Package 原始源码和真实公开 GitHub API 验证最新版本 installable、四份 Asset digest、本地字节、隔离 fresh install 和官方 0.2.1 更新；不执行下载脚本、不写真实宿主、不修改 Hub/Registry。
+
+绑定/生成安全、参数和正则的 native 契约固定两版 ST 源码；普通请求边界及相关群聊控制流配合模拟依赖验证。完整 ST Generate/群成员循环/SSE、真实 Safari/CORS/Helper 持久保存、ST 1.19 全宿主和物理键盘仍须独立验收，不能把自动测试改称实机结果。Owner 认可见 REAL_HOST_VALIDATION.md；Issue #1 不关闭。

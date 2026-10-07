@@ -8,7 +8,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前阶段版本：`0.2.1`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、Prompt 拖动排序及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
+- 当前阶段版本：`0.2.2`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、对话级预设绑定、生成安全检查、预设参数设置及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。固定源码研究与模拟测试以 `1.18.0`、`1.19.0` 为基线；本次基础实机通过的组合为 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**。ST 1.19、其他补丁版本和物理手机仍待验证，不能宣称整个版本系列已通过实测。
@@ -21,9 +21,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.2.1.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.1/MieMie-Preset-Manager-Extension-0.2.1.json)
+[MieMie-Preset-Manager-Extension-0.2.2.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.2/MieMie-Preset-Manager-Extension-0.2.2.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.1) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.1.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.2) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.2.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，重叠关键操作或内部 Dialog 时暂时避让。
@@ -36,7 +36,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 日常操作
 
-顶部显示实际当前预设。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供新建、重命名、删除和操作前备份导出。新建沿用当前生成／连接设置与内建条目，清除自定义条目，来源预设不变。
+顶部显示实际当前预设。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供完整导出、复制当前预设、新建、重命名和删除。新建沿用当前生成／连接设置与内建条目，清除自定义条目，来源预设不变。
 
 当前版本采用统一保存：Prompt 编辑窗口的“保存”只暂存本次编辑，取消丢弃本次编辑；条目排序、开关、复制、新增、解锁／挂接与删除先留在本地。分类右侧的软盘 SVG 保存图标（“保存修改”）在无改动时变暗，有改动时可用；点击后才统一同步酒馆并回读确认。“重新读取实际状态”在有未保存内容时确认放弃，读取成功后恢复实际数据；读取失败保留修改。关闭预设管理时也会提示未保存内容，选“是”丢弃，选“否”继续编辑。有未保存内容时须先保存或重新读取，再切换、导入、复制或导出预设。新增条目位于分类左侧。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。当前对 Marker 和保留 identifier 的保护比原生规则更严格，见兼容文档的已知限制。
 
@@ -44,11 +44,19 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。真实移动浏览器及软键盘仍待验证。
 
+## 对话绑定与预设参数
+
+当前对话未独立选择预设时跟随全局默认；在管理器选择其他预设时，仅为当前单人或群聊保存独立绑定。选择默认预设可恢复跟随；选择框右侧圆点按钮将当前预设设为全局默认，并保留其他对话的独立选择。绑定使用稳定 ID，重命名保留 ID；删除后不会把旧绑定自动接到同名新预设。找不到目标时明确显示缺失并回退可用默认；无可用预设或配置损坏时停止自动应用及受保护的原生生成。未保存修改仍属于原预设，切换聊天不会搬移草稿；保存或放弃后只协调最新对话。原生设置的外部偏离会重新协调，持续争夺则停止重试。
+
+列表顶部的“预设参数设置”可编辑上下文/回复长度、备选回复数量、温度、频率/存在惩罚、Top P、流式、请求思维链和推理强度。它随列表滚动，不参加 Prompt 排序。设置窗口“保存”先暂存，分类右侧软盘再统一写入；取消不写入。仅缺失字段在明确确认时补默认，已有 0、false 和未知枚举保持原值；具体默认和原生限制见 [Compatibility](docs/COMPATIBILITY.md)。
+
+自动对话切换遇到已授权的预设内嵌正则时，尝试用原生消息显示接口更新可见内容，减少重复重载提示。首次授权、手动切换和其他通知不变；无法安全刷新时保留原生提示，不改写聊天内容。原生 Chat Completion 生成在预设应用中、未保存或尚未安全确认时被阻止；绕过原生 Generate 的扩展直接请求不在该保护范围。详见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
+
 ## 数据与隐私
 
 读取完整原生 Preset，修改目标字段后保存，不从简化模型重建 JSON。未知字段、生成／模型配置及所有 `prompt_order` 分组保留。写入通过原生保存接口，随后从磁盘读取接口核对；外部切换、同名文件变化或未保存的原生设置可能阻止操作，并明确报告保存与应用的实际结果。
 
-导出包含**完整原始设置**，可能含 `proxy_password`、`custom_include_headers`、连接地址或其他敏感字段；不会自动脱敏。导出文件和操作前备份应作为私人数据保管，分享前另行检查。内存备份在停用脚本、关闭或刷新酒馆页面后清除。原生服务端没有跨请求事务，不能保证跨浏览器并发写入的绝对原子性。
+导出包含**完整原始设置**，可能含 `proxy_password`、`custom_include_headers`、连接地址或其他敏感字段；不会自动脱敏。导出文件和个人备份应作为私人数据保管，分享前另行检查。内存备份在停用脚本、关闭或刷新酒馆页面后清除。原生服务端没有跨请求事务，不能保证跨浏览器并发写入的绝对原子性。
 
 分类和编辑在浏览器本地处理。运行时仅请求当前 ST 宿主的原生读取／保存接口，不向 Registry、Hub Server、第三方分析、遥测或 AI 服务发送 Prompt 正文。Hub 只接收清单与面板生命周期，不接收完整预设、控制器或草稿。这不构成对其他同源脚本的安全隔离。
 
@@ -69,9 +77,9 @@ npm run test:browser
 
 `manifest.json` 是发布与 Runtime Display Identity 的共同来源；Runtime 顶层图标仍使用内嵌正式 PNG，Launcher 短文本 fallback 为“预设”。Manifest author `SheepSheep` 表示 Founder / Project Initiator / official product author；`SheepSheepLab` 是官方 GitHub 开发、维护与发布命名空间。louisSSR 保留真实 Contributor 身份、贡献版权与提交记录。标准元数据只记录 Asset 名称、原始字节大小与 hash，下载来源由 GitHub Release API 决定。SHA256SUMS 是辅助检查，不能替代 GitHub digest。
 
-**旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装 0.2.1；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
+**旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装 0.2.2；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
 
-`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。发布说明见 [0.2.1](docs/RELEASE-0.2.1.md)。
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。发布说明见 [0.2.2](docs/RELEASE-0.2.2.md)；[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
 
 | 文件 | 职责 |
 | --- | --- |

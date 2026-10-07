@@ -1,4 +1,4 @@
-# SillyTavern Compatibility Notes · 0.2.1
+# SillyTavern Compatibility Notes · 0.2.2
 
 目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
 
@@ -122,3 +122,27 @@ Manifest 短文本 `预设` 和正式 PNG presentation.icon 不变。入口、�
 Hub Runtime API v1 与 GitHub Extension Package v1 分别验证。0.2.1 首次提供标准机器包：正式 Manifest 同源、完整 repository Build Identity、标准 metadata、原始 JSON 与 content SHA-256、发布 Asset digest。Runtime 正式 PNG/短文本 fallback、Standalone/Hub/Shortcut 和所有预设业务保持既有行为。测试直接锁定 Hub `928362c1eb224afe780801060c6d867e01cf5013` 的实际 Package 源码，不改 Hub，也不将它打入生产 bundle。
 
 自动安装/更新契约使用合成脚本树；真实 Hub 在线安装/CORS/持久保存和更新尚待 Owner 测试。历史 Foundation 实机结论仅适用于其记录的宿主组合与交付包；不据此声称 0.2.1 已实机通过、ST 1.19 或整个 Phase 1 已完成。旧手工 0.2.0 缺少 repository 身份，不在实际 Hub legacy whitelist 中；不能安全识别自动升级。先备份停用、手动移除旧实例，再安装标准 0.2.1，详见 README。
+
+
+## Per-Chat Preset Binding · Phase A（0.2.2）
+
+新增协调器只针对固定官方 1.18.0 / 1.19.0 原生能力提供源码契约证据。原生手动切换和 autoSelectPreset 在有 Chat 时都恢复 Resolved Target，不修改 ST；1.18 void / 1.19 Promise 完成追踪沿用 Adapter。全局存储用 extensionSettings、override 用 chatMetadata，字面量 `miemie.preset-manager`，各自 native save 后精确回读，不写 Raw Preset 或 Hub。
+
+Generation Gate 使用 AFTER_COMMANDS 与 CHAT_COMPLETION_SETTINGS_READY，加原生 stopGeneration/AbortSignal；不是 UI disabled、listener throw 或固定 delay。单份 dirty 暂停自动应用/生成；连续争夺有界失败。目录仍存在但不安全的默认不会被视作删除。源文件/hash、测试执行和未模拟部分见 [Binding](PER-CHAT-PRESET-BINDING.md)、[Testing](TESTING.md) 和 [Provenance](source-provenance.json)。
+
+本功能完整 ST 1.18 / 1.19、Helper、Hub 与物理手机实机矩阵尚未完成；不能声称整个 1.18.x / 1.19.x 系列通过。既有 Foundation 实机记录和线上 0.2.1 Release 未改变。普通原生 Chat Completion Generate 之外的直接请求不在 Gate 范围；全局 settings 无多浏览器 CAS。Owner 已认可本次功能收口；发行检查见 RELEASE-0.2.2.md。
+
+
+### Preset parameters / regex display (0.2.2)
+
+Preset generation controls use native saved-preset names, including temperature/frequency_penalty/presence_penalty/top_p (not live UI aliases), openai_max_context/openai_max_tokens/n/stream_openai/show_thoughts/reasoning_effort. Root patches, defaults only for absent fields after dialog confirmation, and native readback are covered by pinned 1.18.0/1.19.0 contract tests with mocked dependencies. The native model and context-unlock rules are preserved.
+
+Quiet regex display applies only during automatic per-chat selection. Native first-use permission remains mandatory; manual changes and unrelated notices remain native. If the exact notice/callback cannot be matched or the visible chat cannot safely be redrawn, the original notice is retained. This has automatic contract coverage, with remaining full real-host coverage recorded separately.
+
+## 0.2.2 验证边界
+
+Owner 已认可本地新功能和外观；这与此前有版本、环境和哈希的 Foundation 实机记录分别记录。两版原生固定方法在模拟依赖下验证默认/override、持久化回读、晚到应用、A→B→C、dirty 隔离及生成阻止/允许；完整 Generate、群聊成员循环、实际 SSE、第三方绕过原生 Generate 的直接请求不属于这组证据。ST 1.19 全宿主及物理手机/软键盘仍待验，Issue #1 保持 Open。
+
+参数白名单：`openai_max_context`、`openai_max_tokens`、`n`、`temperature`、`frequency_penalty`、`presence_penalty`、`top_p`、`stream_openai`、`show_thoughts`、`reasoning_effort`。缺失字段明确确认后默认值为 2000000、30000、温度 1、两项惩罚 0、Top P 0.9、两个开关 false、推理 auto；`n` 无额外缺失默认。打开/取消不暂存或写入；Dialog 保存只暂存，统一保存才通过原生接口写入并回读。未知字段、已存在 0/false/未知推理值、扩展、所有 Prompt/order 分组保留。实际模型和原生 context unlock 仍限制可用长度，不自动更改解锁标志。
+
+Runtime API v1 与 Managed Package v1 分开验证。离线 Package 契约使用完整官方 0.2.1 资产（公开 digest `071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0`）验证启用/停用实例到 0.2.2 的更新，检查名称、内嵌 Runtime Manifest、树/持久化回读、data、文件夹及其他脚本保留。公开 discovery 另用发布时当前 Hub 官方源码与真实公开 GitHub API。脚本树和宿主持久化接口仍为隔离合成环境，不将其称为真实 Tavern Helper 安装/CORS/持久化实机通过。

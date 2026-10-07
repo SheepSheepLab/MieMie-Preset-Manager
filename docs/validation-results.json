@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-05",
-  "version": "0.2.1",
+  "date": "2026-10-07",
+  "version": "0.2.2",
   "environment": {
     "node": "v24.13.1",
     "typescript": "6.0.3",
@@ -10,18 +10,21 @@
     "browser": "Chromium 151.0.7922.34"
   },
   "commands": {
-    "npm ci": "passed from lockfile; independent clean npm ci passed",
-    "npm run check": "passed",
-    "npm test": "passed",
-    "npm run build": "passed",
-    "npm run test:browser": "passed",
-    "npm run test:ui-performance": "passed",
-    "npm run test:save-performance": "passed",
-    "npm run test:presentation": "passed",
-    "npm run test:package-v1": "passed: 11 production artifact tests + 56 unmodified upstream Hub tests"
+    "npm ci": "PASS",
+    "npm run check": "PASS",
+    "npm test": "PASS",
+    "npm run build": "PASS",
+    "npm run test:browser": "PASS",
+    "npm run test:ui-performance": "PASS",
+    "npm run test:save-performance": "PASS",
+    "npm run test:presentation": "PASS",
+    "npm run test:package-v1": "PASS: 13 production artifact checks + 56 unmodified pinned Hub tests",
+    "npm run test:binding-browser": "PASS",
+    "npm run test:parameters-browser": "PASS",
+    "npm run test:parameter-motion": "PASS"
   },
   "nodeTests": {
-    "passed": 162,
+    "passed": 294,
     "failed": 0,
     "nativeSourceSnippetTestsWithMockedDependencies": 70,
     "hubSourceContractTestsWithMockedDependencies": 6,
@@ -32,7 +35,10 @@
     "priorImmediateSaveControllerAssertions": "updated to explicit save/discard semantics; data integrity assertions retained",
     "presentationFollowupTestsPassed": 4,
     "functionalBaselinePassed": 153,
-    "packageIdentityTestsPassed": 5
+    "packageIdentityTestsPassed": 5,
+    "published021BaselinePassed": 162,
+    "newPerChatBindingTestsPassed": 99,
+    "newParameterAndRegexTestsPassed": 33
   },
   "browserChecks": {
     "kind": "offline-preview",
@@ -46,11 +52,12 @@
   },
   "independentDirectoryBuild": {
     "freshNpmCi": true,
+    "offlineLockedInstall": true,
     "passed": true,
-    "nodeTestsPassed": 162,
-    "productionPackageTestsPassed": 11,
+    "nodeTestsPassed": 294,
+    "productionPackageTestsPassed": 13,
     "byteEqual": [
-      "MieMie-Preset-Manager-Extension-0.2.1.json",
+      "MieMie-Preset-Manager-Extension-0.2.2.json",
       "MieMie-Extension-update.json",
       "manifest.json",
       "SHA256SUMS",
@@ -59,8 +66,8 @@
     ]
   },
   "artifact": {
-    "path": "delivery/MieMie-Preset-Manager-Extension-0.2.1.json",
-    "sha256": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0"
+    "path": "delivery/MieMie-Preset-Manager-Extension-0.2.2.json",
+    "sha256": "7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58"
   },
   "realHost": {
     "date": "2026-10-04",
@@ -130,14 +137,14 @@
     ],
     "record": "docs/REAL_HOST_VALIDATION.md"
   },
-  "acceptance": "0.2.1-package-v1-automated-gate-passed; real Hub managed install/update pending Owner; phase-1-incomplete; issue-1-open",
+  "acceptance": "A. 0.2.2 local release gates PASS; Owner approved release; live public verification required after publication",
   "artifactsSha256": {
-    "MieMie-Preset-Manager-Extension-0.2.1.json": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0",
-    "MieMie-Extension-update.json": "743e4d40994410a93f48b0f8fc447bfab9f60a825049e6e1c9b01e2927d959c4",
-    "manifest.json": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb",
-    "SHA256SUMS": "e852c4bbea88559c2347e9b5fe657b3d507dd9b758a0a2b9691bf6f4bd525764",
-    "preset-manager.js": "71cd3aac2f1c2a6a5be25a1f40360c57c66dd84e16dbbdf2a8cb1668366c491f",
-    "preview.js": "91befeb217af83e4b4df013382ce759b922b97dc65dde88fba5813a40d4f564e"
+    "MieMie-Preset-Manager-Extension-0.2.2.json": "7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58",
+    "MieMie-Extension-update.json": "19f2a6a921d4c5d23d660b881f04c06b7816b7b2b5fd328d97413b0cb5f877a1",
+    "manifest.json": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70",
+    "SHA256SUMS": "c413a3f82c4526c7a3bee1003a1a60ea0f04744490d944019d9efc9c33b07d08",
+    "preset-manager.js": "5419b54246182362a42f7f2a790f4057ba942ab1e20945afaeb7bfb080ccb7f7",
+    "preview.js": "eca12fea211a3239c3a17afe1d63b83859d278738cd2e7f5d6c5af2ecdced14c"
   },
   "regressions": {
     "baseHead": "8fb308941753acc5fa90975f4c37f8e54ab1508f",
@@ -248,8 +255,8 @@
       "prompts": 500,
       "jsonBytes": 4531313,
       "correctnessChecksPassed": 8,
-      "previousComparisonMedianMs": 4.5795420000000036,
-      "newComparisonMedianMs": 1.295915999999977,
+      "previousComparisonMedianMs": 4.210374999999999,
+      "newComparisonMedianMs": 1.2484579999999994,
       "totalSaveLatencyMeasured": false,
       "record": "local evidence/save-performance-benchmark.json",
       "boundaries": "synthetic comparison CPU only; local session has no real-host acceptance"
@@ -635,17 +642,18 @@
     "sha256": "b735bb507e7315389afe0197c7c6b56f614e0cdfd87e13a2b5b8b32a0d97c0ca"
   },
   "release": {
-    "version": "0.2.1",
-    "tag": "v0.2.1",
+    "version": "0.2.2",
+    "tag": "v0.2.2",
     "prerelease": true,
+    "draft": false,
     "repository": "SheepSheepLab/MieMie-Preset-Manager",
-    "baseHead": "225f38735dca99111c98afcf96ea9554ae11ae20",
-    "businessLogicChanged": false,
-    "perChatFeaturesIncluded": false,
+    "baseHead": "e9f9dfd9c8d8ce5029f79356db506d791a8b1fab",
+    "perChatFeaturesIncluded": true,
     "hubRepositoryChanged": false,
+    "registryRepositoryChanged": false,
     "issue1": "open",
     "realHostConclusionExpanded": false,
-    "note": "Uploaded asset digests and public discovery are verified after publishing and reported separately; no claim of Owner online acceptance"
+    "publicVerification": "post-publication final Maintainer receipt; tools/verify-public-package.cjs"
   },
   "managedPackage": {
     "format": "MieMie GitHub Extension Package v1",
@@ -653,22 +661,700 @@
     "manifestSourceOfTruth": "manifest.json; Runtime overrides only top-level icon with embedded official PNG",
     "stableScriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
     "metadataSize": 1160,
-    "scriptSize": 3032956,
-    "contentSha256": "6cf03fc28c3c09af3cdd261d551de7bfa9f18269605a18c1d8ef87164614aa54",
+    "scriptSize": 3122686,
+    "contentSha256": "8554806ae686992a77fdf63154f06308fa0241025da443889341eab3df971f3a",
     "nodeIdentityTests": 5,
-    "productionArtifactTests": 11,
+    "productionArtifactTests": 13,
     "unmodifiedUpstreamTests": 56,
-    "testsTotal": 72,
+    "testsTotal": 74,
     "validatorDiscoveryInstallUpdate": "passed with original pinned code; synthetic HTTP and script tree; no downloaded content execution",
-    "futureUpdate": "synthetic 0.2.2 package preserves instance ID, data, enabled state and unrelated script",
-    "manual020Migration": "not identified: repository absent; no applicable legacy whitelist; back up, disable and manually remove old instance before installing 0.2.1",
+    "futureUpdate": "synthetic higher version 0.2.3 preserves instance/settings; official 0.2.1 -> 0.2.2 tested separately",
+    "manual020Migration": "not identified: repository absent; back up, disable and manually remove old instance before installing current 0.2.2",
     "realHostManagedInstallUpdate": "not-run",
     "componentManifestAudit": "only historical own build/docs found; no consumers in checked project and pinned Hub/Polisher source; retired from current build, old release unchanged",
     "polisherParity": "manifest, repository Build Identity, metadata and SHA256SUMS match packaging role; product identities independent; v1.2.1 real release assets/digests read",
     "privacy": "public data empty; no user prompt/chat/credentials or local absolute paths; test modules absent from production",
-    "frozenSource": "business, adapter, UI, drag, native/presentation files and official PNG byte-identical to base main",
+    "frozenSource": "approved Candidate TS source byte-identical during release work; only release version/metadata, tests and docs hardened",
     "productAuthor": "SheepSheep",
     "officialNamespace": "SheepSheepLab",
-    "productIdentityGate": "package.author = manifest.author = SheepSheep; package and manifest repositories match the official namespace; drift blocks build/test"
+    "productIdentityGate": "package.author = manifest.author = SheepSheep; package and manifest repositories match the official namespace; drift blocks build/test",
+    "publicDiscovery": "requires live post-publication verification with current Hub source; no real Helper persistence claim",
+    "version": "0.2.2",
+    "productionArtifactTestsPassed": 13,
+    "sourceContractTestsPassed": 56,
+    "currentHubSourceTestsPassed": 13,
+    "official021Update": "PASS enabled/disabled; exact public old package; preserved instance/data/folder/order/other scripts; confirmed content/display/embedded runtime/readback",
+    "currentHubSourceCommit": "9c81bbcbf9b87b5118b92415a34c57783592bccc"
+  },
+  "published021Baseline": {
+    "version": "0.2.1",
+    "commands": {
+      "npm ci": "passed from lockfile; independent clean npm ci passed",
+      "npm run check": "passed",
+      "npm test": "passed",
+      "npm run build": "passed",
+      "npm run test:browser": "passed",
+      "npm run test:ui-performance": "passed",
+      "npm run test:save-performance": "passed",
+      "npm run test:presentation": "passed",
+      "npm run test:package-v1": "passed: 11 production artifact tests + 56 unmodified upstream Hub tests"
+    },
+    "nodeTests": {
+      "passed": 162,
+      "failed": 0,
+      "nativeSourceSnippetTestsWithMockedDependencies": 70,
+      "hubSourceContractTestsWithMockedDependencies": 6,
+      "previousTestsPassed": 97,
+      "newSavePerformanceRegressionTestsPassed": 24,
+      "localEditSessionTestsPassed": 23,
+      "nativeBatchSessionTestsPassed": 9,
+      "priorImmediateSaveControllerAssertions": "updated to explicit save/discard semantics; data integrity assertions retained",
+      "presentationFollowupTestsPassed": 4,
+      "functionalBaselinePassed": 153,
+      "packageIdentityTestsPassed": 5
+    },
+    "browserChecks": {
+      "kind": "offline-preview",
+      "passed": 19,
+      "pageErrors": 0
+    },
+    "responsiveChecks": {
+      "kind": "offline-preview-with-CDP-touch-and-simulated-visualViewport",
+      "passed": 9,
+      "pageErrors": 0
+    },
+    "independentDirectoryBuild": {
+      "freshNpmCi": true,
+      "passed": true,
+      "nodeTestsPassed": 162,
+      "productionPackageTestsPassed": 11,
+      "byteEqual": [
+        "MieMie-Preset-Manager-Extension-0.2.1.json",
+        "MieMie-Extension-update.json",
+        "manifest.json",
+        "SHA256SUMS",
+        "preset-manager.js",
+        "preview.js"
+      ]
+    },
+    "artifact": {
+      "path": "delivery/MieMie-Preset-Manager-Extension-0.2.1.json",
+      "sha256": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0"
+    },
+    "artifactsSha256": {
+      "MieMie-Preset-Manager-Extension-0.2.1.json": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0",
+      "MieMie-Extension-update.json": "743e4d40994410a93f48b0f8fc447bfab9f60a825049e6e1c9b01e2927d959c4",
+      "manifest.json": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb",
+      "SHA256SUMS": "e852c4bbea88559c2347e9b5fe657b3d507dd9b758a0a2b9691bf6f4bd525764",
+      "preset-manager.js": "71cd3aac2f1c2a6a5be25a1f40360c57c66dd84e16dbbdf2a8cb1668366c491f",
+      "preview.js": "91befeb217af83e4b4df013382ce759b922b97dc65dde88fba5813a40d4f564e"
+    },
+    "release": {
+      "version": "0.2.1",
+      "tag": "v0.2.1",
+      "prerelease": true,
+      "repository": "SheepSheepLab/MieMie-Preset-Manager",
+      "baseHead": "225f38735dca99111c98afcf96ea9554ae11ae20",
+      "businessLogicChanged": false,
+      "perChatFeaturesIncluded": false,
+      "hubRepositoryChanged": false,
+      "issue1": "open",
+      "realHostConclusionExpanded": false,
+      "note": "Uploaded asset digests and public discovery are verified after publishing and reported separately; no claim of Owner online acceptance"
+    },
+    "managedPackage": {
+      "format": "MieMie GitHub Extension Package v1",
+      "hubSourceCommit": "928362c1eb224afe780801060c6d867e01cf5013",
+      "manifestSourceOfTruth": "manifest.json; Runtime overrides only top-level icon with embedded official PNG",
+      "stableScriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
+      "metadataSize": 1160,
+      "scriptSize": 3032956,
+      "contentSha256": "6cf03fc28c3c09af3cdd261d551de7bfa9f18269605a18c1d8ef87164614aa54",
+      "nodeIdentityTests": 5,
+      "productionArtifactTests": 11,
+      "unmodifiedUpstreamTests": 56,
+      "testsTotal": 72,
+      "validatorDiscoveryInstallUpdate": "passed with original pinned code; synthetic HTTP and script tree; no downloaded content execution",
+      "futureUpdate": "synthetic 0.2.2 package preserves instance ID, data, enabled state and unrelated script",
+      "manual020Migration": "not identified: repository absent; no applicable legacy whitelist; back up, disable and manually remove old instance before installing 0.2.1",
+      "realHostManagedInstallUpdate": "not-run",
+      "componentManifestAudit": "only historical own build/docs found; no consumers in checked project and pinned Hub/Polisher source; retired from current build, old release unchanged",
+      "polisherParity": "manifest, repository Build Identity, metadata and SHA256SUMS match packaging role; product identities independent; v1.2.1 real release assets/digests read",
+      "privacy": "public data empty; no user prompt/chat/credentials or local absolute paths; test modules absent from production",
+      "frozenSource": "business, adapter, UI, drag, native/presentation files and official PNG byte-identical to base main",
+      "productAuthor": "SheepSheep",
+      "officialNamespace": "SheepSheepLab",
+      "productIdentityGate": "package.author = manifest.author = SheepSheep; package and manifest repositories match the official namespace; drift blocks build/test"
+    },
+    "head": "e9f9dfd9c8d8ce5029f79356db506d791a8b1fab",
+    "recordScope": "published baseline; original artifacts preserved"
+  },
+  "perChatBindingCandidate": {
+    "baseHead": "e9f9dfd9c8d8ce5029f79356db506d791a8b1fab",
+    "version": "0.2.1",
+    "unpublished": true,
+    "realHost": false,
+    "gate": "A. Per-Chat Preset Binding Phase A Candidate ready for Owner review",
+    "authority": "current Chat Resolved Target; native manual and auto-select deviations reconcile identically",
+    "namespace": "miemie.preset-manager",
+    "storage": {
+      "global": "extensionSettings",
+      "chat": "chatMetadata",
+      "readback": "exact global namespace plus exact captured chat target",
+      "rawPresetChangedByBinding": false,
+      "multiBrowserCAS": false
+    },
+    "sourceBaselines": {
+      "1.18.0": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "1.19.0": "7e8663cd9c184a550b37238218bdd32c6efc68e9"
+    },
+    "node": {
+      "passed": 261,
+      "failed": 0,
+      "existingBaselinePassed": 162,
+      "newBindingCorePassed": 21,
+      "newPinnedBindingLifecyclePassed": 76,
+      "newEntryCleanupPassed": 2,
+      "existingSafetyAssertionsRetained": true
+    },
+    "browserBinding": {
+      "passed": 25,
+      "pageErrors": 0,
+      "responsiveViewports": [
+        "600x840",
+        "390x844",
+        "320x640",
+        "600x360"
+      ],
+      "kind": "offline synthetic binding preview"
+    },
+    "existingBrowserFunctionalPassed": 19,
+    "existingResponsivePassed": 9,
+    "reorderPassed": 23,
+    "saveComparatorCorrectnessPassed": 8,
+    "presentationPassed": 49,
+    "cleanRebuild": {
+      "freshNpmCi": true,
+      "offlineInstall": true,
+      "nodeTestsPassed": 261,
+      "byteEqual": [
+        "MieMie-Preset-Manager-Extension-0.2.1.json",
+        "MieMie-Extension-update.json",
+        "manifest.json",
+        "SHA256SUMS",
+        "preset-manager.js",
+        "preview.js"
+      ],
+      "artifactsSha256": {
+        "MieMie-Preset-Manager-Extension-0.2.1.json": "337c878ec83370ffde15ea32906175e78d011890f8f698c9f6a5df6a1c73ad17",
+        "MieMie-Extension-update.json": "9cce1e1a4707f9fcf9cc95d337ae97fbc04bc6276f28176f4f1d020667148a3e",
+        "manifest.json": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb",
+        "SHA256SUMS": "2064b54377fc1f49afcba2250b6594c9bf045831f82a4565920afab880da56cd",
+        "preset-manager.js": "76be80743424895a129bdd99690168439232940202e68061589fee80c52bbdfd",
+        "preview.js": "07f335275c0a5323277f15d32996bd5599ac6b5e13ef97ccf40c3d6fe666d198"
+      },
+      "productionPackageTestsPassed": 11
+    },
+    "B1": "PASS",
+    "B2": "PASS",
+    "hubManifestValidateProvide": "PASS; unchanged production manifest and pinned Hub contracts",
+    "nativeDeviation": "PASS; same outcome for late auto-select and manual input",
+    "latestWinsRace": "PASS; started operation tracked, intermediate coalesced, latest confirmed",
+    "dirty": "PASS; original preset/revision retained, latest target only after resolve, external-change save refused",
+    "antiPingPong": "PASS; at most two applications per cycle and one recovery per confirmed authority epoch; explicit error on repeated contention; one non-renewable native-wait failure deadline",
+    "generationGate": {
+      "result": "PASS on fixed-source contracts with mocked dependencies",
+      "streamingAndNonStreaming": true,
+      "overlappingOrdinaryAttempts": "both canceled",
+      "executed": "native Generate prefix through AFTER_COMMANDS, EventEmitter, stopGeneration, request functions and sendOpenAIRequest",
+      "auditedNotFullyExecuted": "full Generate/group wrapper; prompt assembly, group member loop and server/SSE mocked",
+      "scope": "native ordinary Chat Completion Generate; extensions bypassing Generate/direct quiet requests excluded"
+    },
+    "lifecycle": "binding survives panel close, Hub disposed/ready and repeated-ready with one controller/panel; incomplete initialization cleans adapter listeners",
+    "knownLimitations": [
+      "single Dirty Session",
+      "native selector is not binding authority while Chat active",
+      "no multi-browser settings transaction",
+      "unobserved delete/recreate under identical native name cannot be identified",
+      "new feature real-host acceptance not run",
+      "Gate does not govern arbitrary direct requests bypassing native Generate"
+    ],
+    "evidenceDirectory": "evidence/perchat-phase-a/",
+    "screenshots": [
+      "binding-default-segment.png",
+      "binding-preset-full-frame.png",
+      "binding-preset-menu.png",
+      "binding-inherit.png",
+      "binding-no-chat-default.png",
+      "binding-selector-confirmed.png",
+      "binding-override.png",
+      "binding-set-default.png",
+      "binding-missing.png",
+      "binding-native-reconciled.png",
+      "binding-dirty-editor.png",
+      "binding-dirty-paused.png",
+      "binding-mobile-390.png",
+      "binding-mobile-320.png"
+    ],
+    "bindingDoc": "docs/PER-CHAT-PRESET-BINDING.md",
+    "sourceFreshnessNote": "build marks completion timestamp when webpack output is byte-identical; no generated bytes changed by timestamp update",
+    "forbiddenActionsPerformed": false,
+    "currentBaseValidation": "All listed checks rerun on published 0.2.1 source baseline on 2026-10-06",
+    "packageV1": {
+      "passed": 67,
+      "productionArtifactTests": 11,
+      "upstreamTests": 56,
+      "identityTestsInNodeSuite": 5,
+      "author": "SheepSheep",
+      "publicReleaseModified": false
+    },
+    "previewUrl": "http://127.0.0.1:8877/preview.html?binding=1",
+    "selectorPresentationFollowup": {
+      "default": "full-width native select beneath independently reachable default SVG; native popup anchored to whole frame; whole-frame focus outline; native dark option background restored",
+      "menu": [
+        "导出完整预设",
+        "复制当前预设"
+      ],
+      "businessLogicChanged": false,
+      "nodePassed": 261,
+      "browserFunctionalPassed": 19,
+      "responsivePassed": 9,
+      "bindingPassed": 25,
+      "uiPassed": 23,
+      "presentationPassed": 49,
+      "realHost": false,
+      "defaultSegment": "persistent tonal purple fill, straight left divider, rounded right edge flush with outer frame; hover and press feedback",
+      "latestStyleOnlyRerun": [
+        "npm run check",
+        "npm run build (261 Node + 11 production package tests)",
+        "npm run test:binding-browser (25)",
+        "npm run test:browser (19 + 9)",
+        "npm run test:presentation (49)",
+        "independent byte-identical build"
+      ],
+      "focus": "pointer selection including same value does not retain shared outline; confirmed selection clears outline; Tab/keyboard focus remains visible",
+      "orbClearance": "shared production source unchanged: only real visible foreground overlap permits clearance; panel-covered/hidden/detached orbs clear it"
+    }
+  },
+  "presetParametersCandidate": {
+    "date": "2026-10-07",
+    "version": "0.2.1",
+    "unpublished": true,
+    "realHost": false,
+    "check": "PASS",
+    "node": {
+      "passed": 294,
+      "failed": 0
+    },
+    "build": "PASS",
+    "packageChecksPassed": 11,
+    "browserFunctionalPassed": 19,
+    "responsivePassed": 9,
+    "bindingBrowserPassed": 25,
+    "parameterBrowserPassed": 22,
+    "presentationPassed": 49,
+    "pageErrors": 0,
+    "entry": "centered SVG gear and title, scrolls with list, outside prompt_order",
+    "defaults": {
+      "openai_max_context": 2000000,
+      "openai_max_tokens": 30000,
+      "temperature": 1,
+      "frequency_penalty": 0,
+      "presence_penalty": 0,
+      "top_p": 0.9,
+      "stream_openai": false,
+      "show_thoughts": false,
+      "reasoning_effort": "auto"
+    },
+    "defaultPolicy": "absent only, opening/cancelling does not stage or write; dialog Save stages, global Save writes and reads back",
+    "regexDisplay": "exact authorized native notice deferred only during owned automatic selection; native visible-message redraw; notice restored on unsafe/unsupported/error/timeout/dispose; permissions and manual changes untouched",
+    "sourceFixture": "tests/fixtures/st-regex-contracts.json",
+    "cleanRebuild": {
+      "dependencies": "existing locked node_modules reused; independent clean output directory",
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.1.json",
+          "equal": true,
+          "sha256": "ffa6388288d79444b9a669b3b3a56934dcdcb25e808992065ae5b82393e9e584"
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "equal": true,
+          "sha256": "09e698e1c1e5d746f900e81df5848130a5fec55e9f5ad25ba961fc6404f085e8"
+        },
+        {
+          "file": "manifest.json",
+          "equal": true,
+          "sha256": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb"
+        },
+        {
+          "file": "SHA256SUMS",
+          "equal": true,
+          "sha256": "536d0f5ee5449d761fd98451364429608ee59cedfcbc3ed64d51bd70a9d0506d"
+        },
+        {
+          "file": "preset-manager.js",
+          "equal": true,
+          "sha256": "ca21f85c7b008f32db60e913f7cbb734572def78a4e3b04699208548361ba869"
+        },
+        {
+          "file": "preview.js",
+          "equal": true,
+          "sha256": "b434fdf1c804f39d784f60391e972bfbcc86c4519413848216c7d8dab08af555"
+        }
+      ]
+    },
+    "extensionSha256": "ffa6388288d79444b9a669b3b3a56934dcdcb25e808992065ae5b82393e9e584",
+    "commitPushRelease": false
+  },
+  "presetParametersPresentationCandidate": {
+    "date": "2026-10-07",
+    "version": "0.2.1",
+    "unpublished": true,
+    "realHost": false,
+    "scope": "Preset parameter dialog presentation only; staging/defaults/native persistence unchanged",
+    "check": "PASS",
+    "node": {
+      "passed": 294,
+      "failed": 0
+    },
+    "build": "PASS",
+    "packageChecksPassed": 11,
+    "browserFunctionalPassed": 19,
+    "responsivePassed": 9,
+    "bindingBrowserPassed": 25,
+    "parameterBrowserPassed": 32,
+    "presentationPassed": 49,
+    "pageErrors": 0,
+    "controls": [
+      "isolated WebKit/Firefox slider tracks and progress fill",
+      "left labels/right animated switches with full-row target",
+      "local reasoning combobox/listbox; no native select; keyboard navigation and Escape",
+      "no header close; equal full-width bottom Cancel/Save",
+      "reduced-motion and short viewport support"
+    ],
+    "cleanRebuild": {
+      "dependencies": "existing locked node_modules reused; independent clean output directory",
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.1.json",
+          "equal": true,
+          "sha256": "32f2e101c98a0fa34f32aaa967013e0b2b298c023118b9623de1a423d99678d1"
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "equal": true,
+          "sha256": "4e58973ec95eed0a9a7bcf5a5fe01b2e1f598ce1295192774bd1051ce3d318c7"
+        },
+        {
+          "file": "manifest.json",
+          "equal": true,
+          "sha256": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb"
+        },
+        {
+          "file": "SHA256SUMS",
+          "equal": true,
+          "sha256": "5ff9302fad5d86d667ff6781e60c5f2dcd073cb06955632ecbac4b057028b5e7"
+        },
+        {
+          "file": "preset-manager.js",
+          "equal": true,
+          "sha256": "6026a7bac3848087d1c40b90b0892be2ba1eb36065fd74cab092047864b0e0f1"
+        },
+        {
+          "file": "preview.js",
+          "equal": true,
+          "sha256": "9a4d882d093c8510f150441c4cc6c5152089d67a1168a505d102625f19f065bb"
+        }
+      ]
+    },
+    "extensionSha256": "32f2e101c98a0fa34f32aaa967013e0b2b298c023118b9623de1a423d99678d1",
+    "commitPushRelease": false
+  },
+  "presetParameterMotionCandidate": {
+    "date": "2026-10-07",
+    "version": "0.2.1",
+    "unpublished": true,
+    "realHost": false,
+    "scope": "Parameter entry to dialog and return presentation only; controller/default/native write logic unchanged",
+    "check": "PASS",
+    "node": {
+      "passed": 294,
+      "failed": 0
+    },
+    "build": "PASS",
+    "packageChecksPassed": 11,
+    "browserFunctionalPassed": 19,
+    "responsivePassed": 9,
+    "bindingBrowserPassed": 25,
+    "parameterBrowserPassed": 32,
+    "parameterMotionBrowserPassed": 26,
+    "presentationPassed": 49,
+    "pageErrors": 0,
+    "motion": {
+      "openingMs": 360,
+      "closingMs": 280,
+      "technique": "opaque resized shell and moving SVG/title; form fades without scaling; owned Web Animations",
+      "savePolicy": "retract only after controller successfully clears parameter draft; staging and global Save unchanged",
+      "guards": [
+        "focus held in manager during motion",
+        "interrupt reversal from current geometry",
+        "resize/presentation change settles at correct endpoint",
+        "reduced motion skips/cancels animation",
+        "offscreen/detached origin fades without list scroll",
+        "unsupported API falls back",
+        "dispose cancels animations and removes ghosts"
+      ]
+    },
+    "cleanRebuild": {
+      "dependencies": "existing locked node_modules reused; independent clean output directory",
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.1.json",
+          "equal": true,
+          "sha256": "f8630dc9516cb821ee119d8bc89ccf857222cd852fac7bd3f8fac397e5256a1c"
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "equal": true,
+          "sha256": "2cc1e8a31b5296db27de1bfa2bb77aefe0d3a6e776cf970bf59fc3ed65794450"
+        },
+        {
+          "file": "manifest.json",
+          "equal": true,
+          "sha256": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb"
+        },
+        {
+          "file": "SHA256SUMS",
+          "equal": true,
+          "sha256": "76b965b0b64ba2b51ed1321bfa302e44cc44a7f55086e784fdb1674b994b8f18"
+        },
+        {
+          "file": "preset-manager.js",
+          "equal": true,
+          "sha256": "d0011a2dccf6b952ab84d145f7eb64041b1fab39b98a701d499259a756d162c7"
+        },
+        {
+          "file": "preview.js",
+          "equal": true,
+          "sha256": "3da7cc6988d08552c29b5348cb183b003a887fb97af927e998f494d20b85a336"
+        }
+      ]
+    },
+    "extensionSha256": "f8630dc9516cb821ee119d8bc89ccf857222cd852fac7bd3f8fac397e5256a1c",
+    "commitPushRelease": false
+  },
+  "presetParameterShellMotionCandidate": {
+    "date": "2026-10-07",
+    "version": "0.2.1",
+    "unpublished": true,
+    "realHost": false,
+    "scope": "Parameter morph presentation only; moving title/gear clone removed; dialog heading geometry and font stay fixed",
+    "check": "PASS",
+    "node": {
+      "passed": 294,
+      "failed": 0
+    },
+    "build": "PASS",
+    "packageChecksPassed": 11,
+    "browserFunctionalPassed": 19,
+    "responsivePassed": 9,
+    "bindingBrowserPassed": 25,
+    "parameterBrowserPassed": 32,
+    "parameterMotionBrowserPassed": 28,
+    "presentationPassed": 49,
+    "pageErrors": 0,
+    "motion": {
+      "openingMs": 360,
+      "closingMs": 280,
+      "technique": "opaque shell resizing; real dialog including heading fades at fixed geometry; no title/gear clone or movement",
+      "savePolicy": "unchanged; retract only after parameter draft is successfully cleared",
+      "guards": "existing focus, interruption, resize, handoff, reduced-motion, offscreen/detached, unsupported API and disposal checks retained"
+    },
+    "cleanRebuild": {
+      "dependencies": "existing locked node_modules reused; independent clean output directory",
+      "assets": [
+        {
+          "file": "MieMie-Preset-Manager-Extension-0.2.1.json",
+          "equal": true,
+          "sha256": "eb04126bbfd232f2a08f4e5a02384c221d3e7cc1d53189f70d9a1ab16cb53d78"
+        },
+        {
+          "file": "MieMie-Extension-update.json",
+          "equal": true,
+          "sha256": "43c35ffad847e3f5420a3daf32d4d043ffda06f7ea9a22e7db340511fc0787a2"
+        },
+        {
+          "file": "manifest.json",
+          "equal": true,
+          "sha256": "94a14ecf01ffaedd656af34b12f13a6d7de6019d1bd927e4177826cfa45f7ebb"
+        },
+        {
+          "file": "SHA256SUMS",
+          "equal": true,
+          "sha256": "834d7db8bb01bb8cc44ffe6414c1610c35d4ba8f976f86c7001cf2521e5598f6"
+        },
+        {
+          "file": "preset-manager.js",
+          "equal": true,
+          "sha256": "453715dfba3c27064841feed9393ec809a78d8e5255a36edc7b698b5a86b7722"
+        },
+        {
+          "file": "preview.js",
+          "equal": true,
+          "sha256": "1a60cc7240c6ad9b6241b4d615f6e4f124349f0a16e888d1c7de5406000f828f"
+        }
+      ]
+    },
+    "extensionSha256": "eb04126bbfd232f2a08f4e5a02384c221d3e7cc1d53189f70d9a1ab16cb53d78",
+    "commitPushRelease": false
+  },
+  "release022": {
+    "baseMain": "e9f9dfd9c8d8ce5029f79356db506d791a8b1fab",
+    "version": "0.2.2",
+    "author": "SheepSheep",
+    "repository": "https://github.com/SheepSheepLab/MieMie-Preset-Manager",
+    "productId": "miemie.preset-manager",
+    "scriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
+    "runtimeGate": "PASS: Native / Floating / Dock / Hub / Shortcut / lifecycle, offline browser with pinned official contracts",
+    "managedPackageGate": "PASS: generated validators, fresh install and full official 0.2.1 -> 0.2.2 enabled/disabled updates in isolated host",
+    "nodePassed": 294,
+    "packagePassed": 69,
+    "currentHubPackagePassed": 13,
+    "currentHubCommit": "9c81bbcbf9b87b5118b92415a34c57783592bccc",
+    "currentHubPackageSourceSha256": "6c7b0252d60511cb3626137a8d1917423285f7471d6ad46da0a4d373d331ad43",
+    "browser": {
+      "functional": 19,
+      "responsive": 9,
+      "binding": 25,
+      "parameters": 32,
+      "parameterMotion": 28,
+      "presentation": 49,
+      "total": 162,
+      "pageErrors": 0
+    },
+    "performance": {
+      "dragUiChecksPassed": 23,
+      "saveComparatorCorrectnessPassed": 8,
+      "timingsDiagnosticOnly": true
+    },
+    "cleanRebuild": [
+      {
+        "file": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "equal": true,
+        "sha256": "7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58"
+      },
+      {
+        "file": "MieMie-Extension-update.json",
+        "equal": true,
+        "sha256": "19f2a6a921d4c5d23d660b881f04c06b7816b7b2b5fd328d97413b0cb5f877a1"
+      },
+      {
+        "file": "manifest.json",
+        "equal": true,
+        "sha256": "796d5e7d45570cdb471d94c1c2da5892aadd981e07e0082db56c483e299f2b70"
+      },
+      {
+        "file": "SHA256SUMS",
+        "equal": true,
+        "sha256": "c413a3f82c4526c7a3bee1003a1a60ea0f04744490d944019d9efc9c33b07d08"
+      },
+      {
+        "file": "preset-manager.js",
+        "equal": true,
+        "sha256": "5419b54246182362a42f7f2a790f4057ba942ab1e20945afaeb7bfb080ccb7f7"
+      },
+      {
+        "file": "preview.js",
+        "equal": true,
+        "sha256": "eca12fea211a3239c3a17afe1d63b83859d278738cd2e7f5d6c5af2ecdced14c"
+      }
+    ],
+    "metadata": {
+      "schemaVersion": 1,
+      "format": "tavern-helper-script",
+      "productId": "miemie.preset-manager",
+      "version": "0.2.2",
+      "tag": "v0.2.2",
+      "scriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
+      "manifest": {
+        "schemaVersion": 1,
+        "apiVersion": 1,
+        "id": "miemie.preset-manager",
+        "name": "咩咩预设管理",
+        "version": "0.2.2",
+        "author": "SheepSheep",
+        "description": "直接管理当前酒馆预设及提示词条目。",
+        "entry": "preset-manager.js",
+        "repository": "https://github.com/SheepSheepLab/MieMie-Preset-Manager",
+        "homepage": "https://github.com/SheepSheepLab/MieMie-Preset-Manager",
+        "license": "GPL-3.0-or-later",
+        "icon": "assets/preset-manager-icon.png",
+        "hubApi": {
+          "min": 1,
+          "max": 1
+        },
+        "contributes": {
+          "launcher": {
+            "title": "咩咩预设管理",
+            "icon": "预设"
+          }
+        }
+      },
+      "asset": {
+        "name": "MieMie-Preset-Manager-Extension-0.2.2.json",
+        "size": 3122686,
+        "sha256": "7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58"
+      },
+      "contentSha256": "8554806ae686992a77fdf63154f06308fa0241025da443889341eab3df971f3a"
+    },
+    "official021SourceSha256": "071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0",
+    "updatePreserved": [
+      "instance ID",
+      "enabled",
+      "data",
+      "folder identity/settings",
+      "tree/order",
+      "unrelated scripts"
+    ],
+    "updateConfirmed": [
+      "new content",
+      "display name",
+      "embedded runtime manifest",
+      "build identity",
+      "saved/memory readback"
+    ],
+    "bindingSafety": "PASS: inheritance/override/default, single/group, stable ID, rename/copy/delete/tombstone/missing/no presets/corruption",
+    "raceGeneration": "PASS: A/B/C latest actual applied, late native auto-select/manual deviation, dirty anchor/latest only, bounded contention; two pinned ST native lifecycle snippets with mocked dependencies",
+    "parameters": "PASS: whitelist patch/defaults on explicit confirmation/no open or cancel writes/false and zero and unknown preservation/native alias persistence and non-parameter round trip",
+    "regex": "PASS: exact already-authorized native notice only; copies for visible native redraw; native fallback on unsafe/error/timeout/disposal; manual/permission/unrelated notifications unchanged",
+    "ownerReview": "Owner approved current local functionality and presentation for release; no inferred full new real-host matrix",
+    "publicVerification": {
+      "tool": "tools/verify-public-package.cjs",
+      "kind": "live public GitHub API plus actual current Hub Package module; isolated host only",
+      "timing": "required after Release publication; final Maintainer receipt records actual result"
+    },
+    "privacy": "PASS: public data={}, no private preset/chat content/credentials/local absolute paths; fixtures are public pinned sources or synthetic",
+    "contributorHistory": "original louisSSR contribution retained; no rewrite or changed attribution",
+    "oldReleases": "v0.2.0 and v0.2.1 unchanged",
+    "issue1": "must remain Open"
+  },
+  "sourceScopeAudit": {
+    "changedGroups": [
+      "binding",
+      "generation safety",
+      "preset parameters",
+      "regex display",
+      "UI/presentation",
+      "ST adapter",
+      "tests/docs/provenance",
+      "build/release/package assets"
+    ],
+    "unexplainedChanges": false,
+    "approvedCandidateTsByteIdentical": true,
+    "secretsOrPrivateContent": false,
+    "localAbsolutePathsInPublicArtifacts": false,
+    "publicDataEmpty": true,
+    "debugOrBlockingTodoIntroduced": false
   }
 }

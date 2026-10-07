@@ -10,6 +10,7 @@ MieMie Preset Manager 的项目代码按 [GPL-3.0-or-later](LICENSE) 提供，�
 | --- | --- |
 | `tests/fixtures/st-1.18.0-default.json` | 未修改的官方 Default 预设，取自 1.18.0，commit `51ad27fb86d39a3daca3adaa970375c9670c12df`。 |
 | `tests/fixtures/st-1.19.0-default.json` | 未修改的官方 Default 预设，取自 commit `06bde939fb1e9c4c8d8641d810f0a916b5bce127`，已与 1.19.0 的 commit `7e8663cd9c184a550b37238218bdd32c6efc68e9` 核对为一致。 |
+| `tests/fixtures/st-binding-contracts.json` | 固定官方 1.18.0 / 1.19.0 的 22 个未修改原生函数/方法：生成、事件、metadata 保存、auto-select 和目录；保留完整来源文件 hash 与原行号。仅测试使用，AGPL-3.0 不变。 |
 | `tests/fixtures/st-native-contracts.json` | 上述固定版本的 46 段未修改 JavaScript 源码摘录，逐段记录 commit、文件位置、行号及完整来源文件的 SHA-256。 |
 
 逐项来源见 [测试资料说明](tests/fixtures/README.md) 和 [源码溯源记录](docs/source-provenance.json)。这些资料仅供本地测试，未导入生产入口，也不进入生产 bundle 或 Extension JSON。测试夹具保留其 AGPL 许可，不因与项目代码放在同一仓库而改标为 GPL。
@@ -53,3 +54,5 @@ Hub 集成只使用公开生命周期、面板挂载和可选 Shortcut capabilit
 ## Hub Package v1 test fixture
 
 `tests/fixtures/hub-package-v1/` retains byte-exact Package source modules and `tests/package-manager.test.mjs` from [MieMie Hub](https://github.com/SheepSheepLab/MieMie-Hub/tree/928362c1eb224afe780801060c6d867e01cf5013), commit `928362c1eb224afe780801060c6d867e01cf5013`. Upstream contributors retain attribution, GPL-3.0-or-later; the unmodified GPL text is included in the fixture LICENSE. Paths and SHA-256 are recorded in provenance.json. Test-only imports; no Hub Package implementation or upstream test data enters the production Extension. Synthetic script trees and development HTTP responses are not real-host evidence.
+
+`tests/fixtures/st-regex-contracts.json` preserves unchanged public ST 1.18.0 / 1.19.0 notification and message-display snippets under AGPL-3.0. Source URLs, immutable commits, full-source SHA-256, and line numbers accompany each snippet; see `tests/fixtures/SillyTavern-LICENSE.txt`. These fixtures remain test-only and are excluded from the production bundle.

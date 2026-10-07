@@ -3,9 +3,13 @@
 // See LICENSE for terms; distributed without warranty.
 
 export type IconName =
-  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save';
+  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save' | 'default' | 'settings' | 'chevron' | 'check';
 
 const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
+  chevron: ['m6 9 6 6 6-6'],
+  check: ['m5 12 4 4 10-10'],
+  settings: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z', 'M9.5 3h5l.5 2.5 2 1.2 2.4-.7 2.5 4.3-1.9 1.7v2l1.9 1.7-2.5 4.3-2.4-.7-2 1.2-.5 2.5h-5L9 20.5l-2-1.2-2.4.7-2.5-4.3L4 14v-2l-1.9-1.7L4.6 6l2.4.7 2-1.2.5-2.5Z'],
+  default: ['M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'],
   close: ['M6 6l12 12M18 6 6 18'],
   edit: ['m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z'],
   copy: ['M9 9h11v11H9z', 'M15 5V3H3v12h2'],

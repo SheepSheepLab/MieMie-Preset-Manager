@@ -1,0 +1,82 @@
+{
+  "license": "AGPL-3.0",
+  "licenseFile": "SillyTavern-LICENSE.txt",
+  "realHost": false,
+  "purpose": "Unchanged pinned ST regex notification and message redraw functions; dependencies mocked, not real-host evidence.",
+  "baselines": [
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "sources": [
+        {
+          "path": "public/scripts/extensions/regex/index.js",
+          "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/extensions/regex/index.js",
+          "sha256": "7a43b7d6e40a1b6f38a8a7c53a4d552e1aa56c4a13e893224fddf79b663ecb7f",
+          "bytes": 85485,
+          "snippets": {
+            "notifyReloadCurrentChat": {
+              "startLine": 1639,
+              "endLine": 1648,
+              "text": "function notifyReloadCurrentChat(presetName) {\n    toastr.info(\n        t`Reload the chat for regex to take effect` + '<br><u>' + t`Click here to reload immediately` + '</u>',\n        t`Preset '${escapeHtml(presetName)}' contains enabled regex scripts`,\n        {\n            timeOut: 5000,\n            escapeHtml: false,\n            onclick: reloadCurrentChat,\n        });\n}"
+            },
+            "checkPresetEmbeddedRegexScripts": {
+              "startLine": 1650,
+              "endLine": 1677,
+              "text": "async function checkPresetEmbeddedRegexScripts() {\n    const apiId = getCurrentPresetAPI();\n    const name = getCurrentPresetName();\n    const scripts = getScriptsByType(SCRIPT_TYPES.PRESET);\n\n    if (Array.isArray(scripts) && scripts.length > 0) {\n        if (!isPresetScriptsAllowed(apiId, name)) {\n            const checkKey = `AlertRegex_${apiId}_${name}`;\n\n            if (!accountStorage.getItem(checkKey)) {\n                accountStorage.setItem(checkKey, 'true');\n                const template = await renderExtensionTemplateAsync('regex', 'presetEmbeddedScripts', {});\n                const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '');\n\n                if (result) {\n                    allowPresetScripts(apiId, name);\n                    if (getCurrentChatId()) {\n                        await reloadCurrentChat();\n                    }\n                }\n            }\n        } else if (getCurrentChatId() && scripts.filter(script => !script.disabled).length > 0) {\n            notifyReloadCurrentChat(name);\n        }\n    }\n\n    await loadRegexScripts();\n}"
+            }
+          }
+        },
+        {
+          "path": "public/script.js",
+          "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/script.js",
+          "sha256": "606762e1e36805a12429708defcafac7287a3df78393813bf460c53524a27403",
+          "bytes": 494994,
+          "snippets": {
+            "updateMessageBlock": {
+              "startLine": 1974,
+              "endLine": 1985,
+              "text": "export function updateMessageBlock(messageId, message, { rerenderMessage = true } = {}) {\n    const messageElement = chatElement.find(`[mesid=\"${messageId}\"]`);\n    if (rerenderMessage) {\n        const text = message?.extra?.display_text ?? message.mes;\n        messageElement.find('.mes_text').html(messageFormatting(text, message.name, message.is_system, message.is_user, messageId, {}, false));\n    }\n\n    updateReasoningUI(messageElement);\n\n    addCopyToCodeBlocks(messageElement);\n    appendMediaToMessage(message, messageElement);\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "sources": [
+        {
+          "path": "public/scripts/extensions/regex/index.js",
+          "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/extensions/regex/index.js",
+          "sha256": "7a43b7d6e40a1b6f38a8a7c53a4d552e1aa56c4a13e893224fddf79b663ecb7f",
+          "bytes": 85485,
+          "snippets": {
+            "notifyReloadCurrentChat": {
+              "startLine": 1639,
+              "endLine": 1648,
+              "text": "function notifyReloadCurrentChat(presetName) {\n    toastr.info(\n        t`Reload the chat for regex to take effect` + '<br><u>' + t`Click here to reload immediately` + '</u>',\n        t`Preset '${escapeHtml(presetName)}' contains enabled regex scripts`,\n        {\n            timeOut: 5000,\n            escapeHtml: false,\n            onclick: reloadCurrentChat,\n        });\n}"
+            },
+            "checkPresetEmbeddedRegexScripts": {
+              "startLine": 1650,
+              "endLine": 1677,
+              "text": "async function checkPresetEmbeddedRegexScripts() {\n    const apiId = getCurrentPresetAPI();\n    const name = getCurrentPresetName();\n    const scripts = getScriptsByType(SCRIPT_TYPES.PRESET);\n\n    if (Array.isArray(scripts) && scripts.length > 0) {\n        if (!isPresetScriptsAllowed(apiId, name)) {\n            const checkKey = `AlertRegex_${apiId}_${name}`;\n\n            if (!accountStorage.getItem(checkKey)) {\n                accountStorage.setItem(checkKey, 'true');\n                const template = await renderExtensionTemplateAsync('regex', 'presetEmbeddedScripts', {});\n                const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '');\n\n                if (result) {\n                    allowPresetScripts(apiId, name);\n                    if (getCurrentChatId()) {\n                        await reloadCurrentChat();\n                    }\n                }\n            }\n        } else if (getCurrentChatId() && scripts.filter(script => !script.disabled).length > 0) {\n            notifyReloadCurrentChat(name);\n        }\n    }\n\n    await loadRegexScripts();\n}"
+            }
+          }
+        },
+        {
+          "path": "public/script.js",
+          "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/script.js",
+          "sha256": "955c603d0bad84bac5a716f0818d85c2543e44d4c43878e0d63ef1e55ca91855",
+          "bytes": 497669,
+          "snippets": {
+            "updateMessageBlock": {
+              "startLine": 2033,
+              "endLine": 2044,
+              "text": "export function updateMessageBlock(messageId, message, { rerenderMessage = true } = {}) {\n    const messageElement = chatElement.find(`[mesid=\"${messageId}\"]`);\n    if (rerenderMessage) {\n        const text = message?.extra?.display_text ?? message.mes;\n        messageElement.find('.mes_text').html(messageFormatting(text, message.name, message.is_system, message.is_user, messageId, {}, false));\n    }\n\n    updateReasoningUI(messageElement);\n\n    addCopyToCodeBlocks(messageElement);\n    appendMediaToMessage(message, messageElement);\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

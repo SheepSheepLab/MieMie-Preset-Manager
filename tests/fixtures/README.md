@@ -38,3 +38,14 @@ The harness executes these function bodies using the unchanged production Manife
 ## Hub Package v1 test fixture
 
 `tests/fixtures/hub-package-v1/` retains byte-exact Package source modules and `tests/package-manager.test.mjs` from [MieMie Hub](https://github.com/SheepSheepLab/MieMie-Hub/tree/928362c1eb224afe780801060c6d867e01cf5013), commit `928362c1eb224afe780801060c6d867e01cf5013`. Upstream contributors retain attribution, GPL-3.0-or-later; the unmodified GPL text is included in the fixture LICENSE. Paths and SHA-256 are recorded in provenance.json. Test-only imports; no Hub Package implementation or upstream test data enters the production Extension. Synthetic script trees and development HTTP responses are not real-host evidence.
+
+
+## Per-Chat binding contracts
+
+`st-binding-contracts.json` preserves 22 unchanged function/method excerpts at the official 1.18.0 (`51ad27fb86d39a3daca3adaa970375c9670c12df`) and 1.19.0 (`7e8663cd9c184a550b37238218bdd32c6efc68e9`) commits. Each entry records source path, first line and full source SHA-256. Public upstream AGPL-3.0 attribution/license above still apply; none is imported into production.
+
+The harness executes the native EventEmitter, saveMetadata/saveChatConditional, autoSelectPreset, getAllPresets, stopGeneration, request functions and unchanged Generate prefix through GENERATION_AFTER_COMMANDS. Full Generate and generateGroupWrapper are retained for control-flow/signal review. Prompt assembly, backend transport, group member iteration and streaming payload are synthetic dependencies; the full Generate tail and real server are not executed. Source provenance includes context, event, endpoint and complete source hashes. This is not real-host validation of ST, Tavern Helper, Hub, physical phones or every patch release.
+
+## Preset regex notifications and message display
+
+`st-regex-contracts.json` contains unchanged `notifyReloadCurrentChat`, `checkPresetEmbeddedRegexScripts`, and `updateMessageBlock` functions from the same pinned official 1.18.0 and 1.19.0 commits listed above. Full source hashes, URLs, and one-based line ranges are recorded in the fixture. Tests execute these functions with mocked dependencies; they do not represent real-host acceptance. The source retains AGPL-3.0 and never enters the production bundle.

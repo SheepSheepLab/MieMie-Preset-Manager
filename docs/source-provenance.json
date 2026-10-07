@@ -283,6 +283,214 @@
       "sha256": "00c80c3eed53d8a3b6448f3648ad7e8a797be4f36eedc2deb31a903c26a186d9",
       "bytes": 1274,
       "url": "https://raw.githubusercontent.com/SheepSheepLab/MieMie-Hub/928362c1eb224afe780801060c6d867e01cf5013/docs/ICON-GUIDELINE.md"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/script.js",
+      "gitBlob": "68a5461114abe2e931c81d9377bf65d52e60a286",
+      "sha256": "606762e1e36805a12429708defcafac7287a3df78393813bf460c53524a27403",
+      "bytes": 494994,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/script.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/extensions.js",
+      "gitBlob": "5d708e2afed783e251181b25ea197093623a0217",
+      "sha256": "42437984d17b8f41dbfeb2ac4e907c89050890193e870a61d4c72b3a5a5a335c",
+      "bytes": 87677,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/extensions.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/chats.js",
+      "gitBlob": "9105f3f8bb1e8599f6569a5e22cf182085bff8e9",
+      "sha256": "2b870d44c55f99c622b5afcd7b1fd563219b9444bc70e8653611327d6e7f7be6",
+      "bytes": 87164,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/chats.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/group-chats.js",
+      "gitBlob": "a2f05866cb3f548aa49a8061cd7ba26ae4f6daca",
+      "sha256": "2c375d69263c29c99152da99a6fb80e5c3dd573ae28d0e0e5febdc8f23350441",
+      "bytes": 88733,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/group-chats.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/char-data.js",
+      "gitBlob": "ac5d4e6750ce21f143190fcfe0467da8d722c617",
+      "sha256": "81237786ad20fc7127242afc9b32882d205e16fc71a7de76a870c4bf3897b0ea",
+      "bytes": 8905,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/char-data.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "public/scripts/utils.js",
+      "gitBlob": "bfb3644a461c55327b4321142e35ff65521890b9",
+      "sha256": "7236069f0d6c95b0d959e3c574bc7acbd4dc088459371abf38a6a7a77a076067",
+      "bytes": 112276,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/utils.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "src/endpoints/chats.js",
+      "gitBlob": "a0202be5e9360c193217355acab37e5caebed4e7",
+      "sha256": "5a7ba044c2ee5466c016146caa50369b24ffc76c189f0da5e99e61e62784214f",
+      "bytes": 41140,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/src/endpoints/chats.js"
+    },
+    {
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df",
+      "path": "src/endpoints/groups.js",
+      "gitBlob": "68094f9fc53e0765ff186d09093a0dd5e3a2d6ab",
+      "sha256": "c5b956f8b4a2809b554229fed24588ed37163f1e73c129d4270ac6832438612b",
+      "bytes": 10782,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/51ad27fb86d39a3daca3adaa970375c9670c12df/src/endpoints/groups.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/script.js",
+      "gitBlob": "777a2d5983a6283ef9b26726e75192da1e3f3cea",
+      "sha256": "955c603d0bad84bac5a716f0818d85c2543e44d4c43878e0d63ef1e55ca91855",
+      "bytes": 497669,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/script.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/extensions.js",
+      "gitBlob": "3c1cd876e603a64af9bc74c6e63e93470d46c2a2",
+      "sha256": "f5ee3fee55d52e8b7041ceafb260dba5a2b2dada53081f930045ab8b6447d30d",
+      "bytes": 88263,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/extensions.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/chats.js",
+      "gitBlob": "9105f3f8bb1e8599f6569a5e22cf182085bff8e9",
+      "sha256": "2b870d44c55f99c622b5afcd7b1fd563219b9444bc70e8653611327d6e7f7be6",
+      "bytes": 87164,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/chats.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/group-chats.js",
+      "gitBlob": "7b82ca84132f2e04ab41ee8ee26a1bf7c1796a1f",
+      "sha256": "862eb24dfe1f596a2bd6d039a69397667829e0fc34471d22d2028d7781a5c73c",
+      "bytes": 88784,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/group-chats.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/char-data.js",
+      "gitBlob": "ac5d4e6750ce21f143190fcfe0467da8d722c617",
+      "sha256": "81237786ad20fc7127242afc9b32882d205e16fc71a7de76a870c4bf3897b0ea",
+      "bytes": 8905,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/char-data.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "public/scripts/utils.js",
+      "gitBlob": "6d57bb7b1700c06d160df049dea87dd56cbc9f28",
+      "sha256": "2a2cfe240d5a84ce2e09ba053db6c0c71473b6406173f614f3521d89f50ada61",
+      "bytes": 113042,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/utils.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "src/endpoints/chats.js",
+      "gitBlob": "390abc3cb2aeefd0edeffe4294186f199a14b3ec",
+      "sha256": "40012ebc71a75357e62f7532e5b20def0d8b6c132bb6ab48f662993cc97b9063",
+      "bytes": 44549,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/src/endpoints/chats.js"
+    },
+    {
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9",
+      "path": "src/endpoints/groups.js",
+      "gitBlob": "68094f9fc53e0765ff186d09093a0dd5e3a2d6ab",
+      "sha256": "c5b956f8b4a2809b554229fed24588ed37163f1e73c129d4270ac6832438612b",
+      "bytes": 10782,
+      "project": "SillyTavern",
+      "license": "AGPL-3.0",
+      "url": "https://github.com/SillyTavern/SillyTavern/blob/7e8663cd9c184a550b37238218bdd32c6efc68e9/src/endpoints/groups.js"
+    },
+    {
+      "path": "public/scripts/extensions/regex/index.js",
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/scripts/extensions/regex/index.js",
+      "sha256": "7a43b7d6e40a1b6f38a8a7c53a4d552e1aa56c4a13e893224fddf79b663ecb7f",
+      "bytes": 85485,
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df"
+    },
+    {
+      "path": "public/script.js",
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/51ad27fb86d39a3daca3adaa970375c9670c12df/public/script.js",
+      "sha256": "606762e1e36805a12429708defcafac7287a3df78393813bf460c53524a27403",
+      "bytes": 494994,
+      "version": "1.18.0",
+      "commit": "51ad27fb86d39a3daca3adaa970375c9670c12df"
+    },
+    {
+      "path": "public/scripts/extensions/regex/index.js",
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/scripts/extensions/regex/index.js",
+      "sha256": "7a43b7d6e40a1b6f38a8a7c53a4d552e1aa56c4a13e893224fddf79b663ecb7f",
+      "bytes": 85485,
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9"
+    },
+    {
+      "path": "public/script.js",
+      "url": "https://raw.githubusercontent.com/SillyTavern/SillyTavern/7e8663cd9c184a550b37238218bdd32c6efc68e9/public/script.js",
+      "sha256": "955c603d0bad84bac5a716f0818d85c2543e44d4c43878e0d63ef1e55ca91855",
+      "bytes": 497669,
+      "version": "1.19.0",
+      "commit": "7e8663cd9c184a550b37238218bdd32c6efc68e9"
     }
   ],
   "presentationAlignment": {
@@ -466,5 +674,25 @@
       }
     ],
     "realHost": false
+  },
+  "perChatBinding": {
+    "baseline": "225f38735dca99111c98afcf96ea9554ae11ae20",
+    "fixture": "tests/fixtures/st-binding-contracts.json",
+    "unchangedExcerpts": 22,
+    "executed": "native persistence, EventEmitter, autoSelectPreset, getAllPresets, stopGeneration, Generate prefix through AFTER_COMMANDS and request functions; dependencies mocked",
+    "auditedNotFullyExecuted": "full Generate and group wrapper; assembly/member loop/stream payload mocked",
+    "realHost": false,
+    "productionUse": "API reference only; upstream excerpts excluded from bundle"
+  },
+  "release022PackageVerification": {
+    "repository": "https://github.com/SheepSheepLab/MieMie-Hub",
+    "commit": "9c81bbcbf9b87b5118b92415a34c57783592bccc",
+    "scope": "read-only isolated verification using original source bytes; no Hub/Registry changes; not bundled into product",
+    "sha256": {
+      "src/extension-packages.js": "6c7b0252d60511cb3626137a8d1917423285f7471d6ad46da0a4d373d331ad43",
+      "src/script-update-fields.js": "ff227159d79c7e312c1d32af592d3f9d30f392622e40c593ffbaf2037c0a44b5",
+      "src/hub-update-check.js": "5eac691ae4dfd11b2df1a38451dd8a3a7e130a7edbfacf3d0755333936819b36",
+      "src/registry-client.js": "fe4d6c1a0cacccf98c853009730c5937f4472c92c46f91ed9396396757de76ab"
+    }
   }
 }

@@ -171,7 +171,7 @@ async function checkLayout(page, viewport) {
         await item.scrollIntoViewIfNeeded();
         names.push((await hitVisible(item, viewport)).name);
       }
-      assert.equal(names.length, 4, 'All preset menu actions must remain reachable');
+      assert.deepEqual(names, ['导出完整预设', '复制当前预设', '新建预设', '重命名预设', '删除当前预设'], 'Every preset menu action must remain reachable');
       measurements.push({ viewport, menuItemsReachable: names });
       if (viewport.width === 320) await screenshot(page, 'responsive-menu-320x400.png');
       await page.keyboard.press('Escape');

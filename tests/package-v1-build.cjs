@@ -6,20 +6,21 @@ const {hash,encode,REPOSITORY,SCRIPT_ID}=require('../tools/package-v1.cjs');
 const manifest=require('../manifest.json'),pkg=require('../package.json');
 const dir=path.join(__dirname,'../delivery'),read=n=>fs.readFileSync(path.join(dir,n));
 const metadata=JSON.parse(read('MieMie-Extension-update.json')),bytes=read(metadata.asset.name),script=JSON.parse(bytes);
-const hub=import('./fixtures/hub-package-v1/src/extension-packages.js');
+const hub=import(process.env.HUB_PACKAGE_MODULE || './fixtures/hub-package-v1/src/extension-packages.js');
+const futureVersion = pkg.version.split('.').map((n,i)=>i===2?Number(n)+1:n).join('.');
 const clone=x=>structuredClone(x);
 const release={id:201,tag_name:metadata.tag,draft:false,prerelease:true};
 function repack(value){const b=encode(value);return {b,m:{...metadata,asset:{...metadata.asset,size:b.length,sha256:hash(b)},contentSha256:hash(value.content||'')}};}
-function fixture(t, {version=manifest.version, trees:initial=[],metadataBytes,missingDigest=false}={}) {
+function fixture(t, {version=manifest.version, trees:initial=[],metadataBytes,missingDigest=false,running=false}={}) {
  let trees=clone(initial),writes=0;
- const value=clone(script);if(version!==manifest.version)value.content=value.content.replace(/"version":"0.2.1"/,'"version":"'+version+'"');
+ const value=clone(script);if(version!==manifest.version)value.content=value.content.replace('"version":"'+manifest.version+'"','"version":"'+version+'"');
  const f=repack(value);f.m.version=version;f.m.tag='v'+version;f.m.manifest={...manifest,version};f.m.asset.name='MieMie-Preset-Manager-Extension-'+version+'.json';
  const mb=metadataBytes||encode(f.m),api=REPOSITORY.replace('https://github.com/','https://api.github.com/repos/');
  const asset=(id,name,b)=>({id,name,size:b.length,state:'uploaded',digest:missingDigest?null:'sha256:'+hash(b),url:api+'/releases/assets/'+id,browser_download_url:REPOSITORY+'/releases/download/v'+version+'/'+name});
  const r={...release,tag_name:'v'+version,assets:[asset(301,f.m.asset.name,f.b),asset(302,'MieMie-Extension-update.json',mb)]};
  return hub.then(({createExtensionPackageManager})=>{
  const response=(b,url)=>{const r=new Response(b);Object.defineProperty(r,'url',{value:url});return r;};
- const manager=createExtensionPackageManager({crypto:webcrypto,randomUUID:()=> 'test-only-install-instance',getScriptTrees:()=>clone(trees),updateScriptTreesWith:fn=>{trees=fn(clone(trees));writes++;return clone(trees);},readSavedScript:async id=>clone(trees.find(x=>x.id===id)||null),backup:async()=>{},fetch:async(url,init)=>{
+ const manager=createExtensionPackageManager({crypto:webcrypto,randomUUID:()=> 'test-only-install-instance',getScriptTrees:()=>clone(trees),updateScriptTreesWith:fn=>{trees=fn(clone(trees));writes++;return clone(trees);},readSavedScript:async id=>clone(trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id===id)||null),getRunningVersion:running?()=>{const x=trees.flatMap(x=>x.type==='folder'?x.scripts:[x]).find(x=>x.id==='official-021-installed-instance');return x?parseRuntimeVersion(x.content):null;}:undefined,backup:async()=>{},fetch:async(url,init)=>{
  assert.equal(init.credentials,'omit');assert.equal(init.headers.Authorization,undefined);
  let b;if(url===api)b=encode({private:false,full_name:'SheepSheepLab/MieMie-Preset-Manager'});else if(url.startsWith(api+'/releases?'))b=encode([r]);else if(url===api+'/releases/201')b=encode(r);else if(url===api+'/releases/assets/301')b=f.b;else if(url===api+'/releases/assets/302')b=mb;else throw Error('Unexpected URL: '+url);return response(b,url);
  }});t.after(()=>manager.dispose());return {manager,read:()=>clone(trees),writes:()=>writes};});
@@ -40,8 +41,8 @@ test('Hub rejects missing manifest fields, unsafe icon, long launcher, API and r
  for(const patch of [{icon:'../private.png'},{icon:'data:image/png;base64,abc'},{icon:'/private/icon.png'},{contributes:{launcher:{title:manifest.name,icon:'x'.repeat(17)}}},{hubApi:{min:2,max:2}},{repository:'https://github.com/Someone/Else'}])assert.throws(()=>h.validateExtensionManifest({...manifest,...patch},REPOSITORY));
 });
 test('Hub rejects invalid tags, filename, unknown metadata/download URL, size and identity mismatch',async()=>{
- const h=await hub;for(const patch of [{tag:'v0.2.1-beta'},{version:'0.2.1\n'},{downloadUrl:'https://example.test/unsafe'},{unknown:true},{asset:{...metadata.asset,name:'咩咩.json'}},{asset:{...metadata.asset,name:'../unsafe.json'}},{asset:{...metadata.asset,size:16777217}},{manifest:{...manifest,id:'miemie.other'}},{manifest:{...manifest,version:'0.2.2'}}])assert.throws(()=>h.validateExtensionPackageMetadata({...metadata,...patch},REPOSITORY,release));
- assert.throws(()=>h.validateExtensionPackageMetadata(metadata,REPOSITORY,{...release,tag_name:'v0.2.2'}));
+ const h=await hub;for(const patch of [{tag:'v0.2.1-beta'},{version:'0.2.1\n'},{downloadUrl:'https://example.test/unsafe'},{unknown:true},{asset:{...metadata.asset,name:'咩咩.json'}},{asset:{...metadata.asset,name:'../unsafe.json'}},{asset:{...metadata.asset,size:16777217}},{manifest:{...manifest,id:'miemie.other'}},{manifest:{...manifest,version:futureVersion}}])assert.throws(()=>h.validateExtensionPackageMetadata({...metadata,...patch},REPOSITORY,release));
+ assert.throws(()=>h.validateExtensionPackageMetadata(metadata,REPOSITORY,{...release,tag_name:'v'+futureVersion}));
 });
 test('Hub rejects corrupted bytes, size/hash/content hash, oversized production package',async()=>{
  const h=await hub;await assert.rejects(h.validateExtensionPackage(Buffer.concat([bytes,Buffer.from(' ')]),metadata,webcrypto));
@@ -50,7 +51,7 @@ test('Hub rejects corrupted bytes, size/hash/content hash, oversized production 
  await assert.rejects(h.validateExtensionPackage(Buffer.alloc(16777217),metadata,webcrypto));
 });
 test('Hub rejects public user data, unknown script fields, scriptID/product/repository/version drift',async()=>{
- const h=await hub;for(const patch of [{data:{testOnly:'inert'}},{unknown:true},{id:'changed'},{content:script.content.replace('miemie.preset-manager','miemie.other')},{content:script.content.replace(REPOSITORY,'https://github.com/Someone/Else')},{content:script.content.replace('"version":"0.2.1"','"version":"0.2.2"')}]){const f=repack({...script,...patch});await assert.rejects(h.validateExtensionPackage(f.b,f.m,webcrypto));}
+ const h=await hub;for(const patch of [{data:{testOnly:'inert'}},{unknown:true},{id:'changed'},{content:script.content.replace('miemie.preset-manager','miemie.other')},{content:script.content.replace(REPOSITORY,'https://github.com/Someone/Else')},{content:script.content.replace('"version":"'+pkg.version+'"','"version":"'+futureVersion+'"')}]){const f=repack({...script,...patch});await assert.rejects(h.validateExtensionPackage(f.b,f.m,webcrypto));}
 });
 test('Actual Hub discovery selects generated package and installs identified instance without executing code',async t=>{
  const f=await fixture(t),candidate=await f.manager.inspect(REPOSITORY);assert.equal(candidate.compatibility,'installable');assert.equal(candidate.version,pkg.version);
@@ -59,8 +60,8 @@ test('Actual Hub discovery selects generated package and installs identified ins
 });
 test('Actual Hub future standard package update preserves instance, settings and other scripts',async t=>{
  const old={...clone(script),id:'existing-instance',enabled:false,data:{testOnlySetting:7}},other={...clone(script),id:'other-instance',content:'void 0;'};
- const f=await fixture(t,{version:'0.2.2',trees:[old,other]});const candidate=await f.manager.check(manifest.id);assert.equal(candidate.available,true);
- await f.manager.update(manifest.id,candidate);const saved=f.read();assert.equal(saved[0].id,old.id);assert.deepEqual(saved[0].data,old.data);assert.equal(saved[0].enabled,false);assert.deepEqual(saved[1],other);assert.equal((await f.manager.listInstalled())[0].version,'0.2.2');
+ const f=await fixture(t,{version:futureVersion,trees:[old,other]});const candidate=await f.manager.check(manifest.id);assert.equal(candidate.available,true);
+ await f.manager.update(manifest.id,candidate);const saved=f.read();assert.equal(saved[0].id,old.id);assert.deepEqual(saved[0].data,old.data);assert.equal(saved[0].enabled,false);assert.deepEqual(saved[1],other);assert.equal((await f.manager.listInstalled())[0].version,futureVersion);
 });
 test('Legacy 0.2.0 identity without repository is not guessed or eligible for update',async t=>{
  const h=await hub,old=clone(script),id=h.parseExtensionBuildIdentity(script.content);delete id.repository;id.version='0.2.0';old.content='// MieMie-Extension-Build: '+JSON.stringify(id)+'\nvoid 0;';
@@ -72,4 +73,34 @@ test('Hub discovery rejects metadata over 64KiB and missing GitHub digest before
 test('Package build and pinned Hub modules never enter production runtime',()=>{
  const code=read('preset-manager.js').toString();for(const needle of ['createExtensionPackageManager','validateExtensionPackageMetadata','extensionLegacyPolisherHash','test-only-install-instance'])assert.equal(code.includes(needle),false,needle);
  assert.deepEqual(script.data,{});for(const forbidden of ['/Users/','/.codex/','/private/var/','CODEX_HOME'])assert.equal(script.content.includes(forbidden),false,forbidden);
+});
+
+// The retained historical artifact is the full official v0.2.1 release package,
+// verified against its public GitHub Asset digest; not a rewritten new bundle.
+function parseRuntimeVersion(content) {
+ const match=content.match(/JSON\.parse\('([^{\n]*\{[^\n]*"id":"miemie.preset-manager"[^\n]*\})'\)/);
+ assert.ok(match,'production embedded Runtime Manifest exists');
+ return JSON.parse(match[1]).version;
+}
+for(const enabled of [false,true])test(`Official 0.2.1 -> 0.2.2 Hub update preserves folder/order/settings and confirms display/runtime (enabled=${enabled})`,async t=>{
+ const h=await hub,oldBytes=read('MieMie-Preset-Manager-Extension-0.2.1.json');
+ assert.equal(hash(oldBytes),'071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0');
+ const old=JSON.parse(oldBytes);assert.equal(h.parseExtensionBuildIdentity(old.content).version,'0.2.1');
+ assert.equal(old.id,SCRIPT_ID);assert.equal(parseRuntimeVersion(old.content),'0.2.1');
+ old.id='official-021-installed-instance';old.enabled=enabled;
+ old.data={syntheticSetting:7,'miemie.preset-manager':{syntheticPreference:true}};
+ const other={...clone(old),id:'unrelated-script',name:'Synthetic unrelated script',content:'void 0;'};
+ const folder={type:'folder',enabled:true,name:'Synthetic folder',id:'existing-folder',icon:'',color:'',scripts:[other,old]};
+ const before=clone(folder);const f=await fixture(t,{trees:[folder],running:enabled});
+ const candidate=await f.manager.check(manifest.id);
+ assert.equal(candidate.currentVersion,'0.2.1');assert.equal(candidate.version,'0.2.2');assert.equal(candidate.available,true);assert.equal(candidate.compatibility,'installable');
+ const result=await f.manager.update(manifest.id,candidate);assert.equal(result.ok,true);assert.equal(result.persistence,'confirmed');assert.equal(result.runtimeConfirmed,enabled);
+ const saved=f.read();assert.equal(saved.length,1);assert.deepEqual({...saved[0],scripts:undefined},{...before,scripts:undefined});
+ assert.deepEqual(saved[0].scripts[0],other);const updated=saved[0].scripts[1];
+ assert.deepEqual({...updated,name:old.name,content:old.content},old);
+ assert.equal(updated.id,old.id);assert.equal(updated.enabled,enabled);assert.deepEqual(updated.data,old.data);
+ assert.equal(updated.name,'咩咩预设管理 0.2.2');assert.equal(updated.content,script.content);
+ assert.equal(h.parseExtensionBuildIdentity(updated.content).version,'0.2.2');assert.equal(parseRuntimeVersion(updated.content),'0.2.2');
+ const rows=await f.manager.listInstalled();assert.equal(rows.length,1);assert.equal(rows[0].version,'0.2.2');assert.equal(rows[0].memoryVersion,'0.2.2');assert.equal(rows[0].persistenceError,'');
+ assert.equal((await f.manager.check(manifest.id)).available,false);assert.equal(f.writes(),1);
 });
