@@ -79,6 +79,7 @@ async function nativeHost(baseline, { extra = {}, timeoutMs = 1000 } = {}) {
       return this;
     }
     text() { return this.items.map(item => item.text || '').join(''); }
+    map(fn) { const values = this.items.map((item, i) => fn(i, item)); return { toArray: () => values }; }
     filter(fn) { return new JQuery(this.items.filter((item, i) => fn.call(item, i, item))); }
     find(query) {
       const options = this.items.flatMap(item => item.options || []);
@@ -190,7 +191,7 @@ async function nativeHost(baseline, { extra = {}, timeoutMs = 1000 } = {}) {
   await first.promise; await result;
   events.removeListener('changed', initialListener);
   return {
-    host, native, records, names, presets, live, events, controls,
+    host, native, records, names, presets, live, events, controls, vmContext: context,
     gate(event) {
       const entered = deferred(), release = deferred();
       const listener = async () => { entered.resolve(); await release.promise; };

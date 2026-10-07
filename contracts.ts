@@ -11,6 +11,8 @@ export type RawPreset = { prompts: NativePrompt[]; prompt_order: OrderGroup[]; [
 export type Snapshot = { name: string; names: string[]; raw: RawPreset; activeGroupId: string | number; revision: string; version?: string };
 export interface PresetAdapter {
   read(): Promise<Snapshot>;
+  /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
+  directory?(): Promise<{ names: string[]; supported: string[] }>;
   select(name: string, expected: Snapshot): Promise<Snapshot>;
   save(expected: Snapshot, next: RawPreset): Promise<Snapshot>;
   create(expected: Snapshot, name: string, raw: RawPreset): Promise<Snapshot>;
@@ -28,8 +30,10 @@ export interface ManagerState { snapshot: Snapshot | null; recovery: { name: str
   pendingRaw: RawPreset | null; dirty: boolean; conflict: boolean; localRevision: number;
   busy: boolean; error: string; notice: string; category: string;
   draft: { id: string; patch: PromptPatch; revision: string } | null;
+  parametersDraft: { patch: import('./preset-parameters').ParameterPatch; revision: string } | null;
 }
 export interface ManagerController {
+  binding?: import('./chat-preset-coordinator').PresetBindingService;
   state: ManagerState;
   subscribe(fn: () => void): () => void;
   refresh(): Promise<void>;
@@ -53,6 +57,10 @@ export interface ManagerController {
   draft(patch: PromptPatch): void;
   cancelEdit(): void;
   saveEdit(): Promise<void>;
+  editParameters(): void;
+  draftParameters(patch: import('./preset-parameters').ParameterPatch): void;
+  cancelParameters(): void;
+  saveParameters(): Promise<void>;
   addPrompt(): Promise<void>;
   copyPrompt(id: string): Promise<void>;
   toggle(id: string): Promise<void>;

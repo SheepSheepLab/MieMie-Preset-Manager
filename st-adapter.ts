@@ -7,6 +7,7 @@ import type { PresetAdapter, RawPreset, Snapshot } from './contracts';
 type Data = Record<string, unknown>;
 type Listener = (...args: unknown[]) => void;
 interface NativeManager {
+  getAllPresets?(): string[];
   getSelectedPresetName(): string;
   findPreset(name: string): unknown;
   getCompletionPresetByName(name: string): unknown;
@@ -375,6 +376,17 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
 
   return {
     read,
+    async directory() {
+      const presets = await disk();
+      if (typeof manager.getAllPresets !== 'function') throw Error('宿主缺少原生预设列表顺序能力，未选择默认替代项。');
+      const listed = manager.getAllPresets();
+      if (listed.length !== new Set(listed).size) throw Error('原生预设列表重复，已停止选择默认替代项。');
+      const names = [...presets.keys()];
+      const supported = listed.filter(name => presets.has(name)).filter(name => { try { rawPreset(presets.get(name)); return true; } catch { return false; } });
+      if (!supported.length && names.some(name => !listed.includes(name)))
+        throw Error('保存目录出现原生列表尚未加载的预设；请刷新酒馆，未误判为空目录。');
+      return { names, supported };
+    },
     coversNotifications(snapshot) {
       const receipt = readReceipts.get(snapshot);
       if (!receipt || disposed || receipt.notifications !== notificationEpoch || receipt.epoch !== epoch

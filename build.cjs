@@ -38,7 +38,11 @@ function bundle(entry, filename) {
     module: { rules: [{ test: /\.png$/, type: 'asset/inline' }, { test: /\.ts$/, exclude: /node_modules/, use: { loader: require.resolve('ts-loader'), options: { transpileOnly: true, configFile: path.join(root, 'tsconfig.json'), compilerOptions: { noEmit: false } } } }] },
     plugins: [new webpack.BannerPlugin({ banner: licenseBanner })],
     optimization: { minimize: false }, performance: { hints: false },
-  }, (error, stats) => { if (error || stats.hasErrors()) reject(error || Error(stats.toString({ all: false, errors: true }))); else resolve(); }));
+  }, (error, stats) => { if (error || stats.hasErrors()) reject(error || Error(stats.toString({ all: false, errors: true }))); else {
+      // A completed byte-identical build must also satisfy preview freshness checks.
+      const builtFile = path.join(root, 'delivery', filename), completed = new Date();
+      fs.utimesSync(builtFile, completed, completed); resolve();
+    } }));
 }
 (async () => {
   if (process.argv.includes('--test')) { compileTests(); return; }

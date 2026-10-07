@@ -4,12 +4,14 @@
 
 import type { ManagerController, ManagerState, PresetAdapter, PromptPatch, RawPreset, Snapshot } from './contracts';
 import * as model from './model';
+import { patchParameters, missingParameterDefaults } from './preset-parameters';
+import type { PresetBindingService } from './chat-preset-coordinator';
 
 const editableKeys = ['name', 'role', 'content', 'injection_position', 'injection_depth', 'injection_order', 'injection_trigger', 'forbid_overrides'] as const;
 
-export function createController(adapter: PresetAdapter): ManagerController {
+export function createController(adapter: PresetAdapter, binding?: PresetBindingService): ManagerController {
   const state: ManagerState = { snapshot: null, recovery: null, pendingRaw: null, dirty: false, conflict: false, localRevision: 0,
-    busy: false, error: '', notice: '', category: '全部', draft: null };
+    busy: false, error: '', notice: '', category: '全部', draft: null, parametersDraft: null };
   const listeners = new Set<() => void>();
   let disposed = false, refreshEpoch = 0, refreshAfter = false, forceRefreshAfter = false;
   let observed: Snapshot | null = null;
@@ -39,11 +41,12 @@ export function createController(adapter: PresetAdapter): ManagerController {
   function updateDirty() {
     const original = state.draft && currentRaw().prompts.find(p => p.identifier === state.draft!.id);
     state.dirty = state.pendingRaw !== null || Boolean(state.draft && original &&
-      Object.entries(state.draft.patch).some(([key, value]) => !same(original[key], value)));
+      Object.entries(state.draft.patch).some(([key, value]) => !same(original[key], value))) ||
+      Boolean(state.parametersDraft && Object.entries(state.parametersDraft.patch).some(([key, value]) => !same(currentRaw()[key], value)));
   }
   function accept(next: Snapshot) {
     model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
-    if (state.snapshot?.name !== next.name) { state.category = '全部'; state.draft = null; }
+    if (state.snapshot?.name !== next.name) { state.category = '全部'; state.draft = null; state.parametersDraft = null; }
     state.snapshot = next;
   }
   function observe(next: Snapshot) {
@@ -94,7 +97,7 @@ export function createController(adapter: PresetAdapter): ManagerController {
   }
   async function run(action: (expected: Snapshot) => Promise<Snapshot>, success: string) {
     if (disposed || state.busy || !cleanRequired()) return;
-    state.busy = true; state.error = ''; state.notice = ''; refreshEpoch++; state.draft = null; notify();
+    state.busy = true; state.error = ''; state.notice = ''; refreshEpoch++; state.draft = null; state.parametersDraft = null; notify();
     let confirmed: Snapshot | undefined;
     try {
       const before = snapshot();
@@ -121,15 +124,22 @@ export function createController(adapter: PresetAdapter): ManagerController {
     catch (error) { state.error = message(error); notify(); }
   }
   function editedRaw() {
-    const draft = state.draft;
-    if (!draft) return currentRaw();
-    if (draft.revision !== snapshot().revision) throw Error('打开编辑窗口后预设已改变，草稿已保留。');
-    return model.patchPrompt(currentRaw(), draft.id, draft.patch);
+    const draft = state.draft, parameters = state.parametersDraft;
+    let next = currentRaw();
+    if (draft) {
+      if (draft.revision !== snapshot().revision) throw Error('打开编辑窗口后预设已改变，草稿已保留。');
+      next = model.patchPrompt(next, draft.id, draft.patch);
+    }
+    if (parameters) {
+      if (parameters.revision !== snapshot().revision) throw Error('打开参数设置后预设已改变，草稿已保留。');
+      next = patchParameters(next, parameters.patch);
+    }
+    return next;
   }
   function cancelChanges() {
     if (disposed || state.busy) return;
     const needsRead = state.conflict;
-    state.pendingRaw = null; state.draft = null; state.dirty = false; state.conflict = false;
+    state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false; state.conflict = false;
     state.localRevision++; state.error = ''; state.notice = '已取消未保存修改，酒馆数据未被写入。';
     refreshEpoch++;
     if (observed) { accept(observed); observed = null; }
@@ -145,7 +155,7 @@ export function createController(adapter: PresetAdapter): ManagerController {
       const next = await adapter.read();
       if (disposed) return;
       model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
-      state.pendingRaw = null; state.draft = null; state.dirty = false; state.conflict = false; observed = null;
+      state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false; state.conflict = false; observed = null;
       state.localRevision++; accept(next); confirmed = next; state.error = '';
       state.notice = '已重新读取酒馆实际状态，未保存修改已丢弃。';
     } catch (error) { if (!disposed) state.error = `重新读取失败，未保存修改仍保留：${message(error)}`; }
@@ -167,7 +177,7 @@ export function createController(adapter: PresetAdapter): ManagerController {
       model.validatePreset(saved.raw); model.group(saved.raw, saved.activeGroupId);
       if (saved.name !== before.name || String(saved.activeGroupId) !== String(before.activeGroupId) || !sameRaw(saved.raw, next))
         throw Error('保存确认期间酒馆预设被外部修改或切换，未保存内容已保留，请核对实际状态。');
-      state.pendingRaw = null; state.draft = null; state.dirty = false; state.conflict = false; observed = null;
+      state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false; state.conflict = false; observed = null;
       state.localRevision++; accept(saved); confirmed = saved; state.notice = '全部修改已保存并确认。';
     } catch (error) {
       if (!disposed) {
@@ -179,8 +189,13 @@ export function createController(adapter: PresetAdapter): ManagerController {
     } finally { await finishBusy(confirmed); }
   }
   const unsubscribe = adapter.subscribe?.(() => { void refresh(true); });
+  const offBinding = binding?.subscribe(() => {
+    notify();
+    if (binding.state.status === 'ready' && state.snapshot && state.snapshot.name !== binding.state.appliedName
+      && !state.busy && !state.dirty) void refresh();
+  });
   const controller: ManagerController = {
-    state, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, refresh, reload, saveChanges, cancelChanges,
+    state, binding, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, refresh, reload, saveChanges, cancelChanges,
     revision() { return `${state.snapshot?.revision ?? ''}:${state.localRevision}`; },
     rows() {
       if (!state.snapshot) return [];
@@ -220,7 +235,7 @@ export function createController(adapter: PresetAdapter): ManagerController {
     renamePreset(name) { return run(s => adapter.rename(s, name.trim()), '预设已重命名。'); },
     deletePreset() { return run(s => adapter.remove(s), '预设已删除，并读取当前预设。'); },
     edit(id) {
-      if (disposed || state.busy) return;
+      if (disposed || state.busy || state.parametersDraft) return;
       try {
         const s = snapshot(), p = currentRaw().prompts.find(p => p.identifier === id);
         if (!p || !model.editable(p)) throw Error('该条目不可编辑。');
@@ -234,6 +249,23 @@ export function createController(adapter: PresetAdapter): ManagerController {
     async saveEdit() {
       if (disposed || state.busy || !state.draft) return;
       try { const next = editedRaw(); state.draft = null; stage(next); }
+      catch (error) { state.error = message(error); notify(); }
+    },
+    editParameters() {
+      if (disposed || state.busy || state.draft || state.parametersDraft) return;
+      try { state.parametersDraft = { patch: {}, revision: snapshot().revision }; notify(); }
+      catch (error) { state.error = message(error); notify(); }
+    },
+    draftParameters(patch) {
+      if (state.parametersDraft && !state.busy) {
+        state.parametersDraft.patch = { ...state.parametersDraft.patch, ...model.clone(patch) };
+        updateDirty(); notify();
+      }
+    },
+    cancelParameters() { if (state.busy) return; state.parametersDraft = null; updateDirty(); notify(); },
+    async saveParameters() {
+      if (disposed || state.busy || !state.parametersDraft) return;
+      try { let next = editedRaw(); next = patchParameters(next, missingParameterDefaults(next)); state.parametersDraft = null; stage(next); }
       catch (error) { state.error = message(error); notify(); }
     },
     addPrompt() { return patch((raw, s) => model.addPrompt(raw, s.activeGroupId, crypto.randomUUID())); },
@@ -260,7 +292,7 @@ export function createController(adapter: PresetAdapter): ManagerController {
         stage({ ...raw, prompt_order: raw.prompt_order.map(g => g === group ? { ...g, order } : g) });
       } catch (error) { state.error = message(error); notify(); }
     },
-    dispose() { if (disposed) return; disposed = true; refreshEpoch++; unsubscribe?.(); adapter.dispose?.(); listeners.clear(); state.draft = null; state.pendingRaw = null; state.dirty = false; state.recovery = null; observed = null; },
+    dispose() { if (disposed) return; disposed = true; refreshEpoch++; offBinding?.(); unsubscribe?.(); adapter.dispose?.(); listeners.clear(); state.draft = null; state.parametersDraft = null; state.pendingRaw = null; state.dirty = false; state.recovery = null; observed = null; },
   };
   return controller;
 }

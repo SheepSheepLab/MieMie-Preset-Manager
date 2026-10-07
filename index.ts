@@ -6,29 +6,36 @@ import { createSTAdapter } from './st-adapter';
 import { createController } from './controller';
 import { createManagerView } from './ui';
 import { startDualMode } from './dual-mode';
-import type { ManagerController, ManagerView } from './contracts';
+import type { ManagerController, ManagerView, PresetAdapter } from './contracts';
+import { createBindingHost } from './chat-binding-host';
+import { createPresetBinding, type PresetBindingService } from './chat-preset-coordinator';
 
 declare const $: (callback: () => void) => void;
 /** Tavern Helper script iframe: all product DOM belongs to the host document. */
 $(() => {
   const host = window.parent as Window & Record<string, any>;
   if (host.__MieMiePresetManagerSource && !host.__MieMiePresetManagerSource.disposed) return;
-  let controller: ManagerController | undefined, view: ManagerView | undefined;
+  let controller: ManagerController | undefined, view: ManagerView | undefined, adapter: PresetAdapter | undefined;
+  let binding: PresetBindingService | undefined, offWork: (() => void) | undefined;
   let dual: ReturnType<typeof startDualMode> | undefined, stopped = false;
   const stop = () => {
     if (stopped) return;
-    stopped = true; controller?.dispose();
+    stopped = true; offWork?.(); binding?.dispose();
+    if (controller) controller.dispose(); else adapter?.dispose?.();
     void Promise.resolve(dual?.dispose()).finally(() => view?.dispose());
     window.removeEventListener('pagehide', stop);
   };
   window.addEventListener('pagehide', stop, { once: true });
   void (async () => {
     try {
-      const adapter = await createSTAdapter(host);
+      adapter = await createSTAdapter(host);
       if (stopped) { adapter.dispose?.(); return; }
-      controller = createController(adapter);
+      binding = createPresetBinding(adapter, createBindingHost(host), () => controller?.state ?? { dirty: false, busy: false });
+      controller = createController(binding.adapter, binding);
+      offWork = controller.subscribe(() => binding?.workChanged());
       view = createManagerView(host, controller);
       dual = startDualMode(host, window, view);
+      await binding.start();
       await controller.refresh();
     } catch (error) {
       stop();

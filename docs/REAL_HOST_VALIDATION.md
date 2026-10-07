@@ -52,5 +52,9 @@
 
 Maintainer 判定本次 Foundation 基础实机 Gate 为通过；结合基础自动检查和不变交付哈希，可进入 Foundation PR 的合并决策。此记录不执行合并。[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 继续 Open，用于后续 Phase 1 验收与迭代。
 
+## 0.2.2 Owner Review（2026-10-07）
+
+Owner 在真实酒馆试用当前候选，确认聊天切换带动各聊天最后选择的预设，指出原生正则随预设切换产生重载提示；随后认可参数窗口、统一清透紫外观及只变形外框的设置动画，并授权收口发布。此处记录 Owner 反馈及认可，不推断新的 ST/Helper/Hub 精确版本，不声称所有新增路径已获得独立完整宿主回执。0.2.2 的自动/固定原生源码契约、Package 更新与公开发现检查单独见 [Release 0.2.2](RELEASE-0.2.2.md)。历史 Foundation 的实际组合和 SHA-256 不变；ST 1.19 全宿主、完整 Phase 1、移动软键盘等深度验收仍待完成。
+
 
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。

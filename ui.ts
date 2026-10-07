@@ -4,10 +4,12 @@
 
 import type { ManagerController, ManagerView, Row } from './contracts';
 import { createIcon, type IconName } from './icons';
+import { NUMERIC_PARAMETERS, REASONING_EFFORTS, missingParameterDefaults } from './preset-parameters';
 import { managerStyles } from './styles';
 import { ICON } from './product-icon';
 import { PRESET_MANAGER_PRODUCT } from './product-identity';
 import { mountCharacterHeader, protectNativeControls } from './official-presentation';
+import { createParameterPresentation } from './parameter-presentation';
 
 const TRIGGERS = [
   ['normal', '普通生成'],
@@ -106,6 +108,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', PRESET_MANAGER_PRODUCT.name);
   panel.dataset.presentation = 'local';
+  if (controller.binding) panel.dataset.binding = 'true';
   const style = el('style');
   style.textContent = managerStyles;
   const frame = el('section', 'mm-frame');
@@ -127,15 +130,32 @@ export function createManagerView(host: Window, controller: ManagerController): 
   closeButton.textContent = '返回';
   brandline.append(logo, brand);
   const toolbar = el('div', 'mm-toolbar');
-  const presetField = el('label', 'mm-preset-field');
+  const presetField = el('div', 'mm-preset-field');
+  const presetControl = el('div', 'mm-preset-control');
   const presetSelect = writeControl(el('select'));
   presetSelect.setAttribute('aria-label', '当前使用预设');
   presetSelect.addEventListener('change', () => {
+    delete presetControl.dataset.keyboardFocus;
     cancelDrag();
     void run(() => controller.select(presetSelect.value));
   });
-  presetField.append(el('span', 'mm-preset-label', '当前使用预设'), presetSelect);
+  // Native selects retain focus after their picker closes. Only keyboard
+  // navigation should draw our shared focus ring, never a settled mouse pick.
+  listen(doc, 'keydown', ((event: KeyboardEvent) => {
+    if (event.key === 'Tab' || presetControl.contains(event.target as Node))
+      presetControl.dataset.keyboardFocus = 'true';
+  }) as EventListener);
+  listen(doc, 'pointerdown', (() => { delete presetControl.dataset.keyboardFocus; }) as EventListener, { capture: true });
+  const presetLabel = el('span', 'mm-preset-label', '当前使用预设');
+  presetControl.append(presetSelect);
+  presetField.append(presetLabel, presetControl);
   const actions = el('div', 'mm-actions');
+  const defaultButton = button('将当前预设设为默认', 'default', () => void run(async () => { await controller.binding?.setDefault(); }));
+  defaultButton.classList.add('mm-default'); defaultButton.hidden = !controller.binding;
+  defaultButton.setAttribute('aria-pressed', 'false');
+  const dot = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  dot.setAttribute('cx', '12'); dot.setAttribute('cy', '12'); dot.setAttribute('r', '3'); dot.classList.add('mm-default-dot');
+  defaultButton.querySelector('svg')?.append(dot);
   const fileInput = el('input');
   fileInput.type = 'file';
   fileInput.accept = '.json,application/json';
@@ -149,10 +169,15 @@ export function createManagerView(host: Window, controller: ManagerController): 
         void run(async () => {
           const result = await controller.exportText();
           download(result.name, result.text);
+          closePresetMenu();
         }),
+      '',
     ),
   );
-  const copyButton = writeControl(button('复制当前预设', 'copy', () => void run(() => controller.copyPreset())));
+  const copyButton = writeControl(button('复制当前预设', 'copy', () => void run(async () => {
+    await controller.copyPreset();
+    closePresetMenu();
+  }), ''));
   const moreWrap = el('div', 'mm-more-wrap');
   const menu = el('div', 'mm-menu');
   menu.hidden = true;
@@ -162,24 +187,13 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (!menu.hidden) positionMenu();
   });
   moreButton.setAttribute('aria-expanded', 'false');
-  const recoveryButton = button(
-    '导出操作前备份',
-    'export',
-    () => {
-      if (disposed || controller.state.busy || fileBusy || !controller.state.recovery) return;
-      try {
-        const result = controller.exportRecovery();
-        download(`${result.name} 操作前备份`, result.text);
-        menu.hidden = true;
-        moreButton.setAttribute('aria-expanded', 'false');
-      } catch (error) {
-        showLocalError(error);
-      }
-    },
-    '',
-  );
-  recoveryButton.title = '导出当前会话中上一次操作前的原生预设；关闭整个脚本后此备份会清除';
+  function closePresetMenu() {
+    menu.hidden = true;
+    moreButton.setAttribute('aria-expanded', 'false');
+  }
   menu.append(
+    exportButton,
+    copyButton,
     writeControl(
       button('新建预设', 'plus', () => nameDialog('新建预设', '', value => controller.newPreset(value)), ''),
     ),
@@ -204,12 +218,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
         '',
       ),
     ),
-    recoveryButton,
   );
   moreWrap.append(moreButton, menu);
   for (const node of [presetSelect, importButton, exportButton, copyButton, ...menu.querySelectorAll<HTMLButtonElement>('[data-write]')])
     node.dataset.clean = 'true';
-  actions.append(importButton, exportButton, copyButton, moreWrap, fileInput);
+  if (controller.binding) presetControl.append(defaultButton);
+  actions.append(importButton, moreWrap, fileInput);
   toolbar.append(presetField, actions);
   header.append(brandline, toolbar);
   const errorBox = el('div', 'mm-status mm-error');
@@ -241,7 +255,10 @@ export function createManagerView(host: Window, controller: ManagerController): 
     el('p', 'mm-hint', '已退出当前发送顺序，可重新挂接；删除仍遵循原生规则。'),
   );
   const detachedList = el('div', 'mm-list');
-  scroll.append(attachedList, unlockedHead, detachedList);
+  const parametersButton = writeControl(button('预设参数设置', 'settings', () => {
+    cancelDrag(); editorReturnFocus = doc.activeElement as HTMLElement | null; controller.editParameters();
+  }, 'mm-parameter-entry'));
+  scroll.append(parametersButton, attachedList, unlockedHead, detachedList);
   const footer = el('footer', 'mm-footer');
   const footerHint = el('span', 'mm-hint', '本地管理 · 内容不会上传');
   footerHint.setAttribute('role', 'status');
@@ -249,11 +266,15 @@ export function createManagerView(host: Window, controller: ManagerController): 
   footerHint.setAttribute('aria-atomic', 'true');
   footer.append(footerHint, closeButton);
   const editorLayer = el('div', 'mm-modal-layer');
+  editorLayer.tabIndex = -1;
   editorLayer.hidden = true;
   const confirmLayer = el('div', 'mm-modal-layer mm-confirm-layer');
   confirmLayer.hidden = true;
   frame.append(header, errorBox, categoryRow, scroll, footer);
   panel.append(editorLayer, confirmLayer);
+  const parameterPresentation = createParameterPresentation(host, editorLayer, parametersButton);
+  let parameterMotionEpoch = 0;
+  cleanup.push(() => parameterPresentation.dispose());
   doc.documentElement.append(panel);
 
   fileInput.addEventListener('change', () => {
@@ -394,11 +415,151 @@ export function createManagerView(host: Window, controller: ManagerController): 
     item.value = value;
     select.append(item);
   }
+  function renderParametersEditor() {
+    const state = controller.state, draft = state.parametersDraft;
+    if (!draft || !state.snapshot) return;
+    const key = `${state.snapshot.name}\0preset-parameters`;
+    if (editorKey === key && editorLayer.dataset.parameterMotion !== 'closing') return;
+    const motionEpoch = ++parameterMotionEpoch;
+    parameterPresentation.cancel();
+    editorKey = key;
+    const base = state.pendingRaw ?? state.snapshot.raw;
+    const raw = { ...base, ...missingParameterDefaults(base), ...draft.patch };
+    const box = el('section', 'mm-dialog mm-editor-dialog mm-parameters-dialog');
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', '预设参数设置');
+    const head = el('div', 'mm-dialog-head');
+    head.append(createIcon(doc, 'settings'), el('h3', '', '预设参数设置'));
+    const form = el('form', 'mm-dialog-body');
+    const intro = el('div', 'mm-parameters-intro');
+    intro.append(el('p', 'mm-parameters-preset', state.snapshot.name), el('p', 'mm-hint', '先在此保存修改，再点击列表上方的保存图标同步酒馆。'));
+    form.append(intro);
+    const section = (title: string) => {
+      const group = el('section', 'mm-parameters-section');
+      group.append(el('h4', 'mm-parameters-section-title', title)); form.append(group); return group;
+    };
+    const lengthGroup = section('生成长度'), samplingGroup = section('采样设置');
+    for (const spec of NUMERIC_PARAMETERS) {
+      const input = writeControl(el('input'));
+      input.type = 'number'; input.min = String(spec.min); input.max = String(spec.max); input.step = String(spec.step);
+      input.setAttribute('aria-label', spec.label);
+      input.value = typeof raw[spec.key] === 'number' ? String(raw[spec.key]) : '';
+      input.placeholder = raw[spec.key] === undefined ? '原生默认' : '保留原值';
+      const wrap = el('div', 'mm-parameter-field');
+      wrap.append(el('span', 'mm-parameter-label', spec.label), input);
+      let range: HTMLInputElement | undefined;
+      const paintRange = () => {
+        if (!range) return;
+        const progress = 100 * (Number(range.value) - spec.min) / (spec.max - spec.min);
+        range.style.setProperty('--mm-range-progress', `${Math.max(0, Math.min(100, progress))}%`);
+      };
+      // Length fields stay exact numbers; native model/unlock limits remain authoritative.
+      if (spec.step !== 1) {
+        wrap.classList.add('mm-parameter-sampling');
+        range = writeControl(el('input')); range.type = 'range'; range.min = input.min; range.max = input.max; range.step = input.step;
+        range.value = input.value || String(spec.min); range.setAttribute('aria-label', `${spec.label}滑块`); paintRange();
+        range.addEventListener('input', () => {
+          input.value = range!.value; paintRange(); controller.draftParameters({ [spec.key]: Number(input.value) });
+        });
+        wrap.append(range);
+      }
+      input.addEventListener('input', () => {
+        controller.draftParameters({ [spec.key]: input.value === '' ? null : Number(input.value) });
+        if (range && input.value !== '' && input.validity.valid) { range.value = input.value; paintRange(); }
+      });
+      (spec.step === 1 ? lengthGroup : samplingGroup).append(wrap);
+    }
+    lengthGroup.append(el('p', 'mm-hint', '实际可用上下文长度取决于当前模型及酒馆的上下文解锁设置。'));
+    const outputGroup = section('输出与推理');
+    for (const [name, label, hint] of [
+      ['stream_openai', '流式传输', '生成时逐字显示；关闭后一次性显示。'],
+      ['show_thoughts', '请求思维链', '只控制返回的思维链是否可见。'],
+    ] as const) {
+      const wrap = el('label', 'mm-parameter-switch'), copy = el('span', 'mm-parameter-switch-copy');
+      copy.append(el('span', 'mm-parameter-label', label), el('span', 'mm-hint', hint));
+      const input = writeControl(el('input')); input.type = 'checkbox'; input.setAttribute('role', 'switch'); input.setAttribute('aria-label', label);
+      input.checked = raw[name] === true; input.indeterminate = typeof raw[name] !== 'boolean';
+      input.addEventListener('change', () => { input.indeterminate = false; controller.draftParameters({ [name]: input.checked }); });
+      const track = el('span', 'mm-parameter-switch-track'); track.setAttribute('aria-hidden', 'true');
+      wrap.append(copy, input, track); outputGroup.append(wrap);
+    }
+    // A local select-only combobox: no platform picker, no native-select overlay.
+    const pickerField = el('div', 'mm-parameter-picker-field');
+    const picker = writeControl(button('推理强度', undefined, undefined, 'mm-parameter-picker'));
+    picker.setAttribute('role', 'combobox'); picker.setAttribute('aria-haspopup', 'listbox'); picker.setAttribute('aria-expanded', 'false');
+    const pickerValue = el('span', 'mm-parameter-picker-value'), arrow = createIcon(doc, 'chevron');
+    picker.replaceChildren(pickerValue, arrow);
+    const choices = el('div', 'mm-parameter-picker-menu'); choices.hidden = true;
+    choices.id = `mm-reasoning-${crypto.randomUUID()}`; choices.setAttribute('role', 'listbox'); choices.setAttribute('aria-label', '推理强度选项');
+    picker.setAttribute('aria-controls', choices.id);
+    const values: Array<readonly [string, string]> = [...REASONING_EFFORTS];
+    let selected = String(raw.reasoning_effort ?? '');
+    if (!values.some(([id]) => id === selected)) values.push([selected, `保留原值：${selected}`]);
+    const options: HTMLButtonElement[] = [];
+    const closePicker = (focus = false) => { choices.hidden = true; picker.setAttribute('aria-expanded', 'false'); if (focus) picker.focus({ preventScroll: true }); };
+    const showValue = () => {
+      pickerValue.textContent = values.find(([id]) => id === selected)?.[1] ?? selected;
+      picker.dataset.value = selected;
+      options.forEach((node, index) => node.setAttribute('aria-selected', String(values[index][0] === selected)));
+    };
+    const openPicker = (keyboard = false) => {
+      if (picker.disabled) return;
+      choices.hidden = false; picker.setAttribute('aria-expanded', 'true');
+      const current = Math.max(0, values.findIndex(([id]) => id === selected && REASONING_EFFORTS.some(([known]) => known === id)));
+      if (keyboard) options[current]?.focus({ preventScroll: true });
+      choices.scrollIntoView({ block: 'nearest' });
+    };
+    values.forEach(([id, label]) => {
+      const known = REASONING_EFFORTS.some(([value]) => value === id);
+      const item = writeControl(button(label, undefined, () => {
+        selected = id; showValue(); controller.draftParameters({ reasoning_effort: id }); closePicker(true);
+      }, 'mm-parameter-option'), known);
+      item.setAttribute('role', 'option'); item.tabIndex = -1;
+      item.append(createIcon(doc, 'check')); choices.append(item); options.push(item);
+    });
+    picker.addEventListener('click', () => choices.hidden ? openPicker() : closePicker());
+    pickerField.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !choices.hidden) { event.preventDefault(); event.stopPropagation(); closePicker(true); return; }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation();
+      if (choices.hidden) { openPicker(true); return; }
+      const enabled = options.filter(item => !item.disabled), index = enabled.indexOf(doc.activeElement as HTMLButtonElement);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabled.length - 1 :
+        (Math.max(0, index) + (event.key === 'ArrowDown' ? 1 : enabled.length - 1)) % enabled.length;
+      enabled[next]?.focus();
+    });
+    pickerField.addEventListener('focusout', event => { if (!pickerField.contains(event.relatedTarget as Node | null)) closePicker(); });
+    box.addEventListener('pointerdown', event => { if (!pickerField.contains(event.target as Node)) closePicker(); });
+    showValue(); pickerField.append(el('span', 'mm-parameter-label', '推理强度'), picker, choices); outputGroup.append(pickerField);
+    form.append(el('p', 'mm-hint', '实际支持情况沿用酒馆和模型规则，未显示的参数保持不变。'));
+    const error = el('div', 'mm-inline-error'); error.dataset.editorError = 'true'; error.setAttribute('role', 'alert'); form.append(error);
+    const actions = el('div', 'mm-dialog-actions');
+    actions.append(button('取消', undefined, () => controller.cancelParameters(), 'mm-secondary'),
+      writeControl(button('保存', undefined, () => { if (form.reportValidity()) void run(() => controller.saveParameters()); }, 'mm-primary')));
+    form.addEventListener('submit', event => event.preventDefault());
+    box.append(head, form, actions); editorLayer.replaceChildren(box); editorLayer.hidden = false;
+    form.scrollTop = 0;
+    void parameterPresentation.run(box, true).then(() => {
+      if (!disposed && motionEpoch === parameterMotionEpoch && !panel.hidden && controller.state.parametersDraft && box.isConnected)
+        form.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+    });
+  }
   function renderEditor() {
     const state = controller.state;
+    if (state.parametersDraft) { renderParametersEditor(); return; }
     const draft = state.draft;
     const key = draft ? `${state.snapshot?.name}\0${draft.id}` : '';
     if (!draft) {
+      const parametersBox = editorLayer.querySelector<HTMLElement>('.mm-parameters-dialog');
+      if (parametersBox && editorKey) {
+        if (editorLayer.dataset.parameterMotion === 'closing') return;
+        const motionEpoch = ++parameterMotionEpoch;
+        void parameterPresentation.run(parametersBox, false).then(() => {
+          if (disposed || motionEpoch !== parameterMotionEpoch || controller.state.parametersDraft || controller.state.draft) return;
+          editorLayer.replaceChildren(); editorLayer.hidden = true; editorKey = '';
+          if (!panel.hidden && editorReturnFocus?.isConnected) editorReturnFocus.focus({ preventScroll: true });
+        });
+        return;
+      }
       if (editorKey) {
         editorLayer.replaceChildren();
         editorLayer.hidden = true;
@@ -408,6 +569,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       return;
     }
     if (key === editorKey) return;
+    ++parameterMotionEpoch; parameterPresentation.cancel();
     const prompt = (state.pendingRaw ?? state.snapshot?.raw)?.prompts.find(item => item.identifier === draft.id);
     if (!prompt) return;
     editorKey = key;
@@ -630,21 +792,40 @@ export function createManagerView(host: Window, controller: ManagerController): 
     closeButton.disabled = state.busy || fileBusy;
     refreshButton.disabled = state.busy || fileBusy;
     for (const node of panel.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('[data-clean]'))
-      node.disabled = state.busy || fileBusy || !state.snapshot || state.dirty || state.conflict;
+      node.disabled = state.busy || fileBusy || !state.snapshot || state.dirty || state.conflict || Boolean(controller.binding && controller.binding.state.status !== 'ready');
     sessionActions.dataset.dirty = String(state.dirty);
     refreshButton.title = state.dirty ? '放弃未保存修改并重新读取酒馆实际状态' : '重新读取实际状态';
+    const binding = controller.binding?.state;
+    updateBindingControls();
+    const bindingHint = binding?.status === 'paused-dirty' ? '预设有未保存修改；处理后将应用当前对话预设。'
+      : binding?.error || (binding?.status === 'reconciling' ? '正在协调当前对话预设 · 确认前暂停生成'
+      : binding?.mode === 'missing' ? '当前对话绑定的预设已不存在，正在使用默认预设。' : '');
     const footerMessage = fileBusy ? '正在读取导入文件…'
       : state.busy ? '正在处理并核对酒馆状态…'
+      : bindingHint ? bindingHint
       : state.dirty ? '有未保存修改 · 尚未同步酒馆'
       : (!localError && !state.error && state.notice) || (state.category === '全部' ? '本地管理 · 内容不会上传' : '分类排序只调整可见条目，其他条目位置保留');
     if (footerHint.textContent !== footerMessage) footerHint.textContent = footerMessage;
     footerHint.title = footerMessage;
   }
-  let lastRender: { snapshot: unknown; pending: unknown; draft: unknown; revision: number; category: string; busy: boolean; file: boolean } | null = null;
+  function updateBindingControls() {
+    const binding = controller.binding?.state;
+    if (!binding) return;
+    const labels = { 'no-chat': '无对话', inherit: '跟随默认', override: '此对话', missing: '此对话 · 绑定缺失' };
+    presetLabel.textContent = `当前使用预设 · ${labels[binding.mode]}`;
+    const applied = binding.appliedName;
+    presetSelect.value = applied ?? ''; presetSelect.title = applied ?? '正在确认酒馆实际状态';
+    const isDefault = Boolean(applied && applied === binding.defaultName);
+    defaultButton.setAttribute('aria-pressed', String(isDefault));
+    defaultButton.title = isDefault ? '当前为默认预设' : '将当前预设设为默认';
+    defaultButton.setAttribute('aria-label', defaultButton.title);
+    defaultButton.disabled = !applied || binding.status !== 'ready' || controller.state.busy || controller.state.dirty || fileBusy;
+  }
+  let lastRender: { snapshot: unknown; pending: unknown; draft: unknown; parameters: unknown; revision: number; category: string; busy: boolean; file: boolean } | null = null;
   function render() {
     if (disposed) return;
     const state = controller.state;
-    const key = { snapshot: state.snapshot, pending: state.pendingRaw, draft: state.draft, revision: state.localRevision, category: state.category, busy: state.busy, file: fileBusy };
+    const key = { snapshot: state.snapshot, pending: state.pendingRaw, draft: state.draft, parameters: state.parametersDraft, revision: state.localRevision, category: state.category, busy: state.busy, file: fileBusy };
     if (lastRender && Object.keys(key).every(k => key[k as keyof typeof key] === lastRender![k as keyof typeof key])) {
       updateSessionControls(); renderStatus(); return;
     }
@@ -655,6 +836,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (presetSelect.dataset.names !== namesKey) {
       presetSelect.replaceChildren();
       for (const name of state.snapshot?.names ?? []) option(presetSelect, name, name);
+      if (controller.binding) option(presetSelect, '', '正在确认实际预设…');
       if (!state.snapshot) option(presetSelect, '', '尚未读取预设');
       presetSelect.value = state.snapshot?.name ?? '';
       presetSelect.title = state.snapshot?.name ?? '';
@@ -709,7 +891,6 @@ export function createManagerView(host: Window, controller: ManagerController): 
       node.disabled = state.busy || fileBusy || !state.snapshot || node.dataset.permitted === 'false' || (node.dataset.clean === 'true' && (state.dirty || state.conflict));
     updateSessionControls();
     frame.setAttribute('aria-busy', String(state.busy || fileBusy));
-    recoveryButton.disabled = state.busy || fileBusy || !state.recovery;
   }
 
   function mountCards(list: HTMLElement, nodes: HTMLElement[], preserveOrder = false) {
@@ -940,11 +1121,16 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }) as EventListener);
   listen(host, 'blur', (() => cancelDrag()) as EventListener);
   listen(panel, 'keydown', ((event: KeyboardEvent) => {
+    if (editorLayer.dataset.parameterMotion && (event.key === 'Tab' ||
+        (event.key === 'Escape' && editorLayer.dataset.parameterMotion === 'closing'))) {
+      event.preventDefault(); event.stopPropagation(); return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
       if (drag) cancelDrag();
       else if (confirmClose) confirmClose();
+      else if (controller.state.parametersDraft && !controller.state.busy) controller.cancelParameters();
       else if (controller.state.draft && !controller.state.busy) controller.cancelEdit();
       else if (!menu.hidden) {
         menu.hidden = true;
@@ -1005,7 +1191,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const width = visible?.width ?? host.innerWidth, height = visible?.height ?? host.innerHeight;
     const size = `${width}:${height}`;
     const resized = viewportSize !== size; viewportSize = size;
-    if (resized) cancelDrag();
+    if (resized) { cancelDrag(); parameterPresentation.cancel(); }
     if (panel.dataset.presentation !== 'native') {
       const css = host.getComputedStyle(panel);
       const safe = (side: string) => Math.max(10, Number.parseFloat(css.getPropertyValue(`--mm-safe-${side}`)) || 0);
@@ -1023,6 +1209,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       active.scrollIntoView({ block: 'nearest' });
   }
   function setPresentation(mode: 'local' | 'native' | 'hub') {
+    parameterPresentation.cancel();
     panel.dataset.presentation = mode;
     for (const key of ['left','top','right','bottom','width','height','max-height','transform','transform-origin','will-change']) panel.style.removeProperty(key);
     // The initial native window is clamped before the orb fits its exact origin.
@@ -1047,12 +1234,17 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const first = !editorLayer.hidden ? editorLayer.querySelector<HTMLElement>('input') : presetSelect;
     (first ?? frame).focus();
   }
+  async function reloadActual() {
+    await controller.reload();
+    if (controller.state.error) return;
+    if (controller.binding) { await controller.binding.reconcile(); await controller.refresh(); }
+  }
   function requestReload() {
     if (disposed || controller.state.busy || fileBusy) return;
     cancelDrag();
     if (controller.state.dirty) {
-      dialog('重新读取实际状态', el('p', 'mm-confirm-copy', '有未保存的内容。重新读取将放弃这些修改并同步酒馆，是否继续？'), '重新读取', () => controller.reload(), true);
-    } else void run(() => controller.reload());
+      dialog('重新读取实际状态', el('p', 'mm-confirm-copy', '有未保存的内容。重新读取将放弃这些修改并同步酒馆，是否继续？'), '重新读取', reloadActual, true);
+    } else void run(reloadActual);
   }
   function requestClose() {
     if (disposed || controller.state.busy || fileBusy) return;
@@ -1070,6 +1262,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (closeHandler) closeHandler(); else close();
   }
   function close() {
+    parameterPresentation.cancel();
     cancelDrag();
     panel.hidden = true;
     panel.inert = true;
