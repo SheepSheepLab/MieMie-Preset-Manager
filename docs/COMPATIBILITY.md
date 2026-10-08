@@ -1,6 +1,6 @@
 # SillyTavern Compatibility Notes · 0.2.3
 
-目标范围为 ST `1.18.x` / `1.19.x`。这是基于固定源码、模拟宿主及运行时能力检查的适配范围。本次 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + MieMie Hub 0.8.1 + Safari 26.6 / macOS 26.6** 的 Foundation 基础实机路径已通过，具体范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。以下 source 和 mock 证据仍独立于实机记录，不能代替完整宿主运行，也不覆盖每个补丁或分叉版本；ST 1.19 和物理手机仍待验。
+目标范围为 ST `1.18.x` / `1.19.x`，固定源码、自动契约与真实宿主分别记录。历史 ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 Foundation 通过，只覆盖当时的 0.1.2 包。2026-10-08 汇总正式 MPM 0.2.3 + ST 1.19.0 commit `7e8663cd9c184a550b37238218bdd32c6efc68e9` + Helper 4.11.3 的代表性桌面及 iOS Simulator Mobile Safari 验收。Source Verification / Automated Contract / Representative Real Host：PASS；整个 1.19.x 补丁与第三方生态矩阵：NOT VERIFIED。范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。
 
 ## Owner-approved compatibility principle · 0.2.3
 
@@ -113,7 +113,7 @@ Hub 依据：[API v1 的 closePanel](https://github.com/SheepSheepLab/MieMie-Hub
 
 ## 已知限制与需求差距
 
-1. **真实宿主仅验基础路径。** 本次 ST 1.18.0 组合中的脚本运行、基础读写、刷新持久化及 Hub 双模式已验；完整 Round Trip、Unknown Fields 深度验证、Built-in / Marker 全边界、失败／并发及第三方钩子仍待验。ST 1.19、物理手机和软键盘未验。此次实机和源码／mock 均不证明整个 1.18.x 或 1.19.x 系列可用。
+1. **真实宿主范围有明确边界。** 历史 1.18 Foundation 的基础读写、刷新与 Hub 双模式通过；正式 0.2.3 在 ST 1.19.0 代表性读/切换/编辑/保存/刷新、原生未保存保护与 Per-Chat 协调通过，Simulator 软件键盘及 Owner 长按排序保存刷新、普通滑动到底且不改顺序通过。本轮 ST 1.19 正式 0.2.3 的复杂 Import / 自动选择、Title / Role / Content、Detach / Reattach、Delete Cancel / Confirm 的保存刷新链通过，编辑后 Raw Unknown Fields 完整保留。本轮通过真实下载文件核验完整 Export / Native Re-import / 编辑后 Export：测试样本三阶段结构一致，无 Native 字段规范化或 MPM 数据损失；18 Golden Path 全部满足。该结论仍限于实际样本及记录的宿主组合，下载事件接口未回传不代表产品导出失败。物理设备、完整版本/插件矩阵、失败/并发深度组合不由基础通过推导。最终矩阵见 [Closeout Review](PHASE1-CLOSEOUT-0.2.3.md)。
 2. **产品政策与原生资格明确分开。** Copy 与 Delete 使用 Owner 批准的普通自定义条目安全边界；Detach 对齐严格 `system_prompt === false` 的原生资格。特殊条目 Detach 的真实宿主保存、重新应用和生成仍需在可恢复测试副本上验收。
 3. **旧格式迁移不自动执行。** 会触发原生迁移的 `main_prompt`、`nsfw_prompt`、`jailbreak_prompt` 旧字段会阻止操作。缺失 `100001`、重复 identifier 或悬空引用也拒绝写入，不自动修复。应先在副本中完成原生迁移。其他历史模型迁移和第三方 BEFORE／AFTER 转换未全面覆盖。
 4. **仅支持全局活动组。** 非全局策略或非 `100001` 活动组停止运行；保留多组数据不等于支持切换任意角色组来编辑。
@@ -167,3 +167,9 @@ Runtime API v1 与 Managed Package v1 分开验证。离线 Package 契约使用
 ## Native Launcher 本地 SVG 回退 · post-0.2.2 Candidate
 
 Standalone / Shortcut 共用 Native Launcher：正式 PNG 正常加载时保持原图；加载失败时使用内置固定 `createIcon(doc, 'sheep')` SVG，无外部请求、Emoji、文本替代或 HTML 注入。入口维持 64px、圆形、Dock、拖动、动画和 button aria-label；SVG 为 aria-hidden / focusable=false，dispose 移除监听。Hub Launcher 不变，仍由 Host 管理 image failure → Manifest 短文本（`launcher.icon = "预设"`）。
+
+## ST 1.19 / Simulator 当前证据补充（2026-10-08）
+
+ST119-R1 先检查长期 Safari 会话，再复测首次启动、无聊天/单人聊天、MPM 与 Native A→B→A、刷新、已保存设置、真实未保存温度及 Native auto-select / Binding 协调，代表性路径 PASS。Helper 最大化预设上下文功能实际把 live 的 `openai_max_context` 从 4095 改为 2000000、`max_context_unlocked` 从 false 改为 true；MPM 正确检测第三方修改并拒绝覆盖。关闭优化后须明确安全重新读取，正常切换恢复。历史首次异常保留，根因已确认；没有修改 MPM 或放宽 checkLive()。
+
+IOS27-R1 原始 29 PASS / 16 NOT TESTED 不变；Owner 后续补充长按、拖动、排序、统一保存、刷新持久化与切换（OWNER-IOS-01，E），以及普通滑动到底、最后 Prompt 可见且不改顺序（OWNER-IOS-02，E）。#8 / #15 PASS；其他原始未测项不擅自升级。本轮 ST119-FINAL-EXPORT 实际文件链补齐 #12/13/14，当前18 PASS / 0 PARTIAL / 0 FAIL。真实 Hub 0.8.1 Runtime 使用历史 Foundation 证据；Managed Package 是公开 discovery + synthetic install/update，真实在线安装仍未验，不增加为 Issue #1 新关闭条件。历史 Candidate / Release 段落的“待验”描述只表示当时状态，当前汇总与结项依据见 [Final Closeout Review](PHASE1-CLOSEOUT-0.2.3.md)。本次验收文档发布于 v0.2.3 Release 之后，不属于原 v0.2.3 Tag 的文档内容；历史 Tag 与 Release Assets 保持不变。Issue 的实时状态以 [Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 为准。

@@ -1,8 +1,33 @@
 # Testing · 0.2.3
 
-自动检查、源码核验和真实宿主验收分别记录。2026-10-04 已完成 ST 1.18.0 + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 的 Foundation 基础实机验收，见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19、物理手机及其余深度验收仍待执行。该实机记录对应此前 Foundation 交付包。Maintainer 已确认统一保存与 Presentation 内容通过 Review，升版本前基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；0.2.0 为此内容的阶段 Pre-release，不据此新增完整宿主或移动端通过结论。
+历史 Foundation 和各 Candidate 的结果保留原日期与范围；当前证据以以下 2026-10-08 汇总为准。
+
+本次验收文档发布于 v0.2.3 Release 之后，不属于原 v0.2.3 Tag 的文档内容；历史 Tag 与 Release Assets 保持不变。Issue 的实时状态以 [Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 为准。
 
 最新正式检查见文末 [0.2.3 release validation](#023-release-validation2026-10-07)；下方历次 Candidate 及发行结果保留对应日期、版本和范围。
+
+## 当前验收摘要（2026-10-08）
+
+此前已补做 R-A / R-B 实际 UI 验收及 R-C Owner Manual Acceptance；本轮只完成剩余实际 MPM Export 文件 / ST Native Re-import / 编辑后 Export 互操作，不重测其他已通过15项，不重跑发行自动测试、不生成交付包。**结论 A：Phase 1 Acceptance Complete，18 PASS / 0 PARTIAL / 0 FAIL；原始 Phase 1 验收已通过 Owner 最终审核。** 代表性 ST 1.19.0 真宿主与 iOS Simulator Mobile Safari 已有实际操作证据；物理设备和整个 ST 版本/插件矩阵未验。2026-10-04 Foundation 只对应当时的 0.1.2 包，下面所有历史 Candidate / Release 回执保留原范围。
+
+### 证据类型与发布测试回执
+
+A = Automated Contract（Node / Fixture / Synthetic Host）；B = Browser Simulation（Playwright / CDP / responsive）；C = Real Desktop Host（实际 ST + Helper + Browser）；D = Simulator Mobile Host（实际 ST + Helper + iOS Simulator Mobile Safari）；E = Owner Manual Acceptance（明确回执）。D 不等于 physical iPhone，E 不伪装成独立工具观察。
+
+| 正式 0.2.3 发布检查 | 2026-10-07 已有 PASS 回执 |
+| --- | ---: |
+| Node（A） | 325 |
+| Package v1（A，15 production + 56 upstream） | 71 |
+| 当前正式 Hub Package 专项（A） | 15 |
+| Browser（B：19 functional + 9 responsive + 35 binding + 44 parameters + 28 motion + 57 presentation） | 192 |
+| UI / Drag（B） | 24 |
+| Save comparison（A） | 8 |
+
+来源：[Release 0.2.3](RELEASE-0.2.3.md) 和 [validation-results.json](validation-results.json) 的 release023；这是历史发行回执，**本轮未重新运行**。package.json 没有正式文档检查命令；本轮另做真实 Export / Native Re-import / Edited Export 及 diff、文档结构/链接/证据和隐私核对。当前为 **18 PASS / 0 PARTIAL / 0 FAIL**；先前10/8→Owner普通滑动11/7→R-A/R-B阶段15/3的报告均保留。本轮实际文件证据见 ST119-FINAL-EXPORT。
+
+ST119-R1 的 A–I、首次安装编辑/保存/刷新和长期 Safari 刷新前往返通过，真实 Native 未保存修改保护通过。Helper 最大化上下文导致实际 live 从 4095/false 变为 2000000/true，是 Correct Conflict Protection；关闭优化并明确重新读取后正常切换。原始异常保留，不算未解决 MPM Bug。
+
+IOS27-R1 原始 **29 PASS / 16 NOT TESTED** 保持不变；后续 OWNER-IOS-01（E）补充 TOUCH-02/03 长按、拖动、统一保存、刷新排序持久化及预设切换。软件键盘、编辑 Title/Content、数字输入、Save/Cancel、可见区域适配与基础旋转由原始 D 证据通过。#8 PASS；后续 OWNER-IOS-02（E）明确普通滑动到底、最后 Prompt 可见且不改顺序，#15 PASS。证据 ID、环境、原始报告 hash 与范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。
 
 ## 可复现命令
 
@@ -121,7 +146,7 @@ Maintainer 已确认前一候选 `9d230354b0a9111d44667e0866e2041a4bae1a8c4aeeed
 
 测试不替换 Manifest、不放宽 Hub validator、不使用 Emoji 功能图标，不在生产包中包含 Hub 测试源码。DOM／存储偏好／Launcher 依赖仍为模拟，Surface 动画未执行；这不是运行真实 Hub。正式 PNG 原样保存，来源及独立素材许可边界见 ASSETS-LICENSE.md。真实 Hub 0.8.1 的基础验收另见 [Real Host Validation](REAL_HOST_VALIDATION.md)，不将离线契约测试计作实机结果。
 
-## 版本证据边界
+## 版本证据边界（历史 Foundation）
 
 | 对象 | 源码／自动检查基线 | 真实宿主状态 |
 | --- | --- | --- |
@@ -135,6 +160,37 @@ Maintainer 已确认前一候选 `9d230354b0a9111d44667e0866e2041a4bae1a8c4aeeed
 模拟真实方法体仍不包含完整 ST 服务、真实宿主页面、Tavern Helper iframe 或其他扩展。浏览器触控模拟也不能验证手机输入法、设备 safe-area 值或实际浏览器工具栏。
 
 ## 真实宿主 Golden Path
+
+2026-10-08 按 [PRODUCT_PLAN 第 25 节](PRODUCT_PLAN.md#25-测试要求)、原 Issue #1 和 Owner compatibility clarification 重新判断。Yes 表示当前生产实现与回归覆盖存在；Automated PASS 引用 REL023 已有回执，不表示本轮重跑，也不表示完整 Native re-import 实机。C/D/E 的每个范围按 F18、ST119-R1、ST119-FINAL-RA-RB、ST119-FINAL-EXPORT、IOS27-R1、OWNER-IOS-01、OWNER-IOS-02 分开，定义见 [Evidence Ledger](REAL_HOST_VALIDATION.md#evidence-ledger--当前收口状态)。
+
+GP #10 以 Detach 的可观察原生数据语义及解锁条目区域为依据，不机械复制 ST 内部 UI；Copy / Detach / Delete 独立资格沿用 Owner 澄清。GP #18 要求单业务实例，未新增“审计所有第三方监听器”门槛。F18 PASS 保留历史版本范围，不声称当前 0.2.3 的完整 Hub/Prompt 实机重跑。
+
+| # | Requirement | Implemented | Automated | Real Host | Status | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Hub 关闭后独立入口恢复 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：Standalone / Hub 生命周期 |
+| 2 | 打开后读取实际当前 Preset | Yes | A/B PASS | C/D PASS | PASS | F18、ST119-R1、IOS27-R1 HOST-02 / PICKER-02 |
+| 3 | 切换后 ST 实际状态同步 | Yes | A/B PASS | C/D/E PASS | PASS | F18；ST119-R1 A–G / I；IOS27-R1 PICKER-02；OWNER-IOS-01 |
+| 4 | 复杂 Native Preset 导入后自动选择 | Yes | A/B PASS | C PASS：实际 MPM Import / Native Applied / 回读 | PASS | ST119-FINAL-RA-RB R-A Import：16 definitions / 两组 / 非默认排序，落盘结构与 fixture 一致 |
+| 5 | 完整复制，来源不变，自动选择副本 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：两份完整副本与来源 JSON 一致 |
+| 6 | Title / Role / Content Cancel / Save 持久化 | Yes | A/B PASS | C PASS：取消 / Editor Dirty / Unified Save / 刷新读回 | PASS | ST119-FINAL-RA-RB R-B1；F18；IOS27-R1 DIALOG-02–04 |
+| 7 | Prompt 副本在原项下一行，新 identifier | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：复制、原项不变、刷新保留 |
+| 8 | 整卡拖动，统一保存，刷新后顺序保留 | Yes | A/B PASS | C 桌面排序；E Simulator 完整保存链 PASS | PASS | F18；OWNER-IOS-01 补充 TOUCH-02 / TOUCH-03 |
+| 9 | Toggle 开关与刷新后状态一致 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：原生发送状态与 UI / refresh 一致 |
+| 10 | Detach 移出活动顺序、定义保留，可重新挂接 | Yes | A/B PASS | C PASS：Detach / Reattach 均统一保存并刷新 | PASS | ST119-FINAL-RA-RB R-B2：仅活动组引用变更，definition / 其他组保留，新增唯一引用 |
+| 11 | Delete 确认可达、Cancel 不删、Confirm 合法删除 | Yes | A/B PASS | C PASS：两个 disposable custom Prompt 的真正确认链 | PASS | ST119-FINAL-RA-RB R-B3：Cancel 无 Dirty/Native 写入；Confirm Dirty→保存→刷新，定义/所有目标引用删除 |
+| 12 | Export 能经 ST 原生导入器重新导入 | Yes | A/B PASS | C PASS：真实 MPM 下载文件→ST Native Import UI→Native / MPM 回读 | PASS | ST119-FINAL-EXPORT Test A/B：独立新文件名，JSON 内部字节不改 |
+| 13 | 复杂无修改 Round Trip 保留未知字段与语义 | Yes | A PASS（固定原生 JSON / fixture） | C PASS：Original / Actual Export / Native Re-import 全结构相等 | PASS | ST119-FINAL-EXPORT Test A/B：16 definitions / 两组 / 参数 / extensions / unknown，数组顺序严格比较，Native 字段规范化差异为空 |
+| 14 | 注入未知字段，编辑其他 Prompt 后导出仍保留 | Yes | A PASS（深层未知字段与所有组） | C PASS：Editor Dirty→Unified Save→刷新/读回→真实 Export 文件 | PASS | ST119-FINAL-EXPORT Test C：唯一差异 $.prompts[12].content，其他字段/数组/分组/扩展完整一致 |
+| 15 | 移动列表滑动、长按拖动、按钮不误拖、编辑软键盘 | Yes | A/B PASS（合成移动） | D 点击/编辑/键盘；E 拖动及普通滑动 PASS | PASS | IOS27-R1；OWNER-IOS-01；OWNER-IOS-02 普通滑动到底、最后 Prompt 可见、不改顺序；非物理 iPhone |
+| 16 | Hub 启动收纳独立入口 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：PNG Hub 入口、独立入口收起 |
+| 17 | Hub 停用，状态保留、独立入口恢复 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：草稿与相同业务实例恢复 |
+| 18 | Hub 再接入，无第二业务实例 | Yes | A/B PASS | C PASS（Foundation） | PASS | F18：退出/重新接入/打开/关闭/重开；RH-01 后续人工复核 |
+
+**18 PASS / 0 PARTIAL / 0 FAIL；无新确认的源码实现问题。** 本轮只补齐 #12/13/14，其余15项复用已接受证据。Issue #1 的原始验收范围已满足并通过 Owner 最终审核；详见 [Minimum Remaining Acceptance](PHASE1-CLOSEOUT-0.2.3.md#minimum-remaining-acceptance-checklist)。已完成 ST 1.19 代表性真宿主不再列为待验。物理设备、全补丁/插件矩阵、全部 16 个历史未测细项及真实 Managed Package 在线安装不新增为关闭条件。
+
+## 历史 Foundation Golden Path（2026-10-04）
+
+历史阶段摘要（原文保留）：自动检查、源码核验和真实宿主验收分别记录。2026-10-04 已完成 ST 1.18.0 + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 的 Foundation 基础实机验收，见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19、物理手机及其余深度验收仍待执行。该实机记录对应此前 Foundation 交付包。Maintainer 已确认统一保存与 Presentation 内容通过 Review，升版本前基线为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`；0.2.0 为此内容的阶段 Pre-release，不据此新增完整宿主或移动端通过结论。
 
 依据 [产品计划第 25 节](PRODUCT_PLAN.md#25-测试要求)，以下记录本次 ST 1.18.0 实际组合的已执行范围，**不代表全部 18 项完成**。环境、测试 Head、交付 JSON 哈希及 RH-01 见 [Real Host Validation](REAL_HOST_VALIDATION.md)。ST 1.19 的所有实机项仍待执行。测试使用已备份且获准使用的预设；公开记录不得包含私人正文、连接凭据或完整导出。
 
