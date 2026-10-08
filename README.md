@@ -8,18 +8,18 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前阶段版本：`0.2.3`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、对话级预设绑定、生成安全检查、预设参数设置及官方应用 Presentation；Phase 1 深度验收尚未全部完成。
+- 当前阶段版本：`0.2.3`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、对话级预设绑定、生成安全检查、预设参数设置及官方应用 Presentation；Phase 1 原始18项 Golden Path 验收已完成并通过 Owner 最终审核。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
-- 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。固定源码研究与模拟测试以 `1.18.0`、`1.19.0` 为基线；本次基础实机通过的组合为 **ST 1.18.0 (`8172dcd0e`) + Tavern Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**。ST 1.19、其他补丁版本和物理手机仍待验证，不能宣称整个版本系列已通过实测。
+- 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
 
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
-此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)；[Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 继续 Open。
+此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)。
 
 ## 0.2.3 兼容语义与界面调整
 
-0.2.3 收口 Owner 已完成真实使用验收的 Candidate：Copy／Detach／Delete 独立资格、原生一致的 Detach、保守的物理 Delete、Standalone／Shortcut 的固定本地 SVG 回退，以及统一的选中项定位菜单和滚动边缘阴影。升级前已从源码逐字重现 Owner 测试包。历史公开发行保留；本轮范围与验证见 [Release 0.2.3](docs/RELEASE-0.2.3.md)。完整 Phase 1 实机矩阵尚未完成。
+0.2.3 收口 Owner 已完成真实使用验收的 Candidate：Copy／Detach／Delete 独立资格、原生一致的 Detach、保守的物理 Delete、Standalone／Shortcut 的固定本地 SVG 回退，以及统一的选中项定位菜单和滚动边缘阴影。升级前已从源码逐字重现 Owner 测试包。历史公开发行保留；本轮范围与验证见 [Release 0.2.3](docs/RELEASE-0.2.3.md)。2026-10-08 最终补验结论为 A：**18 PASS / 0 PARTIAL / 0 FAIL**。真实 MPM Export 文件、ST Native Re-import 及编辑后导出未知字段保留均通过；三阶段结构与语义一致，本样本无 Native 字段规范化变化。其余15项按原版本/证据范围复用。完整18项矩阵及结项依据见 [Final Closeout Review](docs/PHASE1-CLOSEOUT-0.2.3.md)。本次验收文档发布于 v0.2.3 Release 之后，不属于原 v0.2.3 Tag 的文档内容；历史 Tag 与 Release Assets 保持不变。Issue 的实时状态以 [Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 为准。
 
 ## 安装阶段版本
 
@@ -46,7 +46,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，支持 `🕋难度-地狱`、`📕文风:FateZero` 等连字符／单冒号格式，也保留双冒号、括号等已有格式。中文全角冒号 `：` 同样可用；相同前缀至少两条时生成分类，不更改名称或数据；在分类内排序只置换该分类原有位置。
 
-界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。真实移动浏览器及软键盘仍待验证。
+界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。实际 iOS Simulator Mobile Safari 已验证软件键盘、编辑保存/取消、可见区域适配及基础旋转，Owner 另确认长按排序与刷新持久化；普通触摸列表滑动由 Owner 补充确认；拖动期间旋转等未测细项保留原范围，不声称物理手机通过。
 
 ## 对话绑定与预设参数
 
