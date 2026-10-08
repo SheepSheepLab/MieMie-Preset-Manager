@@ -378,7 +378,7 @@ Standalone／Shortcut 各验证正常 PNG、真实 PNG decode error 后本地 SV
 
 独立干净目录没有复制 Candidate 输出或依赖；仅保留 Package Update 所需、已固定摘要的历史官方 0.2.1 tracked 测试资产。四份 Package 资产及 production / preview JS 均由新安装依赖重新生成，与工作区逐字一致。
 
-本地 [Candidate JSON](../delivery/phase1-closeout-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+本阶段本地历史 Candidate JSON（未纳入公共仓库，不提供公共下载）：`MieMie-Preset-Manager-Extension-0.2.2.json`。
 - SHA-256：`db8d765c9f667b95eb78a8fb2bcc6dd772280f0716bab7af400e3e211312c6fa`
 - contentSha256：`a23a149568880c11f16894cbdda2ea72b1789831386854b292a8235637d32aee`
 
@@ -391,7 +391,7 @@ Owner 实机发现顶部选择框仍弹出系统菜单。本地 UI 改为参数�
 
 本轮 check、325/325 Node、build、69/69 Package 和发布固定 Hub 额外 13/13 PASS。离线 Chromium：functional 19、responsive 9、binding 30、parameters 32、parameter motion 28、Presentation 57（175 项，页面错误 0）；UI/拖拽 24、保存比较正确性 8 PASS。新增检查覆盖自定义菜单、选中状态、键盘关闭/焦点、Tab、外部关闭、320px 长名称与多预设，以及非安全隔离页面初始化。独立干净目录重新安装锁定依赖并 build，六份产物逐字一致。
 
-本轮 [更新 Candidate JSON](../delivery/phase1-closeout-selector-candidate-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+本轮预设选择框跟进的本地历史 Candidate JSON（未纳入公共仓库，不提供公共下载）：`MieMie-Preset-Manager-Extension-0.2.2.json`。
 
 - SHA-256：`b5c916cb78d0f9dcea98113dbaf5750431965a470ede1c4d640c1c678a6fa571`
 - contentSha256：`8dfc1004d00f2861a78aea2356b88300ea069dab45bf26a0caf99a5e63f7ed49`
@@ -405,7 +405,7 @@ Owner 希望保留系统菜单的展开定位方式，但统一页面内紫色�
 
 Check、325/325 Node、build、69/69 Package PASS。功能 19、responsive 9、binding 32、parameters 32、motion 28、Presentation 57（177 项，页面错误 0），UI/拖拽 24、保存比较正确性 8 PASS。重新安装锁定依赖的独立干净构建，六份文件逐字一致。机器回执为 `validation-results.json.presetPickerAnchorFollowup`；先前 Candidate 回执保留。
 
-[最新 Candidate JSON](../delivery/phase1-closeout-selector-anchor-20261007/MieMie-Preset-Manager-Extension-0.2.2.json)：
+本轮选中行定位跟进的本地历史 Candidate JSON（未纳入公共仓库，不提供公共下载）：`MieMie-Preset-Manager-Extension-0.2.2.json`。
 
 - SHA-256：`66405cea73110a50c8a56fa4f807c7579f476eac70b89b669416d25104be9f14`
 - contentSha256：`0948826df520d4d52a5c7090b97bec413bdc343de16741d0dfa1d8839ff29610`
