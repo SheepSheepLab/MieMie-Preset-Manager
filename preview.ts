@@ -26,6 +26,10 @@ const snapshot = (): Snapshot => ({ name: selected, names: [...presets.keys()], 
 const guard = (expected: Snapshot) => { if (snapshot().revision !== expected.revision) throw Error('预览状态已改变，请重读。'); };
 const adapter: PresetAdapter = {
   async read() { return snapshot(); },
+  async readPresetByName(name) {
+    const raw = presets.get(name); if (!raw) throw Error('来源预设不存在。');
+    return { name, raw: structuredClone(raw), activeGroupId: 100001, fingerprint: JSON.stringify(raw) };
+  },
   async directory() { return { names: [...presets.keys()], supported: [...presets.keys()] }; },
   async select(name, expected) { guard(expected); if (!presets.has(name)) throw Error('预设不存在。'); selected = name; return snapshot(); },
   async save(expected, raw) { guard(expected); presets.set(selected, structuredClone(raw)); return snapshot(); },

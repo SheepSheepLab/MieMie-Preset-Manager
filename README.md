@@ -8,7 +8,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前阶段版本：`0.2.3`，以 GitHub **Pre-release** 发布。包含 Foundation、本地暂存与统一保存、对话级预设绑定、生成安全检查、预设参数设置及官方应用 Presentation；Phase 1 原始18项 Golden Path 验收已完成并通过 Owner 最终审核。
+- 当前版本：`0.5.0`，GitHub **Stable Release**。新增预设条目迁移、批量核对与合并，并保留统一保存、对话级绑定和生成安全检查。Hub Esc 冲突为 Owner Accepted Known Issue；iOS Simulator 剩余项目为 Tool Blocked / NOT TESTED，详见 [Known Issues](docs/KNOWN-ISSUES.md)。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
@@ -17,17 +17,23 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)。
 
-## 0.2.3 兼容语义与界面调整
+## 0.5.0 条目迁移与批量合并
+
+从“更多预设操作 → 预设条目迁移”选择已保存的来源预设，目标保持当前预设。支持单选或多选条目、同名对比、仅覆盖提示词或覆盖全部受支持属性、不同名新增、顶部／底部／分类末尾插入，并保留原标题。来源始终只读；确认后进入 Dirty / Pending，最终通过主界面“保存修改”统一写入。取消当前草稿不会撤销此前已确认的待保存修改。
+
+本版包含统一选择框、条目预览、分层子窗口、展开／收起动画、长列表及保存比较性能优化，以及 Standalone Escape 层级修复。正式范围、验证证据与限制见 [Release 0.5.0](docs/RELEASE-0.5.0.md)。Hub 模式暂时请使用界面上的返回、取消、关闭按钮，避免 Esc 使未确认草稿丢失。
+
+## 0.2.3 兼容语义与界面调整（历史）
 
 0.2.3 收口 Owner 已完成真实使用验收的 Candidate：Copy／Detach／Delete 独立资格、原生一致的 Detach、保守的物理 Delete、Standalone／Shortcut 的固定本地 SVG 回退，以及统一的选中项定位菜单和滚动边缘阴影。升级前已从源码逐字重现 Owner 测试包。历史公开发行保留；本轮范围与验证见 [Release 0.2.3](docs/RELEASE-0.2.3.md)。2026-10-08 最终补验结论为 A：**18 PASS / 0 PARTIAL / 0 FAIL**。真实 MPM Export 文件、ST Native Re-import 及编辑后导出未知字段保留均通过；三阶段结构与语义一致，本样本无 Native 字段规范化变化。其余15项按原版本/证据范围复用。完整18项矩阵及结项依据见 [Final Closeout Review](docs/PHASE1-CLOSEOUT-0.2.3.md)。本次验收文档发布于 v0.2.3 Release 之后，不属于原 v0.2.3 Tag 的文档内容；历史 Tag 与 Release Assets 保持不变。Issue 的实时状态以 [Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 为准。
 
-## 安装阶段版本
+## 安装当前版本
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.2.3.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.2.3/MieMie-Preset-Manager-Extension-0.2.3.json)
+[MieMie-Preset-Manager-Extension-0.5.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.5.0/MieMie-Preset-Manager-Extension-0.5.0.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.2.3) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.2.3.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.5.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.5.0.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，确实位于页面上方并遮挡关键操作时才避让；页面覆盖入口时保持条目对齐，内部 Dialog 沿用已验收交互。
@@ -81,9 +87,9 @@ npm run test:browser
 
 `manifest.json` 是发布与 Runtime Display Identity 的共同来源；Runtime 顶层图标仍使用内嵌正式 PNG，Launcher 短文本 fallback 为“预设”。Manifest author `SheepSheep` 表示 Founder / Project Initiator / official product author；`SheepSheepLab` 是官方 GitHub 开发、维护与发布命名空间。louisSSR 保留真实 Contributor 身份、贡献版权与提交记录。标准元数据只记录 Asset 名称、原始字节大小与 hash，下载来源由 GitHub Release API 决定。SHA256SUMS 是辅助检查，不能替代 GitHub digest。
 
-**旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装 0.2.3；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
+**旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装当前版本；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
 
-`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。发布说明见 [0.2.3](docs/RELEASE-0.2.3.md)；[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前发布说明见 [0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
 
 | 文件 | 职责 |
 | --- | --- |

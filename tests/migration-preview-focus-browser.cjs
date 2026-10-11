@@ -1,0 +1,26 @@
+// Copyright (C) 2026 SheepSheepLab
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Regression for preview close visually selecting an unselected migration row.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url'),{chromium}=require('playwright');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../../outputs/migration-preview-focus-20261010');
+const pagePath=process.env.PREVIEW_FOCUS_PAGE||path.join(root,'delivery/preview.html');
+fs.mkdirSync(out,{recursive:true});const checks=[],errors=[];
+const settle=async page=>{await page.locator('dialog[open]').evaluateAll(async nodes=>await Promise.all(nodes.flatMap(n=>n.getAnimations({subtree:true})).map(a=>a.finished.catch(()=>{}))));};
+const visual=row=>row.evaluate(e=>({background:getComputedStyle(e).backgroundColor,border:getComputedStyle(e).borderColor,selected:e.dataset.selected??'false',checked:e.querySelector('[aria-pressed]')?.getAttribute('aria-pressed')??'false',focusVisible:!!e.querySelector(':focus-visible')}));
+(async()=>{const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'chromium',headless:true});let page;try{
+for(const width of [1280,390]){
+ page=await browser.newPage({viewport:{width,height:844}});page.on('pageerror',e=>errors.push(e.message));await page.goto(pathToFileURL(pagePath).href+'?binding=1');await page.waitForFunction(()=>__MieMieBindingDemo.binding.state.status==='ready');
+ await page.getByRole('button',{name:'更多预设操作',exact:true}).click();await page.getByRole('button',{name:'预设条目迁移',exact:true}).click();const modal=page.getByRole('dialog',{name:'预设条目迁移',exact:true});await modal.getByRole('combobox').click();await modal.getByRole('option',{name:'轻量 · 示例预设',exact:true}).click();await page.waitForFunction(()=>!__MieMieBindingDemo.controller.migration.state.loading);await settle(page);
+ const preview=page.getByRole('dialog',{name:'查看条目内容',exact:true});
+ for(const list of ['来源条目','目标条目']){
+  const row=modal.locator(`[aria-label=${list}] [data-id=demo-0]`),view=row.locator('.mm-migration-view');await row.scrollIntoViewIfNeeded();await page.mouse.move(0,0);await page.waitForTimeout(200);const normal=await visual(row);
+  const before=await page.evaluate(()=>JSON.stringify({selected:__MieMieBindingDemo.controller.migration.state.selectedIds,pending:__MieMieBindingDemo.controller.state.pendingRaw,dirty:__MieMieBindingDemo.controller.state.dirty}));
+  await view.click();await preview.getByRole('button',{name:'返回迁移'}).click();await preview.waitFor({state:'hidden'});await page.mouse.move(0,0);await page.waitForTimeout(200);const after=await visual(row);assert.deepEqual(after,normal,`${width} ${list}: pointer preview close must return to the ordinary unselected row`);
+  assert.equal(await page.evaluate(()=>JSON.stringify({selected:__MieMieBindingDemo.controller.migration.state.selectedIds,pending:__MieMieBindingDemo.controller.state.pendingRaw,dirty:__MieMieBindingDemo.controller.state.dirty})),before);checks.push(`${width} ${list}: pointer close leaves no row highlight or icon ring and changes no selection/Pending/Dirty`);
+  await view.hover();await page.waitForTimeout(200);assert.notEqual((await visual(row)).background,normal.background);await page.mouse.move(0,0);await page.waitForTimeout(200);assert.equal((await visual(row)).background,normal.background);checks.push(`${width} ${list}: actual whole-row hover still works and clears when pointer leaves`);
+  await view.focus();await view.press('Enter');await preview.waitFor();await page.keyboard.press('Escape');await preview.waitFor({state:'hidden'});await page.waitForTimeout(200);assert(await view.evaluate(e=>document.activeElement===e&&e.matches(':focus-visible')));assert.equal((await visual(row)).background,normal.background);await page.keyboard.press('Tab');assert.notEqual(await view.evaluate(e=>document.activeElement===e),true);checks.push(`${width} ${list}: keyboard return restores visible icon focus without painting a selected row; Tab remains usable`);
+ }
+ const selected=modal.locator('[aria-label=来源条目] [data-id=demo-1]');await selected.locator('.mm-migration-card-main').click();await page.mouse.move(0,0);await page.waitForTimeout(200);const checked=await visual(selected);assert.equal(checked.selected,'true');await selected.locator('.mm-migration-view').click();await preview.getByRole('button',{name:'返回迁移'}).click();await preview.waitFor({state:'hidden'});await page.mouse.move(0,0);await page.waitForTimeout(200);assert.deepEqual(await visual(selected),checked);assert.deepEqual(await page.evaluate(()=>__MieMieBindingDemo.controller.migration.state.selectedIds),['demo-1']);checks.push(`${width}: genuinely checked row retains its selection highlight after pointer preview close`);
+ await modal.screenshot({path:path.join(out,`preview-return-${width}.png`)});await page.close();page=null;
+}assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'focus-results.json'),JSON.stringify({passed:checks.length,checks,pageErrors:errors,realHost:false},null,2));console.log(JSON.stringify({passed:checks.length,pageErrors:errors},null,2));
+}catch(e){if(page)await page.screenshot({path:path.join(out,'failure.png')});throw e;}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

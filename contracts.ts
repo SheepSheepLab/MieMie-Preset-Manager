@@ -9,8 +9,11 @@ export type OrderEntry = { identifier: string; enabled: boolean; [key: string]: 
 export type OrderGroup = { character_id: string | number; order: OrderEntry[]; [key: string]: unknown };
 export type RawPreset = { prompts: NativePrompt[]; prompt_order: OrderGroup[]; [key: string]: unknown };
 export type Snapshot = { name: string; names: string[]; raw: RawPreset; activeGroupId: string | number; revision: string; version?: string };
+/** Saved source only; never a native application/generation receipt. */
+export type SourcePreset = { name: string; raw: RawPreset; activeGroupId: string | number; fingerprint: string };
 export interface PresetAdapter {
   read(): Promise<Snapshot>;
+  readPresetByName?(name: string): Promise<SourcePreset>;
   /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
   directory?(): Promise<{ names: string[]; supported: string[] }>;
   select(name: string, expected: Snapshot): Promise<Snapshot>;
@@ -31,8 +34,10 @@ export interface ManagerState { snapshot: Snapshot | null; recovery: { name: str
   busy: boolean; error: string; notice: string; category: string;
   draft: { id: string; patch: PromptPatch; revision: string } | null;
   parametersDraft: { patch: import('./preset-parameters').ParameterPatch; revision: string } | null;
+  migrationDraft: { content: string; baseline: string | undefined; patch?: PromptPatch; baselinePrompt?: NativePrompt; batchDirty?: boolean } | null;
 }
 export interface ManagerController {
+  migration: import('./migration-controller').MigrationController;
   binding?: import('./chat-preset-coordinator').PresetBindingService;
   state: ManagerState;
   subscribe(fn: () => void): () => void;

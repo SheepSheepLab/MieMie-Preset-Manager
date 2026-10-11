@@ -154,6 +154,7 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
   });
   async function generationCheck(stage: 'commands' | 'request') {
     alive(); const current = host.currentChat();
+    if (session().dirty || session().busy) { permit = null; return false; }
     const desired = settings && resolve(settings, current.identity, parseChat(current.binding));
     if (state.status === 'ready' && (current.identity.key !== state.chat.key ||
       (current.identity.kind !== 'none' && (host.selectedName() !== state.targetName || desired?.targetName !== state.targetName)))) {
@@ -163,7 +164,7 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       || (current.identity.kind !== 'none' && (host.selectedName() !== state.targetName || desired?.targetName !== state.targetName))) return false;
     const epoch = state.epoch, observedNative = nativeEpoch;
     const receipt = await adapter.read();
-    if (state.status !== 'ready' || epoch !== state.epoch || observedNative !== nativeEpoch || host.nativeBusy()
+    if (session().dirty || session().busy || state.status !== 'ready' || epoch !== state.epoch || observedNative !== nativeEpoch || host.nativeBusy()
       || host.currentChat().identity.key !== current.identity.key) return false;
     if (receipt.revision !== confirmed.revision) { request(); return false; }
     if (stage === 'commands') {
@@ -248,6 +249,10 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       if (disposed) return;
       const local = session(), changed = priorDirty !== local.dirty || priorBusy !== local.busy;
       priorDirty = local.dirty; priorBusy = local.busy;
+      if (changed && local.dirty) {
+        permit = null; host.invalidateGeneration(); pending = true;
+        if (state.status !== 'error') { state.status = 'paused-dirty'; notify(); }
+      }
       if (changed && !local.dirty && !local.busy && pending) { schedule(); }
     },
     dispose() { if (disposed) return; disposed = true; permit = null; unsubscribe(); offGate(); host.dispose(); listeners.clear(); },

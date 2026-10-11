@@ -1,6 +1,6 @@
 {
   "name": "miemie-preset-manager",
-  "version": "0.2.3",
+  "version": "0.5.0",
   "private": true,
   "description": "Native SillyTavern preset manager delivered as a Tavern Helper script",
   "scripts": {
@@ -14,7 +14,17 @@
     "test:package-v1": "node --test tests/package-v1-build.cjs tests/fixtures/hub-package-v1/tests/package-manager.test.mjs",
     "test:binding-browser": "node tests/binding-browser.cjs",
     "test:parameters-browser": "node tests/parameters-browser.cjs",
-    "test:parameter-motion": "node tests/parameter-motion-browser.cjs"
+    "test:parameter-motion": "node tests/parameter-motion-browser.cjs",
+    "test:migration": "node tests/migration-browser.cjs",
+    "test:migration-iteration2": "node tests/migration-iteration2-browser.cjs",
+    "test:migration-ui-polish": "node tests/migration-ui-polish-browser.cjs",
+    "test:migration-preview-focus": "node tests/migration-preview-focus-browser.cjs",
+    "test:migration-child-dialog": "node tests/migration-child-dialog-browser.cjs",
+    "test:migration-batch-layer": "node tests/migration-batch-layer-browser.cjs",
+    "test:migration-dialog-focus": "node tests/migration-dialog-focus-browser.cjs",
+    "test:picker-escape": "node tests/picker-escape-browser.cjs",
+    "test:migration-large-list": "node tests/migration-large-list-browser.cjs",
+    "test:migration-open-performance": "node tests/migration-open-performance.cjs"
   },
   "devDependencies": {
     "typescript": "6.0.3",

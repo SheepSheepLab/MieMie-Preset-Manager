@@ -5,20 +5,15 @@
 import type { ManagerController, ManagerView, Row } from './contracts';
 import { createIcon, type IconName } from './icons';
 import { NUMERIC_PARAMETERS, REASONING_EFFORTS, missingParameterDefaults } from './preset-parameters';
+import { createFloatingPicker, createPickerEscapeGuard, floatingPickerStyles } from './floating-picker';
 import { managerStyles } from './styles';
 import { ICON } from './product-icon';
 import { PRESET_MANAGER_PRODUCT } from './product-identity';
 import { mountCharacterHeader, protectNativeControls } from './official-presentation';
 import { createParameterPresentation } from './parameter-presentation';
+import { createMigrationView } from './migration-ui';
 
-const TRIGGERS = [
-  ['normal', '普通生成'],
-  ['continue', '继续'],
-  ['impersonate', '代写用户'],
-  ['swipe', '滑动重试'],
-  ['regenerate', '重新生成'],
-  ['quiet', '静默生成'],
-] as const;
+import { EDITOR_ROLES, EDITOR_TRIGGERS as TRIGGERS } from './prompt-editor-fields';
 const INTERACTIVE = 'button,input,select,textarea,a,summary,[role="switch"],[contenteditable="true"]';
 let pickerSequence = 0;
 
@@ -28,13 +23,15 @@ export function createManagerView(host: Window, controller: ManagerController): 
   let localError = '';
   let fileBusy = false;
   let editorKey = '';
+  let editorPickers:Array<ReturnType<typeof createFloatingPicker>>=[];
+  function disposeEditorPickers(){editorPickers.forEach(p=>p.dispose());editorPickers=[];}
   let parameterPicker: { position: () => void; close: () => void; dispose: () => void; contains: (node: Node | null) => boolean } | null = null;
   let cardPreset: string | undefined;
   const cardCache = new Map<string, { key: string; node: HTMLElement }>();
   let returnFocus: HTMLElement | null = null;
   let editorReturnFocus: HTMLElement | null = null;
   let confirmClose: (() => void) | null = null;
-  const cleanup: Array<() => void> = [];
+  const cleanup: Array<() => void> = [disposeEditorPickers];
   const urls = new Set<string>();
   const timers = new Set<number>();
 
@@ -138,10 +135,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
   panel.dataset.presentation = 'local';
   if (controller.binding) panel.dataset.binding = 'true';
   const style = el('style');
-  style.textContent = managerStyles;
+  style.textContent = managerStyles+floatingPickerStyles;
   const frame = el('section', 'mm-frame');
   frame.tabIndex = -1;
   panel.append(style, frame);
+  const migrationView = createMigrationView(host, panel, controller);
+  cleanup.push(() => migrationView.dispose());
   const header = el('header', 'mm-header');
   const brandline = el('div', 'mm-brandline');
   const logo = el('div', 'mm-logo');
@@ -171,9 +170,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const presetShadows = pickerScrollShadows(presetChoices);
   cleanup.push(() => presetShadows.dispose());
   function closePresetChoices(focus = false) {
+    presetEscape.deactivate();
     presetChoices.hidden = true; presetShadows.hide(); presetSelect.setAttribute('aria-expanded', 'false');
     if (focus && !presetSelect.disabled) presetSelect.focus({ preventScroll: true });
   }
+  const presetEscape = createPickerEscapeGuard(doc, presetSelect, () => !presetChoices.hidden, () => closePresetChoices(true));
+  cleanup.push(() => presetEscape.deactivate());
   function showPresetValue(name: string) {
     presetSelect.dataset.value = name;
     presetValue.textContent = name || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
@@ -212,6 +214,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (presetSelect.disabled) return;
     closePresetMenu(); presetChoices.hidden = false; presetSelect.setAttribute('aria-expanded', 'true');
     positionPresetChoices();
+    presetEscape.activate();
     const options = [...presetChoices.querySelectorAll<HTMLButtonElement>('[role=option]:not(:disabled)')];
     const current = options.find(node => node.dataset.value === presetSelect.dataset.value) ?? options[0];
     if (keyboard) current?.focus({ preventScroll: true });
@@ -279,6 +282,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const moreWrap = el('div', 'mm-more-wrap');
   const menu = el('div', 'mm-menu');
   menu.hidden = true;
+  menu.append(button('预设条目迁移', 'migration', () => {
+    cancelDrag(); closePresetMenu(); void migrationView.open();
+  }, ''));
   const moreButton = button('更多预设操作', 'more', () => {
     menu.hidden = !menu.hidden;
     moreButton.setAttribute('aria-expanded', String(!menu.hidden));
@@ -511,11 +517,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     wrapper.append(el('span', '', label), input);
     return wrapper;
   }
-  function option(select: HTMLSelectElement, value: string, label: string) {
-    const item = el('option', '', label);
-    item.value = value;
-    select.append(item);
-  }
+
   function renderParametersEditor() {
     const state = controller.state, draft = state.parametersDraft;
     if (!draft || !state.snapshot) return;
@@ -598,7 +600,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
     let selected = String(raw.reasoning_effort ?? '');
     if (!values.some(([id]) => id === selected)) values.push([selected, `保留原值：${selected}`]);
     const options: HTMLButtonElement[] = [];
-    const closePicker = (focus = false) => { choices.hidden = true; shadows.hide(); picker.setAttribute('aria-expanded', 'false'); if (focus) picker.focus({ preventScroll: true }); };
+    const closePicker = (focus = false) => { pickerEscape.deactivate(); choices.hidden = true; shadows.hide(); picker.setAttribute('aria-expanded', 'false'); if (focus) picker.focus({ preventScroll: true }); };
+    const pickerEscape = createPickerEscapeGuard(doc, picker, () => !choices.hidden, () => closePicker(true));
     const showValue = () => {
       pickerValue.textContent = values.find(([id]) => id === selected)?.[1] ?? selected;
       picker.dataset.value = selected;
@@ -625,6 +628,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       picker.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       choices.hidden = false; picker.setAttribute('aria-expanded', 'true');
       positionPicker();
+      if (!choices.hidden) pickerEscape.activate();
       const current = Math.max(0, values.findIndex(([id]) => id === selected && REASONING_EFFORTS.some(([known]) => known === id)));
       if (keyboard) options[current]?.focus({ preventScroll: true });
     };
@@ -667,11 +671,12 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }
   function renderEditor() {
     const state = controller.state;
-    if (state.parametersDraft) { renderParametersEditor(); return; }
+    if (state.parametersDraft) { disposeEditorPickers();renderParametersEditor(); return; }
     parameterPicker?.dispose(); parameterPicker = null;
     const draft = state.draft;
     const key = draft ? `${state.snapshot?.name}\0${draft.id}` : '';
     if (!draft) {
+      disposeEditorPickers();
       const parametersBox = editorLayer.querySelector<HTMLElement>('.mm-parameters-dialog');
       if (parametersBox && editorKey) {
         if (editorLayer.dataset.parameterMotion === 'closing') return;
@@ -692,6 +697,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       return;
     }
     if (key === editorKey) return;
+    disposeEditorPickers();
     ++parameterMotionEpoch; parameterPresentation.cancel();
     const prompt = (state.pendingRaw ?? state.snapshot?.raw)?.prompts.find(item => item.identifier === draft.id);
     if (!prompt) return;
@@ -714,18 +720,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
     title.type = 'text';
     title.value = value.name ?? '';
     title.addEventListener('input', () => controller.draft({ name: title.value }));
-    const role = writeControl(el('select'));
-    role.setAttribute('aria-label', '身份');
-    const roles = [
-      ['system', '系统'],
-      ['user', '用户'],
-      ['assistant', 'AI 助手'],
-    ];
-    for (const [id, name] of roles) option(role, id, name);
+    const role = writeControl(button('身份', undefined, undefined, 'mm-parameter-picker'));
+    const roles:Array<readonly[string,string]> = [...EDITOR_ROLES];
     if (value.role === undefined || !roles.some(([id]) => id === value.role))
-      option(role, value.role ?? '', value.role === undefined ? '未设置（保留原值）' : `保留原值：${value.role}`);
-    role.value = value.role ?? '';
-    role.addEventListener('change', () => controller.draft({ role: role.value }));
+      roles.push([value.role ?? '',value.role === undefined ? '未设置（保留原值）' : `保留原值：${value.role}`]);
+    editorPickers.push(createFloatingPicker(doc,box,role,'身份',roles,value.role??'',id=>{if(id!=='')controller.draft({role:id});},()=>form.getBoundingClientRect()));
     const content = writeControl(el('textarea'), !prompt.marker);
     content.value = value.content ?? '';
     content.spellcheck = false;
@@ -739,15 +738,10 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const details = el('details');
     details.append(el('summary', '', '高级设置'));
     const advanced = el('div', 'mm-advanced');
-    const position = writeControl(el('select'));
-    option(position, '0', '相对位置（Relative）');
-    option(position, '1', '聊天中（In-Chat）');
-    if (value.injection_position === undefined || ![0, 1].includes(value.injection_position))
-      option(position, String(value.injection_position ?? ''), '保留原值');
-    position.value = String(value.injection_position ?? '');
-    position.addEventListener('change', () => {
-      if (position.value !== '') controller.draft({ injection_position: Number(position.value) });
-    });
+    const position = writeControl(button('插入位置（Position）',undefined,undefined,'mm-parameter-picker'));
+    const positions:Array<readonly[string,string]>=[['0','相对位置（Relative）'],['1','聊天中（In-Chat）']];
+    if(value.injection_position===undefined||![0,1].includes(value.injection_position))positions.push([String(value.injection_position??''),'保留原值']);
+    editorPickers.push(createFloatingPicker(doc,box,position,'插入位置（Position）',positions,String(value.injection_position??''),id=>{if(id!=='')controller.draft({injection_position:Number(id)});},()=>form.getBoundingClientRect()));
     const numericRow = el('div', 'mm-field-row');
     for (const [keyName, label] of [
       ['injection_depth', '深度（Depth）'],
@@ -1258,6 +1252,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
+      if (event.repeat) return;
       if (drag) cancelDrag();
       else if (confirmClose) confirmClose();
       else if (controller.state.parametersDraft && !controller.state.busy) controller.cancelParameters();
@@ -1395,6 +1390,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (closeHandler) closeHandler(); else close();
   }
   function close() {
+    migrationView.close();
     closePresetChoices();
     parameterPicker?.close();
     parameterPresentation.cancel();

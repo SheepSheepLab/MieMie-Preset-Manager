@@ -15,7 +15,7 @@ function embeddedVersion(content){const m=content.match(/JSON\.parse\('([^{\n]*\
  const source=process.env.HUB_PACKAGE_MODULE||pathToFileURL(path.join(__dirname,'../tests/fixtures/hub-package-v1/src/extension-packages.js')).href;
  const hub=await import(source);
  const api=REPOSITORY.replace('https://github.com/','https://api.github.com/repos/');
- const report={version:manifest.version,host:'isolated synthetic script tree and persistence; not real Tavern Helper',publicDiscovery:false,freshInstall:false,official021Update:false,official022Update:false,updates:[]};
+ const report={version:manifest.version,host:'isolated synthetic script tree and persistence; not real Tavern Helper',publicDiscovery:false,freshInstall:false,official021Update:false,official022Update:false,official023Update:false,updates:[]};
  function manager(initial=[],running=false){let trees=copy(initial);const scripts=()=>trees.flatMap(x=>x.type==='folder'?x.scripts:[x]);
   const m=hub.createExtensionPackageManager({crypto:webcrypto,fetch:fetchPublic,randomUUID:()=> 'synthetic-public-install',getScriptTrees:()=>copy(trees),
    updateScriptTreesWith:fn=>{trees=fn(copy(trees));return copy(trees);},readSavedScript:async id=>copy(scripts().find(s=>s.id===id)||null),
@@ -25,7 +25,8 @@ function embeddedVersion(content){const m=content.match(/JSON\.parse\('([^{\n]*\
  const fresh=manager();try{
   const candidate=await fresh.m.inspect(REPOSITORY);assert.equal(candidate.compatibility,'installable');assert.equal(candidate.version,manifest.version);report.publicDiscovery=true;
   const releases=await (await fetchPublic(api+'/releases?per_page=100',{credentials:'omit'})).json();
-  const release=releases.find(r=>r.id===candidate.releaseId);assert.ok(release);assert.equal(release.draft,false);assert.equal(release.prerelease,true);
+  const release=releases.find(r=>r.id===candidate.releaseId);assert.ok(release);assert.equal(release.draft,false);assert.equal(release.prerelease,false);
+  const latest=await (await fetchPublic(api+'/releases/latest',{credentials:'omit'})).json();assert.equal(latest.id,release.id);assert.equal(latest.tag_name,'v'+manifest.version);report.latest=latest.tag_name;report.installable=candidate.installable;
   report.releaseURL=release.html_url;report.digests=[];
   for(const name of [`MieMie-Preset-Manager-Extension-${manifest.version}.json`,'MieMie-Extension-update.json','manifest.json','SHA256SUMS']){
    const asset=release.assets.find(a=>a.name===name);assert.ok(asset,name);assert.equal(asset.state,'uploaded');
@@ -37,7 +38,7 @@ function embeddedVersion(content){const m=content.match(/JSON\.parse\('([^{\n]*\
   const installed=fresh.read()[0];assert.equal(installed.id,'synthetic-public-install');assert.deepEqual(installed.data,{});assert.equal(embeddedVersion(installed.content),manifest.version);
   assert.equal((await fresh.m.listInstalled())[0].version,manifest.version);report.freshInstall=true;
  }finally{fresh.m.dispose();}
- for(const [oldVersion,oldDigest] of [['0.2.1','071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0'],['0.2.2','7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58']]){
+ for(const [oldVersion,oldDigest] of [['0.2.3','a1bffdf271b03ad618f8cf90d99346fd4298e116337f315943bb3cceb23231b7'],['0.2.1','071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0'],['0.2.2','7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58']]){
  const oldBytes=fs.readFileSync(path.join(__dirname,`../delivery/MieMie-Preset-Manager-Extension-${oldVersion}.json`));assert.equal(hash(oldBytes),oldDigest);
  const oldRelease=await (await fetchPublic(api+'/releases/tags/v'+oldVersion,{credentials:'omit'})).json();
  const oldAsset=oldRelease.assets.find(a=>a.name===`MieMie-Preset-Manager-Extension-${oldVersion}.json`);assert.ok(oldAsset);assert.equal(oldAsset.digest,'sha256:'+oldDigest);
@@ -57,6 +58,6 @@ function embeddedVersion(content){const m=content.match(/JSON\.parse\('([^{\n]*\
   }finally{update.m.dispose();}
  }
  }
- report.official021Update=true;report.official022Update=true;report.contentSha256=JSON.parse(fs.readFileSync(path.join(__dirname,'../delivery/MieMie-Extension-update.json'))).contentSha256;
+ report.official023Update=true;report.official021Update=true;report.official022Update=true;report.contentSha256=JSON.parse(fs.readFileSync(path.join(__dirname,'../delivery/MieMie-Extension-update.json'))).contentSha256;
  console.log(JSON.stringify(report,null,2));
 })().catch(error=>{console.error(error.message);process.exitCode=1;});

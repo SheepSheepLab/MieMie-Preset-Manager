@@ -9,7 +9,7 @@ const metadata=JSON.parse(read('MieMie-Extension-update.json')),bytes=read(metad
 const hub=import(process.env.HUB_PACKAGE_MODULE || './fixtures/hub-package-v1/src/extension-packages.js');
 const futureVersion = pkg.version.split('.').map((n,i)=>i===2?Number(n)+1:n).join('.');
 const clone=x=>structuredClone(x);
-const release={id:201,tag_name:metadata.tag,draft:false,prerelease:true};
+const release={id:201,tag_name:metadata.tag,draft:false,prerelease:false};
 function repack(value){const b=encode(value);return {b,m:{...metadata,asset:{...metadata.asset,size:b.length,sha256:hash(b)},contentSha256:hash(value.content||'')}};}
 function fixture(t, {version=manifest.version, trees:initial=[],metadataBytes,missingDigest=false,running=false}={}) {
  let trees=clone(initial),writes=0;
@@ -82,7 +82,7 @@ function parseRuntimeVersion(content) {
  assert.ok(match,'production embedded Runtime Manifest exists');
  return JSON.parse(match[1]).version;
 }
-const officialSources=[['0.2.1','071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0'],['0.2.2','7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58']];
+const officialSources=[['0.2.3','a1bffdf271b03ad618f8cf90d99346fd4298e116337f315943bb3cceb23231b7'],['0.2.1','071a97a35721688312f631e2c19b4eb6382edef64fef55d97a1573999d60d7c0'],['0.2.2','7ef1df562a850097212aba5fd322bdffe7ca50d7b6149002fe876ce440fbcd58']];
 for(const [oldVersion,oldDigest] of officialSources) for(const enabled of [false,true])test(`Official ${oldVersion} -> ${manifest.version} Hub update preserves folder/order/settings and confirms display/runtime (enabled=${enabled})`,async t=>{
  const h=await hub,oldBytes=read(`MieMie-Preset-Manager-Extension-${oldVersion}.json`);
  assert.equal(hash(oldBytes),oldDigest);

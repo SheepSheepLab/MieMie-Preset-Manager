@@ -21,6 +21,35 @@ async function setup(t,version,preconfigure) {
 }
 for(const version of ['1.18.0','1.19.0']){
   const label=`Binding native lifecycle ${version} (synthetic dependencies): `;
+  test(label+'migration source read leaves binding/selection unchanged; comparison Dirty blocks generation and chat auto-select',async t=>{
+    const f=await setup(t,version), c=f.controller, migration=c.migration;
+    const registry=structuredClone(f.diskGlobal()[NS]), chats=structuredClone([...f.files]), snapshot=structuredClone(c.state.snapshot);
+    const saved=f.controls.settingsSaved, metadata=f.controls.metadataSaved.length;
+    assert(await migration.open());await migration.load('B');migration.select('custom');
+    assert.deepEqual(c.state.snapshot,snapshot);assert.equal(f.native.manager.getSelectedPresetName(),'A');
+    assert.deepEqual(f.diskGlobal()[NS],registry);assert.deepEqual([...f.files],chats);
+    assert.equal(f.controls.settingsSaved,saved);assert.equal(f.controls.metadataSaved.length,metadata);
+    migration.bridge();assert.equal(migration.state.step,'compare');migration.left('source temporary');assert.equal(c.state.dirty,false);
+    await f.generate();assert.equal(f.controls.sent.length,1);
+    migration.right('unconfirmed migrated draft');assert(c.state.dirty);assert.equal(c.state.pendingRaw,null);
+    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,1);
+    f.setChat('single','two');await f.events.emit('chat');await until(()=>f.binding.state.status==='paused-dirty');
+    assert.equal(f.native.manager.getSelectedPresetName(),'A');assert.equal(await migration.confirm(),false);
+    migration.close();assert.equal(c.state.migrationDraft.content,'unconfirmed migrated draft');
+    assert.deepEqual(f.records.get('A'),snapshot.raw);assert.deepEqual(f.files.get('single:one'),chats.find(([key])=>key==='single:one')[1]);
+  });
+  test(label+'I2 batch property/structure drafts block generation and automatic binding, cancel preserves earlier Pending',async t=>{
+    const f=await setup(t,version),c=f.controller,m=c.migration;
+    await c.toggle('custom');const before=structuredClone(c.state.pendingRaw);
+    assert(await m.open());await m.load('B');m.select('main');m.select('custom');m.bridge();assert.equal(m.state.step,'batch');
+    m.editItem('custom');m.patchRight({injection_depth:7,injection_order:20});assert(c.state.dirty);
+    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);assert(await m.confirm());
+    assert.deepEqual(c.state.pendingRaw,before);await assert.rejects(f.generate());
+    f.setChat('single','two');await f.events.emit('chat');await until(()=>f.binding.state.status==='paused-dirty');
+    assert.equal(f.native.manager.getSelectedPresetName(),'A');assert.equal(await m.confirmBatch(),false);
+    assert(m.state.batch.find(i=>i.sourceId==='custom').right.injection_depth===7);
+    m.cancelBatch();assert.deepEqual(c.state.pendingRaw,before);assert(c.state.dirty);
+  });
   test(label+'only automatic per-chat selection quiets native authorized regex notices',async t=>{
     const fixture=require('./fixtures/st-regex-contracts.json').baselines.find(b=>b.version===version);
     const notices=[],renders=[],chat=[{mes:'synthetic',extra:{keep:true}}];

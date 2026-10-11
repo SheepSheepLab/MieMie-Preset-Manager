@@ -113,6 +113,22 @@ function fake(version = '1.19.0') {
 }
 
 for (const version of ['1.18.0', '1.19.0']) {
+test(version + ' migration source read is disk-only, detached, never select/apply/save or target receipt', async () => {
+  const f = fake(version), adapter = await createSTAdapter(f.host), before = await adapter.read();
+  const live = copy(f.live); let selections = 0;
+  const select = f.manager.selectPreset; f.manager.selectPreset = value => { selections++; return select(value); };
+  const other = await adapter.readPresetByName!('B');
+  assert.equal(other.name, 'B'); assert.equal(f.manager.getSelectedPresetName(), 'A');
+  assert.deepEqual(f.live, live); assert.equal(selections, 0); assert.equal(f.controls.saveCalls, 0);
+  assert.equal((await adapter.read()).revision, before.revision);
+  assert.equal(adapter.coversNotifications!(other as never), false);
+  other.raw.prompts[0].content = 'temporary'; assert.notEqual(f.records.get('B')!.prompts[0].content, 'temporary');
+  const original = await adapter.readPresetByName!('B'); f.records.get('B')!.prompts[0].content = 'source mutation';
+  assert.notEqual((await adapter.readPresetByName!('B')).fingerprint, original.fingerprint);
+  f.live.temp_openai = 1.4; await adapter.readPresetByName!('B'); await assert.rejects(adapter.read(), /未保存/);
+  f.records.delete('B'); await assert.rejects(adapter.readPresetByName!('B'), /删除或重命名/);
+  adapter.dispose!(); await assert.rejects(adapter.readPresetByName!('A'), /停用/);
+});
 test(version + ' missing real capabilities fail before any persistence', async () => {
   const mutations = [
     (f: ReturnType<typeof fake>) => Object.assign(f.manager, { updateList: undefined }),

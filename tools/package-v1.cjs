@@ -19,7 +19,7 @@ function createPackage(manifest, code) {
   const identity = {schemaVersion: 1, productId: manifest.id, version, scriptId: SCRIPT_ID, repository: manifest.repository};
   const artifact = {type: 'script', enabled: true, name: `${manifest.name} ${version}`, id: SCRIPT_ID,
     content: '// MieMie-Extension-Build: ' + JSON.stringify(identity) + '\n' + code,
-    info: '咩咩预设管理。原生 Chat Completion 预设、局部编辑、未知字段保留、MieMie Hub API v1 / standalone。测试版；请先使用备份预设验证。',
+    info: '咩咩预设管理。原生 Chat Completion 预设、局部编辑、未知字段保留、MieMie Hub API v1 / standalone。预设条目与批量迁移；请先使用备份预设验证。',
     button: {enabled: false, buttons: []}, data: {}, export_with: {data: true, button: true}};
   const bytes = encode(artifact), name = `MieMie-Preset-Manager-Extension-${version}.json`;
   const metadata = {schemaVersion: 1, format: 'tavern-helper-script', productId: manifest.id, version, tag: 'v' + version,

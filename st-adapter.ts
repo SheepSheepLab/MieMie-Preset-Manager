@@ -3,6 +3,7 @@
 // See LICENSE for terms; distributed without warranty.
 
 import type { PresetAdapter, RawPreset, Snapshot } from './contracts';
+import { validatePreset } from './model';
 
 type Data = Record<string, unknown>;
 type Listener = (...args: unknown[]) => void;
@@ -376,6 +377,15 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
 
   return {
     read,
+    async readPresetByName(name) {
+      alive();
+      const presets = await disk();
+      alive();
+      if (!presets.has(name)) throw Error('来源预设已删除或重命名，请重新选择来源。');
+      const raw = rawPreset(presets.get(name));
+      validatePreset(raw);
+      return { name, raw, activeGroupId, fingerprint: hash([name, raw]) };
+    },
     async directory() {
       const presets = await disk();
       if (typeof manager.getAllPresets !== 'function') throw Error('宿主缺少原生预设列表顺序能力，未选择默认替代项。');

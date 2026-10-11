@@ -81,7 +81,7 @@ try {for(const width of [1280,390]){
   const toggle=modal.getByRole('switch',{name:label,exact:true});
   assert(await toggle.evaluate(e=>{const wrap=e.closest('.mm-parameter-switch'),title=wrap.querySelector('.mm-parameter-label').getBoundingClientRect(),track=wrap.querySelector('.mm-parameter-switch-track').getBoundingClientRect(),r=wrap.getBoundingClientRect();return title.right<track.left&&Math.abs(track.right-r.right)<1&&r.height>=44;}));
   await toggle.uncheck();await toggle.check();
-  await page.waitForFunction(label=>{const e=[...document.querySelectorAll('.mm-parameter-switch input')].find(n=>n.getAttribute('aria-label')===label);return e.checked&&getComputedStyle(e.nextElementSibling).backgroundColor==='rgb(193, 148, 255)';},label);
+  await page.waitForFunction(label=>{const e=[...document.querySelectorAll('.mm-parameter-switch input')].find(n=>n.getAttribute('aria-label')===label);return e.checked&&getComputedStyle(e.nextElementSibling).backgroundColor==='rgb(196, 154, 245)';},label);
   assert(await toggle.evaluate(e=>getComputedStyle(e.nextElementSibling,'::after').transitionProperty.includes('transform')));
  }checks.push(`${width}: full-row switches have left labels, right animated tracks and preserve checked state`);
  await page.addStyleTag({content:'input[type=range] {appearance:none;background:transparent;border:0} input[type=range]::-webkit-slider-runnable-track {height:0;background:transparent} input[type=range]::-webkit-slider-thumb {appearance:none;background:none;border:2px solid white}'});
