@@ -10,8 +10,8 @@ export const migrationStyles = `
 /* An owned child leaves the live parent visible as context, without animating blur. */
 .mm-migration-dialog[data-child-open=true]{filter:blur(3px);pointer-events:none}
 .mm-migration-child{box-shadow:0 18px 64px #000a}
-.mm-migration-child::backdrop{background:#09071738}
-.mm-migration-child .mm-migration-motion-shell{transform-origin:50% 50%}
+.mm-migration-child::backdrop,.mm-migration-preview::backdrop{background:#09071738}
+.mm-migration-child .mm-migration-motion-shell,.mm-migration-preview .mm-migration-motion-shell{transform-origin:50% 50%}
 .mm-migration-dialog *{box-sizing:border-box}.mm-migration-dialog button,.mm-migration-dialog textarea{font:inherit;color:inherit;margin:0;text-transform:none;letter-spacing:normal;text-shadow:none}
 .mm-migration-dialog svg{width:21px;height:21px;flex:none;pointer-events:none}.mm-migration-dialog button{min-height:44px;min-width:44px;border:1px solid var(--mm-line);border-radius:10px;background:var(--mm-panel);padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .mm-migration-dialog button:hover:not(:disabled){background:var(--mm-tonal);border-color:var(--mm-accent)}.mm-migration-dialog button:active:not(:disabled){filter:brightness(1.12)}.mm-migration-dialog button:disabled{opacity:.45;cursor:default}

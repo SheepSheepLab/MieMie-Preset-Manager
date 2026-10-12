@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Regression for preview close visually selecting an unselected migration row.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url'),{chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../../outputs/migration-preview-focus-20261010');
+const root=path.resolve(__dirname,'..'),out=process.env.PREVIEW_FOCUS_OUT||path.resolve(root,'../../outputs/migration-preview-focus-20261010');
 const pagePath=process.env.PREVIEW_FOCUS_PAGE||path.join(root,'delivery/preview.html');
 fs.mkdirSync(out,{recursive:true});const checks=[],errors=[];
 const settle=async page=>{await page.locator('dialog[open]').evaluateAll(async nodes=>await Promise.all(nodes.flatMap(n=>n.getAnimations({subtree:true})).map(a=>a.finished.catch(()=>{}))));};

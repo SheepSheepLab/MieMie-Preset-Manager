@@ -1,6 +1,6 @@
 {
   "name": "miemie-preset-manager",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Native SillyTavern preset manager delivered as a Tavern Helper script",
   "scripts": {
@@ -19,6 +19,7 @@
     "test:migration-iteration2": "node tests/migration-iteration2-browser.cjs",
     "test:migration-ui-polish": "node tests/migration-ui-polish-browser.cjs",
     "test:migration-preview-focus": "node tests/migration-preview-focus-browser.cjs",
+    "test:migration-preview-layer": "node tests/migration-preview-layer-browser.cjs",
     "test:migration-child-dialog": "node tests/migration-child-dialog-browser.cjs",
     "test:migration-batch-layer": "node tests/migration-batch-layer-browser.cjs",
     "test:migration-dialog-focus": "node tests/migration-dialog-focus-browser.cjs",

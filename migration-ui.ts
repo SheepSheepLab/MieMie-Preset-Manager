@@ -19,8 +19,9 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   let picker: HTMLButtonElement | null=null, options: HTMLElement | null=null, pickerLabel: HTMLElement | null=null;
   let sourceWindow:ReturnType<typeof createMigrationList>|null=null,targetWindow:ReturnType<typeof createMigrationList>|null=null;
   let sourcePicker:ReturnType<typeof createFloatingPicker>|null=null;
-  let previewAnimation:Animation|null=null;
+  let previewEffect:ReturnType<typeof centeredMotion>|null=null,previewClosing=false;
   let previewDialog:HTMLDialogElement|null=null, previewEditor:ReturnType<typeof mountMigrationEditor>|null=null;
+  let previewParent:HTMLDialogElement|null=null,previewSide:'source'|'target'='source';
   const animate=(node:HTMLElement,frames:Keyframe[],duration=200,easing='cubic-bezier(.2,.8,.2,1)')=>{node.getAnimations().forEach(a=>a.cancel());return typeof node.animate!=='function'||host.matchMedia('(prefers-reduced-motion: reduce)').matches?null:node.animate(frames,{duration,easing});};
   let surfaceAnimations:Animation[]=[];let motionShell:HTMLElement|null=null,motionEpoch=0;
   let child:HTMLDialogElement|null=null,childBody:HTMLElement|null=null,childActions:HTMLElement|null=null;
@@ -55,29 +56,41 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   function pane(title:string) { const pane=el('section','mm-migration-pane'); pane.append(el('h3','mm-migration-pane-title',title)); return pane; }
   function description(row:Row,index:number) { return `${row.prompt.role ?? '未指定 Role'} · ${row.category} · ${row.attached ? `${index+1} · ${row.enabled ? '启用' : '关闭'}` : '未挂接'} · ${row.prompt.identifier.slice(0,12)}`; }
   function closePreview(immediate=false){
-    const current=previewDialog;if(!current)return;if(previewAnimation&&!immediate)return;
-    previewAnimation?.cancel();previewAnimation=null;previewEditor?.dispose();previewEditor=null;current.inert=true;
-    const finish=()=>{if(previewDialog===current){previewDialog=null;previewAnimation=null;}current.close();current.remove();};
-    previewAnimation=immediate?null:animate(current,[{opacity:1,clipPath:'inset(0% 0% round 16px)'},{opacity:0,clipPath:'inset(8% 10% round 24px)'}],140);
-    if(previewAnimation)void previewAnimation.finished.then(finish,()=>{});else finish();
+    const current=previewDialog;if(!current)return;if(previewClosing&&!immediate)return;
+    previewClosing=true;previewEffect?.clear();previewEditor?.dispose();previewEditor=null;current.inert=true;
+    const finish=()=>{if(previewDialog===current){
+      const parent=previewParent;previewEffect?.clear();previewDialog=null;previewEffect=null;previewClosing=false;previewParent=null;
+      if(parent){delete parent.dataset.childOpen;parent.inert=!migration.state.open||(parent===child&&childClosing)||(parent===batchDialog&&batchClosing);}
+    }current.close();current.remove();};
+    if(immediate)finish();else previewEffect?.run(false,finish);
   }
   function showPreview(row:Row,origin:HTMLElement,keyboard=false){
     closePreview(true);sourcePicker?.close();
-    const view=el('dialog','mm-migration-dialog mm-migration-preview');view.setAttribute('aria-label','查看条目内容');previewDialog=view;
-    const header=el('header','mm-migration-head');const title=el('h2','','查看条目内容');header.append(createIcon(doc,'view'),title);
-    const pane=el('section','mm-migration-pane'),foot=el('footer','mm-migration-footer');
+    const view=el('dialog','mm-migration-dialog mm-migration-preview');view.setAttribute('aria-label','查看条目内容');view.setAttribute('aria-modal','true');view.tabIndex=-1;previewDialog=view;
+    previewSide=origin.closest('[aria-label=目标条目]')||migration.state.step==='candidates'?'target':'source';view.dataset.previewSide=previewSide;
+    const header=el('header','mm-migration-head'),titleWrap=el('div');titleWrap.append(el('h2','','查看条目内容'),el('p','',previewSide==='source'?'来源预设 · 只读查看':'当前预设 · 只读查看'));header.append(createIcon(doc,'view'),titleWrap);
+    const pane=el('section','mm-migration-pane mm-migration-body'),foot=el('footer','mm-migration-footer');
     const copy=el('p','mm-migration-hint','只读查看 · 不会选择条目或产生未保存修改');pane.append(copy);view.append(header,pane,foot);doc.body.append(view);
-    previewEditor=mountMigrationEditor(doc,pane,origin.closest('[aria-label=目标条目]')||migration.state.step==='candidates'?'目标':'来源',row.prompt,()=>{},view);
+    previewEditor=mountMigrationEditor(doc,pane,previewSide==='target'?'目标':'来源',row.prompt,()=>{},view);
     pane.querySelectorAll<HTMLInputElement|HTMLTextAreaElement>('input,textarea').forEach(input=>{if(input.type==='checkbox')input.disabled=true;else input.readOnly=true;});
     pane.querySelectorAll<HTMLButtonElement>('button').forEach(button=>button.disabled=true);
     const done=button('返回迁移',()=>closePreview(), 'back');foot.append(done);
     // Pointer return focuses the parent surface; keyboard return keeps the invoking control reachable.
     view.addEventListener('pointerdown',()=>{keyboard=false;});view.addEventListener('keydown',()=>{keyboard=true;});
-    const parent=origin.closest('dialog')??dialog;
+    const parent=origin.closest('dialog')??dialog;previewParent=parent;parent.inert=true;parent.dataset.childOpen='true';
     view.addEventListener('cancel',e=>{e.preventDefault();closePreview();});view.addEventListener('close',()=>{if(!previewDialog&&origin.isConnected&&migration.state.open&&parent.open&&!parent.inert)(keyboard?origin:parent).focus({preventScroll:true});});
-    view.showModal();placePreview();done.focus({preventScroll:true});animate(view,[{opacity:0,clipPath:'inset(8% 10% round 24px)'},{opacity:1,clipPath:'inset(0% 0% round 16px)'}],240);
+    previewEffect=centeredMotion(view,pane);
+    try{view.showModal();}catch{closePreview(true);return;}
+    placePreview();view.focus({preventScroll:true});previewEffect.run(true);
   }
-  function placePreview(){if(!previewDialog)return;const v=host.visualViewport,w=v?.width??host.innerWidth,h=v?.height??host.innerHeight,width=Math.min(620,w-24),height=Math.min(760,h-24);Object.assign(previewDialog.style,{width:`${width}px`,height:`${height}px`,left:`${(v?.offsetLeft??0)+(w-width)/2}px`,top:`${(v?.offsetTop??0)+(h-height)/2}px`});}
+  function placePreview(){
+    if(!previewDialog||!dialog.open)return;
+    // Match the batch dialog's root-relative 95% size on stacked layouts.
+    // On desktop, center the same inset within the invoking half of the migration root.
+    const bounds=dialog.getBoundingClientRect(),stacked=dialog.dataset.stacked==='true',regionWidth=bounds.width/(stacked?1:2);
+    const width=regionWidth*.95,height=bounds.height*.95,left=bounds.left+(!stacked&&previewSide==='target'?regionWidth:0)+(regionWidth-width)/2;
+    Object.assign(previewDialog.style,{width:`${width}px`,height:`${height}px`,left:`${left}px`,top:`${bounds.top+(bounds.height-height)/2}px`});previewDialog.dataset.stacked=String(width<760);
+  }
   function card(row:Row,index:number,select?:()=>void,sourceSelection=false) {
     const node=el('div','mm-migration-card');node.dataset.id=row.prompt.identifier;
     const copy=el('span','mm-migration-card-copy');copy.append(el('strong','',row.prompt.name||'未命名'),el('small','',description(row,index)));
@@ -245,14 +258,14 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     if(opening)batchEffect!.run(true);
   }
   function place() {
-    placePreview();if(!dialog.open)return;if(motionShell){if(!migration.state.open){finishHide();return;}cancelSurfaceMotion();}
+    if(!dialog.open)return;if(motionShell){if(!migration.state.open){finishHide();return;}cancelSurfaceMotion();}
     const v=host.visualViewport,css=host.getComputedStyle(panel),safe=(side:string)=>Math.max(12,parseFloat(css.getPropertyValue(`--mm-safe-${side}`))||0);
     const w=v?.width || host.innerWidth,h=v?.height || host.innerHeight,l=safe('left'),r=safe('right'),t=safe('top'),b=safe('bottom');
     const width=Math.max(1,Math.min(1080,w-l-r)),height=Math.max(1,Math.min(800,h-t-b));
     Object.assign(dialog.style,{width:`${width}px`,height:`${height}px`,left:`${(v?.offsetLeft || 0)+l+(w-l-r-width)/2}px`,top:`${(v?.offsetTop || 0)+t+(h-t-b-height)/2}px`});
     dialog.dataset.stacked=String(width<760);
     // Finish a motion before resizing its chrome; editor nodes and focus remain untouched.
-    if(batchDialog&&!batchClosing)batchEffect?.clear();placeBatch();if(child&&!childClosing)clearChildMotion();placeChild();
+    if(batchDialog&&!batchClosing)batchEffect?.clear();placeBatch();if(child&&!childClosing)clearChildMotion();placeChild();if(previewDialog&&!previewClosing)previewEffect?.clear();placePreview();
   }
   // Animate only an empty chrome layer; text and long lists never scale or repaint per frame.
   function cancelSurfaceMotion(){++motionEpoch;surfaceAnimations.forEach(a=>a.cancel());surfaceAnimations=[];motionShell?.remove();motionShell=null;delete dialog.dataset.motion;for(const node of [head,body,footer]){node.style.removeProperty('opacity');node.style.removeProperty('will-change');}}
@@ -283,7 +296,7 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     if(child){closeChild();return;}
     if(state.batch)return;
     if(batchDialog){closeBatch();return;}
-    if(dialog.dataset.motion==='closing')cancelSurfaceMotion();dialog.inert=false;
+    if(dialog.dataset.motion==='closing')cancelSurfaceMotion();dialog.inert=previewParent===dialog;
     let opening=false;
     if(!dialog.isConnected)doc.body.append(dialog);
     if(!dialog.open){

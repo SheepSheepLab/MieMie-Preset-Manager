@@ -1,4 +1,4 @@
-# Known Issues · v0.5.0
+# Known Issues · v0.5.1
 
 ## Hub Escape Layer Conflict — Owner Accepted Known Issue
 
@@ -6,7 +6,7 @@
 
 临时请使用工具界面中明确的“返回”“取消”“关闭”按钮，并在确认修改后按需统一保存。Standalone 已包含自己的 Escape 层级修复，但这不解决 Hub 先处理按键的冲突。
 
-Owner 于 2026-10-12 明确接受该问题用于 v0.5.0 发布，不将其标记为 PASS，也不宣称 Full Hub Runtime PASS。后续由 Hub 统一开发 Escape / Back Navigation Protocol，官方工具再逐步适配。本版没有 MPM Window Capture Hub Escape Workaround，也没有修改 Hub。
+Owner 于 2026-10-12 明确接受该问题用于 v0.5.0 发布，并继续接受其作为 v0.5.1 Patch Release 的已知限制，不将其标记为 PASS，也不宣称 Full Hub Runtime PASS。后续由 Hub 统一开发 Escape / Back Navigation Protocol，官方工具再逐步适配。本版没有 MPM Window Capture Hub Escape Workaround，也没有修改 Hub。
 
 ## iOS Simulator — Tool Blocked / NOT TESTED
 

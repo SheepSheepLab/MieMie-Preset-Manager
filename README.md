@@ -8,7 +8,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前版本：`0.5.0`，GitHub **Stable Release**。新增预设条目迁移、批量核对与合并，并保留统一保存、对话级绑定和生成安全检查。Hub Esc 冲突为 Owner Accepted Known Issue；iOS Simulator 剩余项目为 Tool Blocked / NOT TESTED，详见 [Known Issues](docs/KNOWN-ISSUES.md)。
+- 当前版本：`0.5.1`，GitHub **Stable Release**。本次补丁优化迁移条目预览的焦点、窄屏尺寸、左右定位及动画；保留 0.5.0 的迁移、批量合并、统一保存、对话级绑定和生成安全检查。Hub Esc 冲突为 Owner Accepted Known Issue；iOS Simulator 剩余项目为 Tool Blocked / NOT TESTED，详见 [Known Issues](docs/KNOWN-ISSUES.md)。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
@@ -16,6 +16,10 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
 此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)。
+
+## 0.5.1 条目预览优化
+
+查看条目内容时，“返回迁移”不再默认高亮，键盘导航仍显示焦点。窄屏预览按迁移主页面宽高的 95% 居中显示；宽屏来源预览位于左侧、目标预览位于右侧。打开和关闭复用对比合并窗口的中心动画，保留父页面上下文。Owner 已完成人工 UI 验收；本轮没有新的 Safari Computer Use 实测。详见 [Release 0.5.1](docs/RELEASE-0.5.1.md)。
 
 ## 0.5.0 条目迁移与批量合并
 
@@ -31,9 +35,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.5.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.5.0/MieMie-Preset-Manager-Extension-0.5.0.json)
+[MieMie-Preset-Manager-Extension-0.5.1.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.5.1/MieMie-Preset-Manager-Extension-0.5.1.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.5.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.5.0.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.5.1) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.5.1.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，确实位于页面上方并遮挡关键操作时才避让；页面覆盖入口时保持条目对齐，内部 Dialog 沿用已验收交互。
@@ -83,7 +87,7 @@ npm run test:browser
 
 `npm run build` 执行严格 TypeScript 检查、Node 测试、脚本打包和语法检查。`npm test` 只转译并运行 Node 测试；`npm run check` 只检查生产源码类型。浏览器测试使用 Playwright `1.62.1`，默认启动本机 Chrome；使用 Playwright Chromium 的方法见 [Testing](docs/TESTING.md)。
 
-构建输出位于 `delivery/`。从 **0.2.1** 开始提供 MieMie GitHub Extension Package v1：正式 `manifest.json`、ASCII 文件名 Extension JSON、`MieMie-Extension-update.json` 和 `SHA256SUMS` 均由构建生成或校验。兼容 Hub 可以从本仓库识别、安装、检查更新，并对后续符合 Package v1 的版本原地更新。自动契约已通过；**真实 Hub 在线安装、浏览器 CORS、宿主持久保存和更新仍待 Owner 实机验收**。这与已有 Hub Runtime 接入是两项独立能力。
+构建输出位于 `delivery/`。从 **0.2.1** 开始提供 MieMie GitHub Extension Package v1：正式 `manifest.json`、ASCII 文件名 Extension JSON、`MieMie-Extension-update.json` 和 `SHA256SUMS` 均由构建生成或校验。兼容 Hub 可以从本仓库识别、安装、检查更新，并对后续符合 Package v1 的版本原地更新。自动契约与隔离真实 ST / Helper 的包安装、更新及持久回读已有验证；本轮重点覆盖正式 0.5.0 → 0.5.1 的启用与停用实例。测试范围、公开网络复核及浏览器限制见对应 Release Notes；不据此宣称所有浏览器 CORS 或第三方环境均已验收。Managed Package 与 Hub Runtime 接入是两项独立能力。
 
 `manifest.json` 是发布与 Runtime Display Identity 的共同来源；Runtime 顶层图标仍使用内嵌正式 PNG，Launcher 短文本 fallback 为“预设”。Manifest author `SheepSheep` 表示 Founder / Project Initiator / official product author；`SheepSheepLab` 是官方 GitHub 开发、维护与发布命名空间。louisSSR 保留真实 Contributor 身份、贡献版权与提交记录。标准元数据只记录 Asset 名称、原始字节大小与 hash，下载来源由 GitHub Release API 决定。SHA256SUMS 是辅助检查，不能替代 GitHub digest。
 
