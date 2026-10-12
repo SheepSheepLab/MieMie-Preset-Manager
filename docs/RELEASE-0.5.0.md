@@ -1,4 +1,4 @@
-# MieMie Preset Manager v0.5.0
+# MieMie Preset Manager 0.5.0
 
 2026-10-12 · Public Stable Release · `v0.5.0` · Draft=false · Pre-release=false
 
