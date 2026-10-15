@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { nativeHost, deferred, copy } = require('./st-native-host.cjs');
 const nativePresets = require('../fixtures/st-native-contracts.json');
 const bindingSources = require('../fixtures/st-binding-contracts.json');
-const NS = 'miemie.preset-manager';
+const NS = 'miemie.preset-manager.binding-v2';
 const quiet = { log() {}, debug() {}, warn() {}, trace() {}, error() {} };
 async function bindingNativeHost(version) {
   const f = await nativeHost(nativePresets.baselines.find(b => b.version === version));
@@ -14,10 +14,11 @@ async function bindingNativeHost(version) {
   const ectx = vm.createContext({ console: quiet, localStorage: { getItem: () => null } });
   vm.runInContext(baseline.snippets.EventEmitter.text, ectx);
   const emitter = new ectx.EventEmitter();
+  f.events.makeFirst = emitter.makeFirst.bind(emitter); f.events.makeLast = emitter.makeLast.bind(emitter);
   f.events.on = emitter.on.bind(emitter); f.events.removeListener = emitter.removeListener.bind(emitter);
   f.events.count = key => emitter.events[key]?.length || 0; f.events.emit = emitter.emit.bind(emitter);
   const existing = f.host.SillyTavern.getContext();
-  Object.assign(existing.eventTypes, { CHAT_CHANGED: 'chat', PRESET_RENAMED_BEFORE: 'rename-before',
+  Object.assign(existing.eventTypes, { CHAT_CHANGED: 'chat', CHAT_RENAMED: 'chat-renamed', PRESET_RENAMED_BEFORE: 'rename-before',
     GENERATION_STARTED: 'start', GENERATION_AFTER_COMMANDS: 'commands', CHAT_COMPLETION_SETTINGS_READY: 'request', GENERATION_ENDED: 'end', GENERATION_STOPPED: 'stopped' });
   const files = new Map(), metadata = new Map();
   const key = (kind, filename) => kind + ':' + filename;
@@ -61,7 +62,7 @@ async function bindingNativeHost(version) {
     if (pathname === '/api/chats/get' || pathname === '/api/chats/group/get') {
       if (faults.chatRead) return { ok: false };
       const k = key(pathname.includes('/group/') ? 'group' : 'single', body.file_name ?? body.id);
-      return { ok: true, json: async () => [{ chat_metadata: copy(files.get(k) ?? {}) }] };
+      return { ok: true, json: async () => files.has(k) ? [{ chat_metadata: copy(files.get(k)) }] : [] };
     }
     return originalFetch(url, init);
   };
@@ -91,7 +92,7 @@ async function bindingNativeHost(version) {
     eventSource: f.events, event_types: existing.eventTypes, streamingProcessor: null,
     setGenerationProgress() {}, unshallowCharacter: async () => {}, this_chid: 0,
     power_user: { instruct: { enabled: false } }, main_api: 'openai', selected_group: null,
-    $: () => ({ val: () => '' }), processCommands: async () => false, unblockGeneration() {}, hideStopButton() {},
+    $: () => ({ val: () => '' }), processCommands: async () => controls.slash === true, unblockGeneration() {}, hideStopButton() {},
     getChatCompletionModel: () => 'synthetic-model', oai_settings: f.live,
     createGenerationParameters: async settings => {
       const generate_data = { temperature: settings.temp_openai, prompts: copy(settings.prompts) };
@@ -120,7 +121,7 @@ async function bindingNativeHost(version) {
     autoSelect: () => autoContext.autoSelectPreset(),
     async manual(name) { const done = deferred(); const fn = payload => { if (payload?.name === name) done.resolve(); }; f.events.on('changed', fn);
       const result = f.native.manager.selectPreset(f.native.manager.findPreset(name)); await done.promise; await result; f.events.removeListener('changed', fn); },
-    async generate() { try { return await generation.Generate('normal'); } finally { await f.events.emit('end'); } },
+    async generate(type='normal', options={}) { const before=controls.sent.length; const result=await generation.Generate(type,options); if(controls.sent.length>before)await f.events.emit('end'); return result; },
     metadataGate() { metadataGate = deferred(); return metadataGate; }, globalGate() { globalGate = deferred(); return globalGate; },
     diskGlobal: () => copy(diskGlobals), setDiskGlobal(value) { diskGlobals = copy(value); },
   };

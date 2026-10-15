@@ -1,0 +1,30 @@
+[
+  {
+    "input": "safe.jsonl",
+    "expected": "safe"
+  },
+  {
+    "input": "with/slash:?*.jsonl",
+    "expected": "withslash"
+  },
+  {
+    "input": "中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文.jsonl",
+    "expected": "中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中"
+  },
+  {
+    "input": ".hidden.jsonl",
+    "expected": ".hidden"
+  },
+  {
+    "input": "CON.jsonl",
+    "expected": ""
+  },
+  {
+    "input": "a .jsonl",
+    "expected": "a "
+  },
+  {
+    "input": "a\u0001b.jsonl",
+    "expected": "ab"
+  }
+]

@@ -1,5 +1,7 @@
 # MieMie Preset Manager · 咩咩预设管理
 
+
+
 SillyTavern Chat Completion Preset / Prompt Manager
 
 咩咩预设管理是 SillyTavern 原生 Chat Completion Preset 与 Prompt Manager 的管理前端，提供预设切换、导入导出、完整复制，以及 Prompt 编辑、排序和开关。同一份脚本共用 Core、UI 和 Hub Adapter，适配 PC / 手机及 Standalone / MieMie Hub。
@@ -8,7 +10,8 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前版本：`0.5.1`，GitHub **Stable Release**。本次补丁优化迁移条目预览的焦点、窄屏尺寸、左右定位及动画；保留 0.5.0 的迁移、批量合并、统一保存、对话级绑定和生成安全检查。Hub Esc 冲突为 Owner Accepted Known Issue；iOS Simulator 剩余项目为 Tool Blocked / NOT TESTED，详见 [Known Issues](docs/KNOWN-ISSUES.md)。
+- 当前正式版本：`0.6.0`，GitHub **Stable Release**。每聊天绑定、原生双向同步与生成可靠性修复见 [Release 0.6.0](docs/RELEASE-0.6.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
+- **升级提示：0.5.1 旧绑定关系不迁移。** 旧聊天首次进入新版按新规则初始化，可重新选择预设；原生预设、聊天正文和其他扩展数据不会被主动删除。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
@@ -17,7 +20,11 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)。
 
-## 0.5.1 条目预览优化
+## 0.6.0 每聊天绑定与生成可靠性
+
+每个真实聊天保留独立预设绑定，默认只用于新聊天初始化与确认删除后的回退。原生切换双向同步，重命名、刷新与重启保持绑定，复制和新建聊天分别初始化。修复斜杠命令后发送阻断、工具续接误取消、自动上下文冲突及加载取消问题。Hub Esc 与未确认社区问题见 [Known Issues](docs/KNOWN-ISSUES.md)。
+
+## 0.5.1 条目预览优化（历史）
 
 查看条目内容时，“返回迁移”不再默认高亮，键盘导航仍显示焦点。窄屏预览按迁移主页面宽高的 95% 居中显示；宽屏来源预览位于左侧、目标预览位于右侧。打开和关闭复用对比合并窗口的中心动画，保留父页面上下文。Owner 已完成人工 UI 验收；本轮没有新的 Safari Computer Use 实测。详见 [Release 0.5.1](docs/RELEASE-0.5.1.md)。
 
@@ -35,9 +42,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.5.1.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.5.1/MieMie-Preset-Manager-Extension-0.5.1.json)
+[MieMie-Preset-Manager-Extension-0.6.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.6.0/MieMie-Preset-Manager-Extension-0.6.0.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.5.1) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.5.1.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.6.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.6.0.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，确实位于页面上方并遮挡关键操作时才避让；页面覆盖入口时保持条目对齐，内部 Dialog 沿用已验收交互。
@@ -60,7 +67,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 对话绑定与预设参数
 
-当前对话未独立选择预设时跟随全局默认；在管理器选择其他预设时，仅为当前单人或群聊保存独立绑定。选择默认预设可恢复跟随；选择框右侧圆点按钮将当前预设设为全局默认，并保留其他对话的独立选择。绑定使用稳定 ID，重命名保留 ID；删除后不会把旧绑定自动接到同名新预设。找不到目标时明确显示缺失并回退可用默认；无可用预设或配置损坏时停止自动应用及受保护的原生生成。未保存修改仍属于原预设，切换聊天不会搬移草稿；保存或放弃后只协调最新对话。原生设置的外部偏离会重新协调，持续争夺则停止重试。
+0.6.0 采用“一个对话，记住一个预设”：每个单人或群聊文件首次进入时保存当时的默认预设。以后修改默认只影响新聊天，以及绑定预设已确认删除的聊天。选回默认预设仍保存独立绑定。酒馆原生选择与管理器双向同步：有聊天时更新此聊天，无聊天时更新默认；切换聊天中的原生自动选择不会覆盖已有绑定。重命名保留稳定 ID；已确认删除时，将默认正式写成该聊天的新绑定。网络失败不会当成删除。0.5.1 的旧绑定 namespace 保留但忽略，旧聊天首次进入按新规则初始化。
+
+有未保存修改时仍需先保存或放弃。预设内容由用户自由编辑，绑定不冻结内容，也不创建隐藏副本。生成前检查当前聊天与预设，但不再使用 STARTED / ENDED 累计计数；斜杠命令提前结束、合法工具续接不会因计数残留而永久阻断。异常会显示原因，恢复连接后可重新读取并继续。
 
 列表顶部的“预设参数设置”可编辑上下文/回复长度、备选回复数量、温度、频率/存在惩罚、Top P、流式、请求思维链和推理强度。它随列表滚动，不参加 Prompt 排序。推理强度与顶部预设选择共用选中项定位浮层，保持原顺序及高亮，展开不挤动设置内容。推理选项高度和展开位置随选中项及可用空间自适应，不固定显示数量；两个菜单的边缘阴影随可滚动内容出现／消失，预设菜单保留原有高度和展开位置。设置窗口“保存”先暂存，分类右侧软盘再统一写入；取消不写入。仅缺失字段在明确确认时补默认，已有 0、false 和未知枚举保持原值；具体默认和原生限制见 [Compatibility](docs/COMPATIBILITY.md)。
 

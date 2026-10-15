@@ -1,5 +1,9 @@
 # SillyTavern Compatibility Notes · 0.2.3
 
+
+
+> 0.6.0 Candidate 当前证据见 [Release 0.6.0](RELEASE-0.6.0.md)。新版绑定/生成规则以 [Binding](PER-CHAT-PRESET-BINDING.md) 为准；下文标注历史阶段的验收不自动扩大为新版完整矩阵。
+
 目标范围为 ST `1.18.x` / `1.19.x`，固定源码、自动契约与真实宿主分别记录。历史 ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6 Foundation 通过，只覆盖当时的 0.1.2 包。2026-10-08 汇总正式 MPM 0.2.3 + ST 1.19.0 commit `7e8663cd9c184a550b37238218bdd32c6efc68e9` + Helper 4.11.3 的代表性桌面及 iOS Simulator Mobile Safari 验收。Source Verification / Automated Contract / Representative Real Host：PASS；整个 1.19.x 补丁与第三方生态矩阵：NOT VERIFIED。范围见 [Real Host Validation](REAL_HOST_VALIDATION.md)。
 
 ## Owner-approved compatibility principle · 0.2.3
@@ -143,7 +147,7 @@ Hub Runtime API v1 与 GitHub Extension Package v1 分别验证。0.2.1 首次�
 
 ## Per-Chat Preset Binding · Phase A（0.2.2）
 
-新增协调器只针对固定官方 1.18.0 / 1.19.0 原生能力提供源码契约证据。原生手动切换和 autoSelectPreset 在有 Chat 时都恢复 Resolved Target，不修改 ST；1.18 void / 1.19 Promise 完成追踪沿用 Adapter。全局存储用 extensionSettings、override 用 chatMetadata，字面量 `miemie.preset-manager`，各自 native save 后精确回读，不写 Raw Preset 或 Hub。
+0.6.0 使用独立 schema 2 namespace `miemie.preset-manager.binding-v2`。每聊天永久绑定，原生手动选择同步绑定，CHAT_CHANGED 内部 autoSelect 不覆盖已存目标。1.18 void / 1.19 Promise 都通过原生完成事件和回读确认。详细规则以 [Binding 0.6.0](PER-CHAT-PRESET-BINDING.md) 为准，以下历史阶段证据不扩大为新版验收。
 
 Generation Gate 使用 AFTER_COMMANDS 与 CHAT_COMPLETION_SETTINGS_READY，加原生 stopGeneration/AbortSignal；不是 UI disabled、listener throw 或固定 delay。单份 dirty 暂停自动应用/生成；连续争夺有界失败。目录仍存在但不安全的默认不会被视作删除。源文件/hash、测试执行和未模拟部分见 [Binding](PER-CHAT-PRESET-BINDING.md)、[Testing](TESTING.md) 和 [Provenance](source-provenance.json)。
 

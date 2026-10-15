@@ -1,4 +1,6 @@
 
+
+> 2026-10-15：0.6.0 的绑定规则以 [PER-CHAT-PRESET-BINDING.md](PER-CHAT-PRESET-BINDING.md) 为准：一个聊天记住一个预设，原生双向同步，默认只初始化/删除回退，旧 schema 忽略且保留。正式版本说明见 [Release 0.6.0](RELEASE-0.6.0.md)。
 # 《咩咩预设管理 MieMie Preset Manager》完整开发企划
 
 > 本文件为正式产品需求基线，来自 SheepSheep 提供的《咩咩预设管理-计划书.txt》，保留原文内容，仅整理 Markdown 排版。原文中无 URL 的“GitHub”、文档及附件标记按原文保留，不视为已核验的技术证据。文中工具或推理强度建议是原文背景，不构成仓库运行或协作的强制设置。

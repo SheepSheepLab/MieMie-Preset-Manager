@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See LICENSE for terms; distributed without warranty.
 
+import { bounded } from './async-scope';
 import type { PresetAdapter, RawPreset, Snapshot } from './contracts';
 import { validatePreset } from './model';
 
@@ -23,6 +24,7 @@ interface NativeContext {
   getPresetManager(api: string): NativeManager;
   getRequestHeaders(): HeadersInit;
   chatCompletionSettings: Data;
+  extensionSettings?: Data;
   eventTypes: Record<string, string>;
   eventSource: { on(event: string, listener: Listener): void; removeListener(event: string, listener: Listener): void };
 }
@@ -155,6 +157,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
   const activeGroupId = orderConfig.dummyId;
   const source = ctx.eventSource;
   let disposed = false;
+  const lifetime = new AbortController();
   let epoch = 0, notificationEpoch = 0;
   // Private receipt metadata, never exported with native presets. Arbitrary/cloned
   // snapshots cannot suppress a read; only this adapter's own verified read can.
@@ -178,12 +181,14 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     return operation;
   };
 
-  async function disk(confirmPendingWrite = false): Promise<Map<string, unknown>> {
+  async function disk(confirmPendingWrite = false, caller?: AbortSignal): Promise<Map<string, unknown>> {
     if (!confirmPendingWrite) alive();
     const url = new URL('api/settings/get', host.location.href);
-    const response = await host.fetch(url.href, { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}' });
-    if (!response.ok) throw new Error('无法回读酒馆保存的数据，请检查连接后重试。');
-    const data: unknown = await response.json();
+    const data: unknown = await bounded(async signal => {
+      const response = await host.fetch(url.href, { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}', signal });
+      if (!response.ok) throw new Error('无法回读酒馆保存的数据，请检查连接后重试。');
+      return response.json();
+    }, [confirmPendingWrite ? undefined : lifetime.signal, caller]);
     if (!object(data) || !Array.isArray(data.openai_setting_names) || !Array.isArray(data.openai_settings)
       || data.openai_setting_names.length !== data.openai_settings.length) throw new Error('酒馆回读格式不兼容，已停止操作。');
     const result = new Map<string, unknown>();
@@ -206,7 +211,11 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
   function checkLive(raw: RawPreset): void {
     const live = ctx.chatCompletionSettings;
     const conflict = () => { throw new Error('检测到原生界面未保存修改，请先处理这些修改后重新读取。管理器没有替你保存或丢弃修改。'); };
+    const helper = ctx.extensionSettings?.tavern_helper;
+    const optimize = object(helper) && object(helper.optimize) && helper.optimize.maximize_preset_context_length === true;
+    const helperProjection = optimize && live.max_context_unlocked === true && live.openai_max_context === 2000000;
     for (const key of liveKeys) {
+      if (helperProjection && (key === 'max_context_unlocked' || key === 'openai_max_context')) continue;
       if (connectionKeys.has(key) && !live.bind_preset_to_connection) continue;
       const value = raw[key];
       const appliedValue = minor === '19' && ['google_model', 'vertexai_model'].includes(key)
@@ -236,13 +245,13 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
         { ...actual, character_id: String(actual.character_id) })) conflict();
     }
   }
-  async function read(): Promise<Snapshot> {
+  async function read(signal?: AbortSignal): Promise<Snapshot> {
     alive();
     const started = epoch;
     const notifications = notificationEpoch;
     const name = current();
     if (!name) throw new Error('酒馆尚未选中 Chat Completion 预设。');
-    const presets = await disk();
+    const presets = await disk(false, signal);
     alive();
     if (started !== epoch || name !== current()) throw new Error('读取期间酒馆切换了预设，请重新读取。');
     const raw = rawPreset(presets.get(name));
@@ -274,7 +283,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (!equal(saved, raw)) throw new PresetOperationError(`无法确认「${name}」完整保存；已停止后续操作，请重新读取。`, backup, name);
   }
   async function persist(name: string, raw: RawPreset, backup: Snapshot): Promise<void> {
-    try { await manager.savePreset(name, clone(raw), { skipUpdate: true }); }
+    try { await bounded(() => manager.savePreset(name, clone(raw), { skipUpdate: true }), [lifetime.signal], 10000, '预设保存'); }
     catch {
       // A dropped response does not prove the server failed to commit the file.
       try { if (equal((await disk(true)).get(name), raw)) return; }
@@ -362,7 +371,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       throw new PresetOperationError('删除前原生状态发生变化或管理器已停用，删除没有执行。', backup);
     }
     let ok = false;
-    try { ok = await manager.deletePreset(name); } catch { /* Re-read before deciding whether rollback is required. */ }
+    try { ok = await bounded(() => manager.deletePreset(name), [lifetime.signal], 10000, '预设删除'); } catch { /* Re-read before deciding whether rollback is required. */ }
     let remaining: Map<string, unknown>;
     try { remaining = await disk(true); }
     catch { throw new PresetOperationError('删除请求结果无法确认，请重新读取。操作前副本仍保留在内存中。', backup); }
@@ -453,7 +462,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     }),
     subscribe(callback) { callbacks.add(callback); return () => { callbacks.delete(callback); }; },
     dispose() {
-      disposed = true;
+      disposed = true; lifetime.abort();
       for (const cancel of [...pendingWaits]) cancel();
       for (const [event, listener] of subscriptions) source.removeListener(event, listener);
       callbacks.clear();

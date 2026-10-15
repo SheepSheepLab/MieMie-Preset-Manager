@@ -1,5 +1,25 @@
 # Testing · 0.2.3
 
+
+
+
+## 0.6.0 正式发行基线 2026-10-15
+
+当前候选：`b19e54543ebf460198baae41de4f0a6e07bb71f51054dba6fb1f832197dffb64`。Core 408 PASS（原 356 + 恢复安全覆盖 34 + 新增 18），Browser 547 项断言，Package 77 PASS；当前 Hub 模块另复核重叠子集 21 项，不累计。两版真实 ST、Helper、重命名后实际重启、80 轮增长聊天及 Hub 双 Gate 见[Release 0.6.0](RELEASE-0.6.0.md)。独立复验另验证 ST 1.19.0 的真实 Safari 代表性冒烟；完整 Safari 矩阵未验。公网在线安装更新在正式发布后另验，不从离线 Package 测试推断。
+
+## 最初 0.6.0 开发阶段（历史证据）
+
+本节记录最初开发阶段；当时公开版本为 0.5.1，尚未发布 0.6.0。当前结果以本页上方正式发行基线为准。
+
+最终源码：Core / Native Contract 356 PASS，Package 77 PASS（其中 21 项为 build 子集），浏览器 547 PASS，保存比较正确性 8 PASS。类型检查与构建通过；独立源码目录共用锁定依赖重建，四份机器交付物和 production/preview JS 共六文件逐字相同。旧继承业务测试由 schema 2 契约替换，没有继续维护 v1 业务分支；错误保存、dirty、原生流程与数据边界继续覆盖。
+
+真实 ST 1.18.0 / 1.19.0 + Helper 4.11.3 分别验证 9 项绑定、13 项生成、9 项数据与生命周期场景；Hub 重新接入和工具续接另补验，不把重叠场景重复累计。使用隔离数据与本机合成模型，真实 ST 后端实际转发请求。不是付费模型供应商验收。每版 80 轮增长聊天、5 个连续新聊天首次发送，以及 32768 上下文的大历史截断均通过。/echo 后三次发送、单/双工具续接、SSE、离线恢复、停止、重新生成、Swipe、快速点击和群聊首次发送均覆盖。
+
+新版命名空间与行为以 [Binding 0.6.0](PER-CHAT-PRESET-BINDING.md) 为准。社区 42 层问题 NOT REPRODUCED；正文/角色卡渲染冲突 UNCONFIRMED；物理手机及正式公网更新 NOT TESTED。旧 Hub Esc 限制保留。下文是历史阶段证据，不代表每一项都在新版和真实宿主重新执行。
+
+Candidate SHA-256：`97299d9eb36875d5fdb3f113ff5011532336197f278dffe2ccde4bbc5889a25a`。
+
+
 历史 Foundation 和各 Candidate 的结果保留原日期与范围；当前证据以以下 2026-10-08 汇总为准。
 
 本次验收文档发布于 v0.2.3 Release 之后，不属于原 v0.2.3 Tag 的文档内容；历史 Tag 与 Release Assets 保持不变。Issue 的实时状态以 [Issue #1](https://github.com/SheepSheepLab/MieMie-Preset-Manager/issues/1) 为准。

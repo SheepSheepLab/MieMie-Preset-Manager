@@ -336,3 +336,27 @@ test(version + ' legacy migration and unsupported hosts fail before writes', asy
 });
 
 }
+
+for (const version of ['1.18.0', '1.19.0']) {
+  test(version + ' exact enabled Helper projection is read-only; other native edits still conflict', async () => {
+    const f = fake(version);
+    Object.assign(f.records.get('A')!, { openai_max_context: 4096, max_context_unlocked: false });
+    Object.assign(f.live, { openai_max_context: 2000000, max_context_unlocked: true });
+    Object.assign(f.ctx, { extensionSettings: { tavern_helper: { optimize: { maximize_preset_context_length: true } } } });
+    const a = await createSTAdapter(f.host), original = copy(f.records.get('A'));
+    const read = await a.read(); assert.deepEqual(read.raw, original);
+    f.live.temp_openai = 0.9; await assert.rejects(a.read(), /未保存/); f.live.temp_openai = 0.7;
+    f.live.openai_max_context = 12345; await assert.rejects(a.read(), /未保存/);
+    f.live.openai_max_context = 2000000;
+    Object.assign(f.ctx, { extensionSettings: { tavern_helper: { optimize: { maximize_preset_context_length: false } } } });
+    await assert.rejects(a.read(), /未保存/); assert.deepEqual(f.records.get('A'), original); a.dispose!();
+  });
+  test(version + ' aborted and disposed reads finish even if transport ignores signal', async () => {
+    const f = fake(version), a = await createSTAdapter(f.host), controller = new AbortController();
+    let observed: AbortSignal | undefined;
+    Object.assign(f.host, { fetch: (_url: string, init: RequestInit) => { observed = init.signal as AbortSignal; return new Promise(() => {}); } });
+    const reading = a.read(controller.signal); await new Promise(r => setImmediate(r)); controller.abort();
+    await assert.rejects(reading, /取消/); assert(observed?.aborted);
+    const second = a.read(); await new Promise(r => setImmediate(r)); a.dispose!(); await assert.rejects(second, /取消/);
+  });
+}

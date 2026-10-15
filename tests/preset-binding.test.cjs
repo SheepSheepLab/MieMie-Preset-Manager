@@ -1,31 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const core = require('../.test-build/preset-binding.js');
-const chat = { kind: 'single', key: 'single/one', avatar: 'synthetic.png', filename: 'one', characterName: 'Synthetic' };
-function registry() { const settings = { schemaVersion: 1, revision: 1, defaultBindingId: null, bindings: {} };
-  const a = core.register(settings, 'A'), b = core.register(settings, 'B'); settings.defaultBindingId = a; return { settings, a, b }; }
-const cases = {
-  'absent metadata inherits': () => assert.equal(core.parseChat(undefined), null),
-  'inherit resolves global default': () => { const {settings} = registry(); assert.equal(core.resolve(settings,chat,null).targetName,'A'); },
-  'override resolves stable binding': () => { const {settings,b} = registry(); assert.equal(core.resolve(settings,chat,{schemaVersion:1,presetBindingId:b}).targetName,'B'); },
-  'set default resolves new inherited target': () => { const {settings,b} = registry(); settings.defaultBindingId=b; assert.equal(core.resolve(settings,chat,null).targetName,'B'); },
-  'absence remains inherit after choosing default': () => { const {settings} = registry(); assert.equal(core.resolve(settings,chat,core.parseChat(undefined)).mode,'inherit'); },
-  'default change affects inherit': () => { const {settings,b} = registry(); settings.defaultBindingId=b; assert.equal(core.resolve(settings,chat,null).targetName,'B'); },
-  'default change preserves other overrides': () => { const {settings,a,b} = registry(); settings.defaultBindingId=b; assert.equal(core.resolve(settings,chat,{schemaVersion:1,presetBindingId:a}).targetName,'A'); },
-  'bootstrap only absence, invalid configuration fails closed': () => { assert.equal(core.parseGlobal(undefined),null); assert.throws(()=>core.parseGlobal({})); },
-  'register preserves existing active ID': () => { const {settings,a} = registry(); assert.equal(core.register(settings,'A'),a); },
-  'create obtains fresh UUID': () => { const {settings,a} = registry(); assert.notEqual(core.register(settings,'Created',true),a); },
-  'copy obtains different ID': () => { const {settings,b} = registry(); assert.notEqual(core.register(settings,'B copy',true),b); },
-  'rename retains ID and chat references': () => { const {settings,b} = registry(); core.renamed(settings,'B','B2'); assert.equal(core.resolve(settings,chat,{schemaVersion:1,presetBindingId:b}).targetName,'B2'); },
-  'delete retains override as missing and falls back': () => { const {settings,b} = registry(); core.syncDirectory(settings,['A']); assert.equal(settings.bindings[b].tombstone,true); assert.deepEqual(core.resolve(settings,chat,{schemaVersion:1,presetBindingId:b}),{mode:'missing',defaultName:'A',targetName:'A'}); },
-  'default delete uses first supported native order': () => { const {settings} = registry(); core.syncDirectory(settings,['C','B']); assert.equal(core.resolve(settings,chat,null).defaultName,'C'); },
-  'empty supported directory sets default None': () => { const {settings} = registry(); core.syncDirectory(settings,[]); assert.equal(settings.defaultBindingId,null); },
-  'invalid registry ID rejected': () => { const {settings} = registry(); settings.bindings['bad']={nativeName:'bad'}; assert.throws(()=>core.parseGlobal(settings)); },
-  'missing mapping is missing rather than inherit': () => { const {settings} = registry(); assert.equal(core.resolve(settings,chat,{schemaVersion:1,presetBindingId:'unknown'}).mode,'missing'); },
-  'same-name new preset never resurrects tombstone': () => { const {settings,b} = registry(); core.syncDirectory(settings,['A']); const fresh=core.register(settings,'B'); assert.notEqual(fresh,b); assert.equal(settings.bindings[b].tombstone,true); },
-  'copied branch metadata keeps binding, blank chat inherits': () => { const {settings,b} = registry(); const branch=structuredClone({schemaVersion:1,presetBindingId:b}); assert.equal(core.resolve(settings,chat,branch).targetName,'B'); assert.equal(core.resolve(settings,chat,null).targetName,'A'); },
-  'unsupported existing preset is not a confirmed deletion': () => { const {settings,a,b} = registry(); assert.throws(()=>core.syncDirectory(settings,['B'],['A','B']),/仍存在/); assert.equal(settings.defaultBindingId,a); assert.equal(settings.bindings[a].tombstone,undefined); core.syncDirectory(settings,['A'],['A','B']); assert.equal(settings.bindings[b].tombstone,undefined); },
-  'literal dotted namespace remains a single key': () => assert.equal(core.BINDING_NAMESPACE,'miemie.preset-manager'),
-};
-for (const [name, fn] of Object.entries(cases)) test('Binding core: '+name,fn);
+const test=require('node:test'),assert=require('node:assert/strict');
+const c=require('../.test-build/preset-binding.js');
+const chat={kind:'single',key:'avatar/one',avatar:'role.png',filename:'one',characterName:'Role'};
+function setup(){const s={schemaVersion:2,revision:1,defaultBindingId:null,bindings:{}};const a=c.register(s,'A'),b=c.register(s,'B');s.defaultBindingId=a;return{s,a,b};}
+const bound=id=>({schemaVersion:2,presetBindingId:id,chatKey:chat.key});
+test('v2 isolated namespace leaves v1 out of business storage',()=>assert.equal(c.BINDING_NAMESPACE,'miemie.preset-manager.binding-v2'));
+test('new chat is initializing, existing binding stays independent of default',()=>{const{s,a,b}=setup();assert.equal(c.resolve(s,chat,null).mode,'initializing');s.defaultBindingId=b;assert.equal(c.resolve(s,chat,bound(a)).targetName,'A');});
+test('copied metadata belongs to the old file; new identity initializes current default',()=>{const{s,a,b}=setup();s.defaultBindingId=b;assert.equal(c.resolve(s,{...chat,key:'avatar/two'},bound(a)).targetName,'B');});
+test('rename preserves stable ID; known deletion never resurrects on same-name create',()=>{const{s,b}=setup();c.renamed(s,'B','B2');assert.equal(c.resolve(s,chat,bound(b)).targetName,'B2');c.syncDirectory(s,['A']);assert(s.bindings[b].tombstone);assert.notEqual(c.register(s,'B2'),b);});
+test('existing unreadable preset is not deletion',()=>{const{s,a}=setup();assert.throws(()=>c.syncDirectory(s,['B'],['A','B']));assert.equal(s.defaultBindingId,a);assert(!s.bindings[a].tombstone);});
+test('confirmed missing default uses supported native order, empty means no target',()=>{const{s}=setup();c.syncDirectory(s,['C','B']);assert.equal(c.resolve(s,chat,null).defaultName,'C');c.syncDirectory(s,[]);assert.equal(s.defaultBindingId,null);});
+test('malformed v2 rejected without overwrite; absent namespace bootstraps',()=>{assert.equal(c.parseGlobal(undefined),null);assert.throws(()=>c.parseGlobal({schemaVersion:2}));assert.throws(()=>c.parseChat({schemaVersion:2,presetBindingId:'x'}));const{s}=setup();assert.deepEqual(c.parseGlobal(s),s);});
+test('CHAT_RENAMED request filename maps to exact ST sanitize-filename response name',()=>{for(const v of require('./fixtures/chat-filename-contract.json'))assert.equal(c.nativeChatFilename(v.input),v.expected,v.input)});
+test('pending rename receipts validate shape and binding IDs, without clearing unrelated fields',()=>{const{s,a}=setup();s.chatRenames={'new':{fromKey:'old',presetBindingId:a}};assert.deepEqual(c.parseGlobal(s),s);s.chatRenames.new.presetBindingId='unknown';assert.throws(()=>c.parseGlobal(s));});

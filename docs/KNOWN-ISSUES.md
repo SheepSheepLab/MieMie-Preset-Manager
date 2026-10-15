@@ -1,4 +1,12 @@
-# Known Issues · v0.5.1
+# Known Issues · 0.6.0
+
+
+
+## 当前版本与社区反馈
+
+0.6.0 修复旧生成累计计数、工具续接阻断、Helper 精确上下文投影冲突，并替换旧绑定规则。42 层反馈仍为 NOT REPRODUCED；未取得原聊天、操作序列和日志。正文隐藏/第三方渲染冲突保持 UNCONFIRMED，合成模型的正文显示通过不能解释社区全部问题。跨浏览器并发保存无原生 CAS；新版元数据不一致时会明确停止并要求重新加载。
+
+0.5.1 → 0.6.0 的公网在线更新在正式发布后单独验收；发布前的 Managed Package 结果仅为离线预检，不作为在线成功证明。物理手机和真实模型供应商矩阵未测。下列历史 Hub Esc 和 iOS 缺口保留，本轮未修复或扩大历史 Owner 例外。
 
 ## Hub Escape Layer Conflict — Owner Accepted Known Issue
 

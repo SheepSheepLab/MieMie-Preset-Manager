@@ -929,7 +929,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   function updateBindingControls() {
     const binding = controller.binding?.state;
     if (!binding) return;
-    const labels = { 'no-chat': '无对话', inherit: '跟随默认', override: '此对话', missing: '此对话 · 绑定缺失' };
+    const labels = { 'no-chat': '无对话', initializing: '正在建立绑定', bound: '此对话', missing: '此对话 · 绑定缺失' };
     presetLabel.textContent = `当前使用预设 · ${labels[binding.mode]}`;
     const applied = binding.appliedName;
     showPresetValue(applied ?? '');

@@ -19,291 +19,6 @@ async function setup(t,version,preconfigure) {
   const settle=async()=>{await until(()=>['ready','error','paused-dirty'].includes(binding.state.status));await turn();await controller.refresh();};
   return {...f,adapter,hostAdapter:host,binding,controller,settle};
 }
-for(const version of ['1.18.0','1.19.0']){
-  const label=`Binding native lifecycle ${version} (synthetic dependencies): `;
-  test(label+'migration source read leaves binding/selection unchanged; comparison Dirty blocks generation and chat auto-select',async t=>{
-    const f=await setup(t,version), c=f.controller, migration=c.migration;
-    const registry=structuredClone(f.diskGlobal()[NS]), chats=structuredClone([...f.files]), snapshot=structuredClone(c.state.snapshot);
-    const saved=f.controls.settingsSaved, metadata=f.controls.metadataSaved.length;
-    assert(await migration.open());await migration.load('B');migration.select('custom');
-    assert.deepEqual(c.state.snapshot,snapshot);assert.equal(f.native.manager.getSelectedPresetName(),'A');
-    assert.deepEqual(f.diskGlobal()[NS],registry);assert.deepEqual([...f.files],chats);
-    assert.equal(f.controls.settingsSaved,saved);assert.equal(f.controls.metadataSaved.length,metadata);
-    migration.bridge();assert.equal(migration.state.step,'compare');migration.left('source temporary');assert.equal(c.state.dirty,false);
-    await f.generate();assert.equal(f.controls.sent.length,1);
-    migration.right('unconfirmed migrated draft');assert(c.state.dirty);assert.equal(c.state.pendingRaw,null);
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,1);
-    f.setChat('single','two');await f.events.emit('chat');await until(()=>f.binding.state.status==='paused-dirty');
-    assert.equal(f.native.manager.getSelectedPresetName(),'A');assert.equal(await migration.confirm(),false);
-    migration.close();assert.equal(c.state.migrationDraft.content,'unconfirmed migrated draft');
-    assert.deepEqual(f.records.get('A'),snapshot.raw);assert.deepEqual(f.files.get('single:one'),chats.find(([key])=>key==='single:one')[1]);
-  });
-  test(label+'I2 batch property/structure drafts block generation and automatic binding, cancel preserves earlier Pending',async t=>{
-    const f=await setup(t,version),c=f.controller,m=c.migration;
-    await c.toggle('custom');const before=structuredClone(c.state.pendingRaw);
-    assert(await m.open());await m.load('B');m.select('main');m.select('custom');m.bridge();assert.equal(m.state.step,'batch');
-    m.editItem('custom');m.patchRight({injection_depth:7,injection_order:20});assert(c.state.dirty);
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);assert(await m.confirm());
-    assert.deepEqual(c.state.pendingRaw,before);await assert.rejects(f.generate());
-    f.setChat('single','two');await f.events.emit('chat');await until(()=>f.binding.state.status==='paused-dirty');
-    assert.equal(f.native.manager.getSelectedPresetName(),'A');assert.equal(await m.confirmBatch(),false);
-    assert(m.state.batch.find(i=>i.sourceId==='custom').right.injection_depth===7);
-    m.cancelBatch();assert.deepEqual(c.state.pendingRaw,before);assert(c.state.dirty);
-  });
-  test(label+'only automatic per-chat selection quiets native authorized regex notices',async t=>{
-    const fixture=require('./fixtures/st-regex-contracts.json').baselines.find(b=>b.version===version);
-    const notices=[],renders=[],chat=[{mes:'synthetic',extra:{keep:true}}];
-    let nativeRegex;
-    const f=await setup(t,version,f=>{
-      const originalContext=f.host.SillyTavern.getContext;
-      const t=(strings,...values)=>strings.reduce((s,v,i)=>s+v+(values[i]??''),'');
-      const reloadCurrentChat=()=>{throw Error('must not reload chat');};
-      f.host.toastr={info:(...args)=>notices.push(args)};
-      f.host.document={querySelector:()=>({querySelectorAll:selector=>selector.includes('textarea')?[]:[{getAttribute:()=> '0'}]})};
-      f.host.SillyTavern.getContext=()=>({...originalContext(),t,chat,reloadCurrentChat,updateMessageBlock:(_,message)=>renders.push(message)});
-      const vm=require('node:vm');
-      nativeRegex=vm.runInNewContext(fixture.sources[0].snippets.notifyReloadCurrentChat.text+';notifyReloadCurrentChat',
-        {toastr:f.host.toastr,t,reloadCurrentChat,escapeHtml:s=>s});
-      f.events.on('changed',payload=>{if(payload.apiId==='openai')nativeRegex(payload.name);});
-    });
-    await f.controller.select('B');await f.settle();assert.equal(notices.length,1);notices.length=0;
-    await f.changeChat('single','two');await f.settle();assert.equal(f.live.preset_settings_openai,'A');assert.equal(notices.length,0);assert.equal(renders.length,1);
-    await f.changeChat('single','one');await f.settle();assert.equal(f.live.preset_settings_openai,'B');assert.equal(notices.length,0);assert.equal(renders.length,2);
-    assert.deepEqual(chat,[{mes:'synthetic',extra:{keep:true}}]);assert.equal(f.binding.state.status,'ready');
-  });
-  test(label+'native completion events cannot extend application deadline forever',async t=>{
-    const f=await setup(t,version);let deadline,deadlineCount=0;
-    const originalTimer=f.host.setTimeout;
-    f.host.setTimeout=(fn,ms)=>{if(ms===20000){deadline=fn;deadlineCount++;return 123456;}return originalTimer(fn,ms);};
-    await f.events.emit('before',{presetName:'A'});
-    await until(()=>deadlineCount===1);
-    for(let i=0;i<6;i++){
-      await f.events.emit('before',{presetName:'B'});
-      await f.events.emit('changed',{apiId:'openai',name:'B'});
-    }
-    assert.equal(deadlineCount,1);deadline();await f.settle();
-    assert.equal(f.binding.state.status,'error');assert.match(f.binding.state.error,/持续应用/);
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);
-  });
-  test(label+'bootstrap persisted once and unrelated settings intact',async t=>{
-    const f=await setup(t,version); assert.equal(f.binding.state.status,'ready'); assert.equal(f.binding.state.defaultName,'A');
-    assert.deepEqual(f.diskGlobal().unrelated_extension,{preserved:true});assert.equal(f.diskGlobal()[NS].revision,1);
-    assert.equal(Object.keys(f.diskGlobal()[NS].bindings).length,1);assert.equal(f.controls.settingsSaved,1);
-    await f.changeChat('single','two');await f.settle();assert.equal(f.controls.settingsSaved,1);
-  });
-  test(label+'select override, exact-target metadata confirmation, choose default clears',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();
-    assert.equal(f.binding.state.targetName,'B');assert.equal(f.live.preset_settings_openai,'B');assert.equal(f.binding.state.mode,'override');
-    const saved=f.files.get('single:one');assert(saved[NS]?.presetBindingId);assert.deepEqual(saved.unrelated,{keep:'one'});
-    assert.equal(f.diskGlobal()[NS].defaultBindingId,Object.entries(f.diskGlobal()[NS].bindings).find(([,r])=>r.nativeName==='A')[0]);
-    await f.controller.select('A');await f.settle();assert.equal(f.files.get('single:one')[NS],undefined);assert.equal(f.binding.state.mode,'inherit');
-  });
-  test(label+'Set Default persists and clears matching override, other chats unchanged',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle(); const id=f.files.get('single:one')[NS].presetBindingId;
-    f.metadata.get('single:two')[NS]={schemaVersion:1,presetBindingId:id};f.files.get('single:two')[NS]={schemaVersion:1,presetBindingId:id};
-    await f.binding.setDefault();await f.settle();assert.equal(f.diskGlobal()[NS].defaultBindingId,id);
-    assert.equal(f.files.get('single:one')[NS],undefined);assert.equal(f.files.get('single:two')[NS].presetBindingId,id);
-  });
-  test(label+'manual deviation and late native auto-selection both converge without source attribution',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();
-    await f.manual('A');await f.settle();assert.equal(f.live.preset_settings_openai,'B');assert.equal(f.binding.state.mode,'override');
-    await f.binding.reconcile();await f.settle();
-    const held=f.gate('before'); const external=f.manual('A');await held.entered;
-    assert.equal(f.binding.state.status,'reconciling');held.release();await external;held.remove();await f.settle();
-    assert.equal(f.live.preset_settings_openai,'B');
-  });
-  test(label+'continuous external competition stops with error, no unbounded retry',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();
-    await f.manual('A');await f.settle();assert.equal(f.live.preset_settings_openai,'B');
-    const before=f.controls.changes.length;await f.manual('A');await f.settle();assert.equal(f.binding.state.status,'error');
-    assert.match(f.binding.state.error,/争夺/);await turn();assert.equal(f.controls.changes.length,before+1);
-    const sent=f.controls.sent.length;await assert.rejects(f.generate());assert.equal(f.controls.sent.length,sent);
-  });
-  test(label+'A started, B coalesced, C latest; actual host finally C target',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();
-    await f.changeChat('single','two');await f.settle(); // inherited A
-    await f.controller.newPreset('C');await f.settle();await f.changeChat('single','three');await f.settle();
-    const before=f.controls.changes.length;
-    const held=f.gate('before');await f.changeChat('single','two');await held.entered; // started C
-    await f.changeChat('single','three');await f.changeChat('single','one'); // intermediate A skipped; latest B
-    held.release();held.remove();await f.settle();assert.equal(f.binding.state.chat.filename,'one');assert.equal(f.live.preset_settings_openai,'B');
-    assert.deepEqual(f.controls.changes.slice(before).map(c=>c.selected),[String(f.names.C),String(f.names.B)]);
-    assert.equal(f.binding.state.status,'ready');
-  });
-  test(label+'Dirty A survives B/C, generation blocked; discard applies latest only',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();
-    await f.changeChat('single','two');await f.settle();
-    f.controller.edit('custom');f.controller.draft({name:'Synthetic dirty A'}); const anchor=f.controller.state.snapshot;
-    await f.changeChat('single','one');await f.changeChat('single','three');await f.settle();
-    assert.equal(f.binding.state.status,'paused-dirty');assert.deepEqual(f.controller.state.snapshot,anchor);
-    assert.equal(f.controller.state.snapshot.revision,anchor.revision);assert.equal(f.controller.state.draft.patch.name,'Synthetic dirty A');
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);assert.equal(f.records.get('B').prompts[1].name,'写作-正文');
-    f.controller.cancelChanges();await f.settle();assert.equal(f.binding.state.chat.filename,'three');assert.equal(f.live.preset_settings_openai,'A');
-  });
-  test(label+'Dirty save stays on original snapshot then latest binding applies',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.settle();
-    f.controller.edit('custom');f.controller.draft({name:'Saved only A'});await f.controller.saveEdit();
-    await f.changeChat('single','one');await f.settle();await f.controller.saveChanges();await f.settle();
-    assert.equal(f.records.get('A').prompts[1].name,'Saved only A');assert.equal(f.records.get('B').prompts[1].name,'写作-正文');
-    assert.equal(f.live.preset_settings_openai,'B');assert.equal(f.controller.state.dirty,false);
-  });
-  test(label+'generation pending canceled; ready target can send through native lifecycle',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.settle();
-    const held=f.gate('before');await f.changeChat('single','one');await held.entered;
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);
-    held.release();held.remove();await f.settle();await f.generate();assert.equal(f.controls.sent.length,1);
-    assert.equal(f.controls.sent[0].prompts[0].content,'B');
-  });
-  test(label+'preset changes after prompt preparation cannot send stale normal request',async t=>{
-    const f=await setup(t,version); const {deferred}=require('./helpers/st-native-host.cjs');
-    const prepare=deferred();f.controls.prepareGate=prepare;
-    let reached=false;f.events.on('commands',()=>{reached=true;});
-    const generation=f.generate();void generation.catch(()=>{});await until(()=>reached);await turn();
-    await f.manual('B');await f.settle();prepare.resolve();await assert.rejects(generation);assert.equal(f.controls.sent.length,0);
-  });
-  test(label+'group identity, multiple files, metadata, generation gate',async t=>{
-    const f=await setup(t,version);await f.changeChat('group','one');await f.settle();await f.controller.select('B');await f.settle();
-    assert(f.files.get('group:one')[NS]);assert.equal(f.files.get('single:one')[NS],undefined);
-    await f.generate();assert.equal(f.controls.sent.length,1);
-    await f.changeChat('group','two');await f.settle();assert.equal(f.live.preset_settings_openai,'A');
-    assert.notEqual(f.binding.state.chat.groupId,f.binding.state.chat.filename);
-  });
-  test(label+'no-chat native change does not change default or fight; explicit reconcile restores',async t=>{
-    const f=await setup(t,version);await f.changeChat('none');await f.settle();const settings=structuredClone(f.diskGlobal()[NS]);
-    await f.manual('B');await f.settle();assert.equal(f.live.preset_settings_openai,'B');assert.deepEqual(f.diskGlobal()[NS],settings);
-    await f.binding.reconcile();await f.settle();assert.equal(f.live.preset_settings_openai,'A');assert.equal(f.binding.state.mode,'no-chat');
-  });
-  test(label+'rename keeps ID, copy gets fresh ID, raw format untouched',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle(); const id=f.files.get('single:one')[NS].presetBindingId;
-    await f.controller.renamePreset('B2');await f.settle();assert.equal(f.diskGlobal()[NS].bindings[id].nativeName,'B2');
-    assert.equal(f.files.get('single:one')[NS].presetBindingId,id);assert.equal(f.records.get('B2')[NS],undefined);
-    await f.controller.copyPreset();await f.settle();assert.notEqual(f.files.get('single:one')[NS].presetBindingId,id);
-  });
-  test(label+'metadata save waits while chat changes: never migrates A override into B',async t=>{
-    const f=await setup(t,version);const target=f.hostAdapter.currentChat();const held=f.metadataGate();
-    const promise=f.hostAdapter.writeChat(target.identity,undefined,{schemaVersion:1,presetBindingId:'synthetic-id'});void promise.catch(()=>{});
-    await until(()=>Boolean(f.metadata.get('single:one')[NS]));f.setChat('single','two');held.resolve();
-    await assert.rejects(promise,/对话已切换/);assert.equal(f.files.get('single:two')[NS],undefined);assert.equal(f.files.get('single:one')[NS],undefined);
-  });
-  test(label+'wrong-chat start prevents any namespace write',async t=>{
-    const f=await setup(t,version);const target=f.hostAdapter.currentChat();f.setChat('single','two');
-    await assert.rejects(f.hostAdapter.writeChat(target.identity,undefined,{schemaVersion:1,presetBindingId:'synthetic-id'}),/保存前/);
-    assert.equal(f.metadata.get('single:two')[NS],undefined);
-  });
-  for(const fault of ['chatMismatch','chatSave','globalMismatch','globalSave'])test(label+fault+' cannot claim persistence success',async t=>{
-    const f=await setup(t,version); f.faults[fault]=true;
-    if(fault.startsWith('chat')){const target=f.hostAdapter.currentChat();await assert.rejects(f.hostAdapter.writeChat(target.identity,undefined,{schemaVersion:1,presetBindingId:'synthetic-id'}));}
-    else {const expected=f.diskGlobal()[NS],next=structuredClone(expected);next.revision++;await assert.rejects(f.hostAdapter.writeGlobal(expected,next));}
-  });
-  test(label+'namespace conflict preserves external global state',async t=>{
-    const f=await setup(t,version),old=f.diskGlobal()[NS],changed=structuredClone(f.diskGlobal());changed[NS].revision++;
-    f.setDiskGlobal(changed);await assert.rejects(f.hostAdapter.writeGlobal(old,old),/其他来源/);assert.deepEqual(f.diskGlobal(),changed);
-  });
-  test(label+'default saved but override clear failed reports partial, no rollback',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();f.faults.chatSave=true;
-    await assert.rejects(f.binding.setDefault());assert.equal(f.binding.state.status,'error');assert.equal(core.resolve(f.diskGlobal()[NS],f.hostAdapter.currentChat().identity,null).defaultName,'B');
-    assert(f.files.get('single:one')[NS]);
-  });
-  test(label+'normal streaming route cancels pending and allows confirmed target',async t=>{
-    const f=await setup(t,version); f.controls.generationStreaming=true;
-    await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.settle();
-    const held=f.gate('before');await f.changeChat('single','one');await held.entered;
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);held.release();held.remove();await f.settle();
-    await f.generate();assert.equal(f.controls.sent[0].prompts[0].content,'B');
-  });
-  test(label+'delete override keeps tombstone, same-name recreated preset does not rebind',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();const old=f.files.get('single:one')[NS].presetBindingId;
-    await f.controller.deletePreset();await f.settle();assert.equal(f.binding.state.mode,'missing');assert.equal(f.live.preset_settings_openai,'A');
-    assert.equal(f.files.get('single:one')[NS].presetBindingId,old);assert.equal(f.diskGlobal()[NS].bindings[old].tombstone,true);
-    await f.controller.newPreset('B');await f.settle();assert.notEqual(f.files.get('single:one')[NS].presetBindingId,old);
-    assert.equal(f.diskGlobal()[NS].bindings[old].tombstone,true);
-  });
-  test(label+'no-event missing target falls back and retains override ID',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();const id=f.files.get('single:one')[NS].presetBindingId;
-    await f.changeChat('single','two');await f.settle();f.records.delete('B');
-    await f.changeChat('single','one');await f.settle();assert.equal(f.binding.state.mode,'missing');assert.equal(f.live.preset_settings_openai,'A');
-    assert.equal(f.files.get('single:one')[NS].presetBindingId,id);
-  });
-  test(label+'default deletion falls back without clearing another chat override',async t=>{
-    const f=await setup(t,version);await f.controller.deletePreset();await f.settle();assert.equal(f.binding.state.defaultName,'B');
-    assert.equal(f.binding.state.mode,'inherit');assert.equal(f.live.preset_settings_openai,'B');
-  });
-  test(label+'inherit already-applied target is zero selects and zero metadata saves',async t=>{
-    const f=await setup(t,version);const calls=f.controls.changes.length;await f.changeChat('single','two');await f.settle();
-    assert.equal(f.controls.changes.length,calls);assert.equal(f.controls.metadataSaved.length,0);
-  });
-  test(label+'no-chat MPM select preserves Applied and default until explicit reconcile',async t=>{
-    const f=await setup(t,version);await f.changeChat('none');await f.settle();await f.controller.select('B');await f.settle();
-    assert.equal(f.live.preset_settings_openai,'B');assert.equal(f.binding.state.defaultName,'A');assert.equal(f.controls.metadataSaved.length,0);
-  });
-  test(label+'previous indistinguishable event traces now have the same required result',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.binding.reconcile();await f.settle();
-    const {deferred}=require('./helpers/st-native-host.cjs'),gate=deferred();
-    f.events.on('chat',()=>gate.promise);f.events.on('chat',f.autoSelect);
-    const change=f.changeChat('single','one');await until(()=>f.binding.state.status==='ready');
-    gate.resolve();await change;await f.settle();assert.equal(f.live.preset_settings_openai,'B');
-    await f.binding.reconcile();await f.settle();await f.manual('A');await f.settle();assert.equal(f.live.preset_settings_openai,'B');
-  });
-  test(label+'external native application finishing after own apply finally restores target',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.settle();
-    const {deferred}=require('./helpers/st-native-host.cjs'),own=deferred(),foreign=deferred(),ownEntered=deferred(),foreignEntered=deferred();
-    let held=true;
-    const listener=payload=>{if(!held)return;if(payload.presetName==='B'){ownEntered.resolve();return own.promise;}foreignEntered.resolve();return foreign.promise;};
-    f.events.on('before',listener);await f.changeChat('single','one');await ownEntered.promise;
-    const late=f.manual('A');await foreignEntered.promise;own.resolve();await turn();await turn();foreign.resolve();held=false;await late;
-    f.events.removeListener('before',listener);await f.settle();assert.equal(f.binding.state.status,'ready');assert.equal(f.live.preset_settings_openai,'B');
-  });
-  test(label+'overlapping ordinary attempts fail closed instead of reusing a permit',async t=>{
-    const f=await setup(t,version);const {deferred}=require('./helpers/st-native-host.cjs');const gate=deferred();f.controls.prepareGate=gate;
-    const first=f.generate();void first.catch(()=>{});await turn();const second=f.generate();void second.catch(()=>{});await turn();gate.resolve();
-    await assert.rejects(first);await assert.rejects(second);assert.equal(f.controls.sent.length,0);
-  });
-  test(label+'Dirty plus native switch cannot write A changes into B',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.settle();
-    f.controller.edit('custom');f.controller.draft({name:'Only local A draft'});await f.controller.saveEdit();
-    await f.changeChat('single','one');await f.manual('B');await f.settle();
-    assert.equal(f.controller.state.snapshot.name,'A');assert(f.controller.state.conflict);await f.controller.saveChanges();
-    assert(f.controller.state.dirty);assert.equal(f.records.get('A').prompts[1].name,'写作-正文');assert.equal(f.records.get('B').prompts[1].name,'写作-正文');
-    await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);
-  });
-  test(label+'Native rename receipt verified against directory retains stable ID',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();const id=f.files.get('single:one')[NS].presetBindingId;
-    await f.events.emit('rename-before',{apiId:'openai',oldName:'B',newName:'B2'});
-    await f.native.manager.savePreset('B2',structuredClone(f.records.get('B')),{skipUpdate:false});
-    await until(()=>!f.hostAdapter.nativeBusy());await f.native.manager.deletePreset('B');
-    await f.events.emit(f.host.SillyTavern.getContext().eventTypes.PRESET_RENAMED,{apiId:'openai',oldName:'B',newName:'B2'});await f.settle();
-    assert.equal(f.diskGlobal()[NS].bindings[id].nativeName,'B2');assert.equal(f.live.preset_settings_openai,'B2');
-    assert.equal(f.files.get('single:one')[NS].presetBindingId,id);
-  });
-  test(label+'unproven and other-API rename payloads never migrate mappings',async t=>{
-    const f=await setup(t,version);await f.controller.select('B');await f.settle();const id=f.files.get('single:one')[NS].presetBindingId;
-    await f.events.emit(f.host.SillyTavern.getContext().eventTypes.PRESET_RENAMED,{apiId:'openai',oldName:'B',newName:'A'});await f.settle();
-    assert.equal(f.diskGlobal()[NS].bindings[id].nativeName,'B');
-    await f.events.emit(f.host.SillyTavern.getContext().eventTypes.PRESET_RENAMED,{apiId:'other',oldName:'B',newName:'A'});await f.settle();
-    assert.equal(f.diskGlobal()[NS].bindings[id].nativeName,'B');
-  });
-  test(label+'default delete follows actual native option order rather than disk order',async t=>{
-    const f=await setup(t,version);await f.controller.newPreset('C');await f.settle();await f.controller.select('A');await f.settle();
-    require('node:vm').runInContext("$('#settings_preset_openai').items[0].options.sort((a,b)=>({A:0,C:1,B:2}[a.text])-({A:0,C:1,B:2}[b.text]))",f.vmContext);
-    await f.controller.deletePreset();await f.settle();assert.equal(f.binding.state.defaultName,'C');assert.equal(f.live.preset_settings_openai,'C');
-  });
-  test(label+'read failure is not interpreted as no presets',async t=>{
-    const f=await setup(t,version);const before=structuredClone(f.diskGlobal()[NS]);f.faults.globalRead=true;
-    await f.binding.reconcile();assert.equal(f.binding.state.status,'error');assert.deepEqual(f.diskGlobal()[NS],before);
-    assert.equal(f.binding.state.defaultName,'A');
-  });
-  test(label+'truly empty directory persists None without claiming live settings were cleared',async t=>{
-    const f=await setup(t,version,f=>f.records.clear());assert.equal(f.binding.state.status,'error');
-    assert.equal(f.diskGlobal()[NS].defaultBindingId,null);assert.match(f.binding.state.error,/无可用预设/);
-    assert(f.live.prompts.length>0);await assert.rejects(f.generate());assert.equal(f.controls.sent.length,0);
-  });
-  test(label+'invalid persisted registry is never replaced by bootstrap',async t=>{
-    const f=await setup(t,version,f=>{f.globals[NS]={schemaVersion:8,unknown:'preserve'};f.setDiskGlobal(f.globals);});
-    assert.equal(f.binding.state.status,'error');assert.deepEqual(f.diskGlobal()[NS],{schemaVersion:8,unknown:'preserve'});
-    assert.equal(f.controls.settingsSaved,0);
-  });
-}
-
 // Closeout policies operate on prompt raw data, never on preset binding identity.
 for (const version of ['1.18.0','1.19.0']) {
   for (const action of ['copy','detach','delete']) for (const finish of ['save','discard']) {
@@ -355,3 +70,105 @@ for (const version of ['1.18.0','1.19.0']) {
     });
   }
 }
+
+for(const version of ['1.18.0','1.19.0']) {
+ const label=`v0.6 native contract ${version}: `;
+ const bindingName=f=>f.diskGlobal()[NS].bindings[f.files.get(f.current().kind+':'+f.current().filename)[NS].presetBindingId].nativeName;
+ test(label+'every chat persists default; choosing default keeps independent binding',async t=>{
+  const f=await setup(t,version);assert.equal(f.binding.state.status,'ready');assert.equal(bindingName(f),'A');
+  const id=f.files.get('single:one')[NS].presetBindingId;
+  await f.controller.select('B');await f.settle();await f.controller.select('A');await f.settle();assert.equal(f.files.get('single:one')[NS].presetBindingId,id);
+  await f.changeChat('none');await f.settle();await f.manual('B');await f.settle();assert.equal(f.binding.state.defaultName,'B');
+  await f.changeChat('single','two');await f.settle();assert.equal(bindingName(f),'B');
+  await f.changeChat('single','one');await f.settle();assert.equal(bindingName(f),'A');assert.equal(f.live.preset_settings_openai,'A');
+  assert.deepEqual(f.diskGlobal().unrelated_extension,{preserved:true});assert.deepEqual(f.files.get('single:one').unrelated,{keep:'one'});
+ });
+ test(label+'native A B A updates chat even with panel closed; no redundant apply',async t=>{
+  const f=await setup(t,version);const count=f.controls.changes.length;
+  await f.manual('B');await f.settle();assert.equal(bindingName(f),'B');
+  await f.manual('A');await f.settle();assert.equal(bindingName(f),'A');assert.equal(f.controls.changes.length,count+2);
+ });
+ test(label+'setting default never clears or edits any chat binding',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();const chats=structuredClone([...f.files]);
+  await f.binding.setDefault();await f.settle();assert.equal(f.binding.state.defaultName,'B');assert.deepEqual([...f.files],chats);
+ });
+ test(label+'native auto select within chat lifecycle cannot overwrite saved target',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();
+  // The native listener predates the extension; recreate that ordering using its API.
+  f.events.makeFirst('chat',f.autoSelect);
+  // Reinstall host lifecycle bracket ahead of native auto-selection, as startup does.
+  const listeners=f.emitter.events.chat;const begin=listeners.find(fn=>String(fn).includes('transition = true'));
+  const end=listeners.find(fn=>String(fn).includes('transition = false'));f.events.makeFirst('chat',begin);f.events.makeLast('chat',end);
+  await f.changeChat('single','two');await f.settle();await f.changeChat('single','one');await f.settle();
+  assert.equal(bindingName(f),'B');assert.equal(f.live.preset_settings_openai,'B');
+ });
+ test(label+'single/group identities and files keep separate persistent bindings',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();const one=structuredClone(f.files.get('single:one'));
+  await f.changeChat('group','one');await f.settle();assert.equal(bindingName(f),'A');await f.controller.select('B');await f.settle();
+  await f.changeChat('group','two');await f.settle();assert.equal(bindingName(f),'A');assert.deepEqual(f.files.get('single:one'),one);
+ });
+ test(label+'confirmed deletion persists fallback; later default does not move it',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();const old=f.files.get('single:one')[NS].presetBindingId;
+  await f.controller.deletePreset();await f.settle();assert.equal(bindingName(f),'A');assert.notEqual(f.files.get('single:one')[NS].presetBindingId,old);assert(f.diskGlobal()[NS].bindings[old].tombstone);
+  await f.changeChat('none');await f.settle();await f.controller.newPreset('C');await f.settle();await f.changeChat('single','one');await f.settle();assert.equal(bindingName(f),'A');
+ });
+ test(label+'no-chat rename keeps selected and default identity',async t=>{
+  const f=await setup(t,version);await f.changeChat('none');await f.settle();await f.controller.select('B');await f.settle();const id=f.diskGlobal()[NS].defaultBindingId;
+  await f.controller.renamePreset('B2');await f.settle();assert.equal(f.live.preset_settings_openai,'B2');assert.equal(f.diskGlobal()[NS].defaultBindingId,id);assert.equal(f.diskGlobal()[NS].bindings[id].nativeName,'B2');
+ });
+ test(label+'read failure is never deletion and retry recovers',async t=>{
+  const f=await setup(t,version);const before=structuredClone(f.diskGlobal()[NS]);f.faults.globalRead=true;await f.binding.reconcile();assert.equal(f.binding.state.status,'error');assert.deepEqual(f.diskGlobal()[NS],before);
+  f.faults.globalRead=false;await f.binding.reconcile();await f.settle();await f.generate();assert.equal(f.controls.sent.length,1);
+ });
+ test(label+'old schema namespace is ignored, not removed',async t=>{
+  const old={schemaVersion:1,garbage:'retain'};const f=await setup(t,version,f=>{f.globals['miemie.preset-manager']=old;f.setDiskGlobal(f.globals);});
+  assert.equal(f.binding.state.status,'ready');assert.deepEqual(f.diskGlobal()['miemie.preset-manager'],old);assert.equal(bindingName(f),'A');
+ });
+ test(label+'slash without END then three normal attempts remain healthy',async t=>{
+  const f=await setup(t,version);await f.generate();f.controls.slash=true;await f.generate();f.controls.slash=false;
+  for(let i=0;i<3;i++)await f.generate();assert.equal(f.controls.sent.length,4);
+ });
+ test(label+'legal continuation without END starts a fresh safety check',async t=>{
+  const f=await setup(t,version);await f.generation.Generate('normal');await f.generation.Generate('normal',{depth:1});assert.equal(f.controls.sent.length,2);
+ });
+ test(label+'first generation waits for new-chat reconciliation',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();await f.changeChat('single','two');await f.generate();
+  assert.equal(f.controls.sent.length,1);assert.equal(f.controls.sent[0].prompts[0].content,'A');assert.equal(bindingName(f),'A');
+ });
+ test(label+'prepared stale request canceled by native selection',async t=>{
+  const f=await setup(t,version),{deferred}=require('./helpers/st-native-host.cjs'),held=deferred();f.controls.prepareGate=held;
+  let reached=false;f.events.on('commands',()=>{reached=true;});const generating=f.generate();void generating.catch(()=>{});await until(()=>reached);await turn();
+  await f.manual('B');await f.settle();held.resolve();await assert.rejects(generating);assert.equal(f.controls.sent.length,0);
+ });
+ test(label+'write metadata across chat switch cannot migrate old namespace',async t=>{
+  const f=await setup(t,version),target=f.hostAdapter.currentChat(),before=structuredClone(f.files.get('single:one'));const held=f.metadataGate();
+  const next={...target.binding,presetBindingId:'another'};const promise=f.hostAdapter.writeChat(target.identity,target.binding,next);void promise.catch(()=>{});
+  await until(()=>f.metadata.get('single:one')[NS].presetBindingId==='another');f.setChat('single','two');held.resolve();
+  await assert.rejects(promise,/对话已切换/);assert.equal(f.files.get('single:two')[NS],undefined);assert.deepEqual(f.files.get('single:one'),before);
+ });
+ for(const fault of ['chatMismatch','chatSave','globalMismatch','globalSave'])test(label+fault+' does not claim success',async t=>{
+  const f=await setup(t,version);f.faults[fault]=true;
+  if(fault.startsWith('chat')){const target=f.hostAdapter.currentChat();await assert.rejects(f.hostAdapter.writeChat(target.identity,target.binding,{...target.binding,presetBindingId:'another'}));}
+  else{const old=f.diskGlobal()[NS],next=structuredClone(old);next.revision++;await assert.rejects(f.hostAdapter.writeGlobal(old,next));}
+ });
+ test(label+'namespace conflict never overwrites external configuration',async t=>{
+  const f=await setup(t,version),old=f.diskGlobal()[NS],external=structuredClone(f.diskGlobal());external[NS].revision++;f.setDiskGlobal(external);
+  await assert.rejects(f.hostAdapter.writeGlobal(old,old));assert.deepEqual(f.diskGlobal(),external);
+ });
+ test(label+'fresh file copied metadata initializes current default instead of inherited old ID',async t=>{
+  const f=await setup(t,version);await f.controller.select('B');await f.settle();f.metadata.set('single:two',structuredClone(f.metadata.get('single:one')));f.files.set('single:two',structuredClone(f.files.get('single:one')));
+  await f.changeChat('single','two');await f.settle();assert.equal(bindingName(f),'A');assert.notEqual(f.files.get('single:one')[NS].chatKey,f.files.get('single:two')[NS].chatKey);
+ });
+}
+
+for(const version of ['1.18.0','1.19.0']) test(`v0.6 lifecycle ${version}: aborted old chat read cannot strand the latest chat`,async t=>{
+ const f=await setup(t,version);const original=f.host.fetch;let entered=false,release;
+ const wait=new Promise(resolve=>release=resolve);
+ f.host.fetch=async(url,init)=>{if(new URL(url).pathname==='/api/chats/get'&&JSON.parse(init.body).file_name==='two'&&!entered){entered=true;await wait;}return original(url,init);};
+ await f.changeChat('single','two');await until(()=>entered);
+ await f.changeChat('single','three');release();await f.settle();
+ assert.equal(f.binding.state.status,'ready');assert.equal(f.binding.state.chat.filename,'three');
+ assert.equal(f.files.get('single:two')[NS],undefined);
+ assert.equal(f.files.get('single:three')[NS].chatKey,JSON.stringify(['single','synthetic.png','three']));
+ await f.generate();assert.equal(f.controls.sent.length,1);
+});

@@ -51,7 +51,7 @@ function pass(label){checks.push(label);}
   await shot('preset-menu');
   await page.getByRole('button',{name:'更多预设操作',exact:true}).click();pass('导出与复制当前预设只在更多菜单显示');
   assert.equal(await indicator().getAttribute('aria-pressed'),'true');assert(await indicator().locator('svg circle').isVisible());pass('默认预设中心点和 aria-pressed');
-  assert((await page.locator('.mm-preset-label').innerText()).includes('跟随默认'));pass('inherit badge');await shot('inherit');
+  assert((await page.locator('.mm-preset-label').innerText()).includes('此对话'));pass('初始聊天持久绑定徽标');await shot('inherit');
   await page.evaluate(()=>window.__MieMieBindingDemo.chat(null));await ready();await shot('no-chat-default');
   assert((await page.locator('.mm-preset-label').innerText()).includes('无对话'));pass('无对话 Default');
   await page.evaluate(()=>window.__MieMieBindingDemo.chat('one'));await ready();
@@ -61,15 +61,15 @@ function pass(label){checks.push(label);}
   assert.equal(await indicator().getAttribute('aria-pressed'),'false');assert(!(await indicator().locator('svg circle').isVisible()));
   assert((await page.locator('.mm-preset-label').innerText()).includes('此对话'));pass('Override 空心 Default Indicator');await shot('override');
   await indicator().focus();await page.keyboard.press('Enter');await ready();
-  assert.equal(await indicator().getAttribute('aria-pressed'),'true');assert((await page.locator('.mm-preset-label').innerText()).includes('跟随默认'));pass('键盘 Set Default 清除匹配 override');await shot('set-default');
+  assert.equal(await indicator().getAttribute('aria-pressed'),'true');assert((await page.locator('.mm-preset-label').innerText()).includes('此对话'));pass('键盘 Set Default 保留此对话绑定');await shot('set-default');
   await choosePreset(page,'星夜 · 示例预设');await ready();await page.getByRole('button',{name:'更多预设操作',exact:true}).click();
   assert.equal(await page.locator('.mm-menu').getByRole('button',{name:'此对话跟随默认',exact:true}).count(),0);
   await page.getByRole('button',{name:'更多预设操作',exact:true}).click();await choosePreset(page,'轻量 · 示例预设');await ready();
-  assert((await page.locator('.mm-preset-label').innerText()).includes('跟随默认'));pass('删除重复菜单，通过选择默认预设恢复跟随');
+  assert((await page.locator('.mm-preset-label').innerText()).includes('此对话'));pass('选择默认预设仍为此对话绑定');
   await page.evaluate(()=>window.__MieMieBindingDemo.missing());await ready();
-  assert((await page.locator('.mm-preset-label').innerText()).includes('绑定缺失'));assert((await page.locator('.mm-footer .mm-hint').innerText()).includes('不存在'));pass('Missing fallback badge/footer');await shot('missing');
+  assert((await page.locator('.mm-preset-label').innerText()).includes('此对话'));assert(await page.evaluate(()=>__MieMieBindingDemo.metadata()[__MieMieBindingDemo.binding.state.chat.key].presetBindingId===__MieMieBindingDemo.global().defaultBindingId));pass('删除回退已持久化为独立绑定');await shot('missing');
   await page.evaluate(()=>window.__MieMieBindingDemo.external());await ready();
-  assert.equal(await select.getAttribute('data-value'),'轻量 · 示例预设');pass('Native deviation restores binding fallback, no temporary state');await shot('native-reconciled');
+  assert.equal(await select.getAttribute('data-value'),'星夜 · 示例预设');pass('原生选择同步当前聊天绑定');await shot('native-reconciled');
   await page.locator('.mm-card[data-id="demo-0"]').getByRole('button',{name:'编辑条目',exact:true}).click();
   await page.getByRole('dialog',{name:'编辑条目',exact:true}).getByLabel('标题',{exact:true}).fill('合成未保存草稿');
   await page.evaluate(()=>window.__MieMieBindingDemo.chat('two'));

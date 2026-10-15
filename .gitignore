@@ -60,6 +60,11 @@ delivery/*
 !delivery/MieMie-Preset-Manager-Extension-0.2.2.json
 !delivery/MieMie-Preset-Manager-Extension-0.2.3.json
 !delivery/MieMie-Preset-Manager-Extension-0.5.1.json
+!delivery/MieMie-Preset-Manager-Extension-0.6.0.json
 !delivery/MieMie-Extension-update.json
 !delivery/manifest.json
 !delivery/SHA256SUMS
+
+# Internal acceptance reports contain local paths; publish release notes instead
+docs/DEVELOPMENT-VALIDATION-0.6.0.html
+docs/ACCEPTANCE-FINDINGS-RESOLUTION-0.6.0.html

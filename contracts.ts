@@ -12,7 +12,7 @@ export type Snapshot = { name: string; names: string[]; raw: RawPreset; activeGr
 /** Saved source only; never a native application/generation receipt. */
 export type SourcePreset = { name: string; raw: RawPreset; activeGroupId: string | number; fingerprint: string };
 export interface PresetAdapter {
-  read(): Promise<Snapshot>;
+  read(signal?: AbortSignal): Promise<Snapshot>;
   readPresetByName?(name: string): Promise<SourcePreset>;
   /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
   directory?(): Promise<{ names: string[]; supported: string[] }>;

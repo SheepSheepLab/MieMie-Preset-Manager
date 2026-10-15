@@ -65,7 +65,7 @@ if (new URLSearchParams(window.location.search).get('binding') === '1') {
         : { kind: 'single', key: `synthetic/${filename}`, avatar: 'synthetic.png', filename, characterName: '示例角色' };
       send({ kind: 'chat' });
     },
-    async missing() { metadata.set(current.key, { schemaVersion: 1, presetBindingId: 'missing-synthetic-id' }); send({ kind: 'chat' }); },
+    async missing() { metadata.set(current.key, { schemaVersion: 2, presetBindingId: 'missing-synthetic-id', chatKey: current.key }); send({ kind: 'chat' }); },
     async external() { selected = selected === '星夜 · 示例预设' ? '轻量 · 示例预设' : '星夜 · 示例预设'; send({ kind: 'preset', name: selected }); },
     metadata: () => structuredClone(Object.fromEntries(metadata)), global: () => structuredClone(global),
   };
