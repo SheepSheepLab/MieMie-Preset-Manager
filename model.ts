@@ -73,10 +73,7 @@ function prefix(name: string): string | null {
 }
 
 export function categoriesFor(prompts: NativePrompt[]): Map<string, string> {
-  const candidates = prompts.map(p => prefix(p.name || ''));
-  const counts = new Map<string, number>();
-  candidates.forEach(c => { if (c) counts.set(c, (counts.get(c) || 0) + 1); });
-  return new Map(prompts.map((p, i) => [p.identifier, candidates[i] && (counts.get(candidates[i]!) || 0) >= 2 ? candidates[i]! : '未分类']));
+  return new Map(prompts.map(p => [p.identifier, prefix(p.name || '') || '未分类']));
 }
 
 /** MPM convenience policy: a new ID cannot preserve native Marker identity. */

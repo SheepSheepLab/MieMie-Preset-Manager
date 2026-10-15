@@ -96,7 +96,11 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
     if (pending?.opening === opening) return pending.task;
     const task = queue.then(async () => {
       if (disposed) return false;
-      if (opening && !panel.hidden) { panel.focus?.({preventScroll:true}); return true; }
+      if (opening && !panel.hidden) {
+        // Focus requests must not displace an active editor or its selection.
+        if (!doc.activeElement || !panel.contains(doc.activeElement)) panel.focus?.({preventScroll:true});
+        return true;
+      }
       if (!opening && panel.hidden) return true;
       activePanel = panel; panel.hidden = false; panel.inert = true; panel.dataset.surfaceState = opening?'opening':'closing';
       try { await presentation.run(panel,opening); }

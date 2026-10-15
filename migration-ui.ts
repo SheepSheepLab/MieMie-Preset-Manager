@@ -30,7 +30,9 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   let childOrigin:HTMLElement|null=null,childKeyboard=false,childParent:HTMLDialogElement|null=null;
   let batchDialog:HTMLDialogElement|null=null,batchBody:HTMLElement|null=null,batchActions:HTMLElement|null=null;
   let batchError:HTMLElement|null=null,batchHint:HTMLElement|null=null,batchEffect:ReturnType<typeof centeredMotion>|null=null;
-  let batchKey='',batchClosing=false,batchOrigin:HTMLElement|null=null,batchKeyboard=false;
+  const batchRows=new Map<string,{node:HTMLElement;key:string}>();
+  let batchSummary:HTMLElement|null=null;
+  let batchClosing=false,batchOrigin:HTMLElement|null=null,batchKeyboard=false;
   const cleanups: Array<()=>void>=[];
   function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls='', text='') {
     const node=doc.createElement(tag); node.className=cls; node.textContent=text; return node;
@@ -126,20 +128,40 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     const note=el('p','mm-migration-hint');note.dataset.overrideHint='true';container.append(note);
     controls.append(button('取消',()=>migration.back()),button('确定',()=>{if(leftEditor?.validate()&&rightEditor?.validate())void migration.confirm();},'check','mm-migration-primary'));
   }
+  function positionLabel(position:MigrationPosition){return position.kind==='category'?`${position.name} · 分类末尾`:position.kind==='top'?'顶部':'底部';}
   function buildBatch(container:HTMLElement,controls:HTMLElement) {
-    const list=el('div','mm-migration-single');list.append(el('p','mm-migration-hint','逐项核对后确认迁移。只有已确认项目进入待保存；待处理、跳过和不可迁移项目不会自动迁移。'));
-    for(const item of migration.state.batch??[]){
-      const prompt=migration.state.source!.raw.prompts.find(p=>p.identifier===item.sourceId)!;
-      const row=el('section','mm-migration-batch-item');row.dataset.batchSource=item.sourceId;
-      const statuses={pending:'待处理',confirmed:'已确认',skipped:'跳过',blocked:'不可迁移'};
-      const summary=el('div');summary.append(el('strong','',prompt.name??'未命名'),el('span','mm-migration-batch-status',statuses[item.status]));
-      const plan=item.plan;const match=item.matches.length?`同名目标：${item.matches.length} 个`:'无同名目标 · 需选择插入位置';
-      const detail=plan?.kind==='replace'?`${plan.mode} → ${migration.targetRows().find(r=>r.prompt.identifier===plan.targetId)?.prompt.name} · ${plan.targetId.slice(0,12)}`:
-        plan?.kind==='insert'?`新增 → ${plan.position.kind==='category'?plan.position.name+'分类末尾':plan.position.kind==='top'?'顶部':'底部'}`:'未选择迁移方案';
-      summary.append(el('small','',match),el('small','',detail));if(item.reason)summary.append(el('p','mm-migration-error',item.reason));
-      const controls=el('div','mm-migration-batch-actions');const edit=button(item.status==='confirmed'?'修改方案':'核对方案',()=>migration.editItem(item.sourceId),'edit');edit.disabled=item.status==='blocked';
-      controls.append(edit,button('跳过此项',()=>migration.skipItem(item.sourceId)));row.append(summary,controls);list.append(row);
-    }container.append(list);controls.append(button('取消本批次',()=>migration.cancelBatch()),button('确认迁移',()=>{void migration.confirmBatch();},'check','mm-migration-primary'));
+    batchSummary=el('div','mm-migration-batch-summary');batchSummary.setAttribute('role','status');
+    const list=el('div','mm-migration-single');container.append(batchSummary,list);
+    controls.append(button('取消本批次',()=>migration.cancelBatch()),button('确认迁移',()=>{void migration.confirmBatch();},'check','mm-migration-primary'));
+  }
+  function updateBatch(opening:boolean){
+    const state=migration.state,counts=migration.batchSummary(),list=batchBody!.querySelector<HTMLElement>('.mm-migration-single')!;
+    const summary=`已选择 ${state.batch!.length} 项 · 自动新增 ${counts.ready} 项 · 待核对 ${counts.pending} 项 · 已确认 ${counts.confirmed} 项 · 已跳过 ${counts.skipped} 项${counts.blocked?` · 不可迁移 ${counts.blocked} 项`:''}`;
+    const summaryKey=summary+JSON.stringify(state.batchPosition);
+    if(batchSummary!.dataset.summary!==summaryKey){batchSummary!.dataset.summary=summaryKey;batchSummary!.replaceChildren(el('p','',summary));
+      if(state.batchPosition)batchSummary!.append(button(`插入位置：${positionLabel(state.batchPosition)} · 修改`,()=>migration.editPosition(),undefined,'mm-migration-position-edit'));
+    }
+    const prompts=new Map(state.source!.raw.prompts.map(p=>[p.identifier,p]));
+    const targets=new Map(migration.targetRows().map(r=>[r.prompt.identifier,r.prompt.name]));
+    for(const item of state.batch!){
+      const key=JSON.stringify([item.status,item.reason,item.plan]);let saved=batchRows.get(item.sourceId);
+      if(saved?.key===key)continue;
+      const row=saved?.node??el('section','mm-migration-batch-item'),focused=doc.activeElement as HTMLElement|null;
+      const focusIndex=row.contains(focused)?[...row.querySelectorAll('button')].indexOf(focused as HTMLButtonElement):-1;
+      row.dataset.batchSource=item.sourceId;row.dataset.status=item.status;
+      const statuses={ready:'已准备新增',pending:'待处理',confirmed:'已确认',skipped:'已跳过',blocked:'不可迁移'};
+      const summary=el('div');summary.append(el('strong','',prompts.get(item.sourceId)?.name??'未命名'),el('span','mm-migration-batch-status',statuses[item.status]));
+      const plan=item.plan,detail=plan?.kind==='replace'?`${plan.mode} → ${targets.get(plan.targetId)??plan.targetId} · 保留目标位置`:
+        plan?.kind==='insert'?`新增 → ${positionLabel(plan.position)}`:item.matches.length?`同名目标：${item.matches.length} 个`:'本次不迁移';
+      summary.append(el('small','',detail));if(item.reason)summary.append(el('p','mm-migration-error',item.reason+' 本次不会迁移此项。'));
+      row.replaceChildren(summary);
+      if(item.matches.length){const controls=el('div','mm-migration-batch-actions');
+        const edit=button(item.status==='confirmed'?'修改方案':'核对方案',()=>migration.editItem(item.sourceId),'edit');edit.dataset.review='true';
+        edit.disabled=item.status==='blocked';controls.append(edit,button('跳过此项',()=>migration.skipItem(item.sourceId)));row.append(controls);
+      }
+      if(!saved){list.append(row);batchRows.set(item.sourceId,{node:row,key});}else{saved.key=key;if(!opening)animate(row,[{opacity:.55},{opacity:1}],180);}
+      if(focusIndex>=0&&!batchDialog!.inert)(row.querySelectorAll<HTMLButtonElement>('button')[focusIndex]??batchDialog!).focus({preventScroll:true});
+    }
   }
   function buildCandidates(container:HTMLElement,controls:HTMLElement) {
     const list=el('div','mm-migration-single');list.append(el('p','mm-migration-hint','存在多个完全同名条目，请明确选择目标。'));
@@ -154,12 +176,12 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     node.dataset.position=JSON.stringify(position);node.setAttribute('aria-pressed',String(JSON.stringify(migration.state.position)===JSON.stringify(position)));return node;
   }
   function buildInsert(container:HTMLElement,controls:HTMLElement) {
-    const list=el('div','mm-migration-single'),source=migration.state.source!.raw.prompts.find(p=>p.identifier===migration.state.selected)!;
-    list.append(el('h3','',source.name),el('p','mm-migration-hint','仅改变插入位置，原标题和分类规则保持不变。'));
+    const list=el('div','mm-migration-single'),unified=migration.state.step==='batch-position',source=migration.state.source!.raw.prompts.find(p=>p.identifier===migration.state.selected);
+    list.append(el('h3','',unified?`为 ${migration.state.batch!.filter(i=>!i.matches.length&&i.status!=='blocked').length} 个新增条目选择共同位置`:source?.name??''),el('p','mm-migration-hint','仅改变插入位置，原标题和分类规则保持不变。'));
     const fixed=el('div','mm-migration-positions');fixed.append(positionButton('插入顶部',{kind:'top'},'insert-top'),positionButton('插入底部',{kind:'bottom'},'insert-bottom'));list.append(fixed,el('p','mm-migration-category-title','插入分类最后一个已挂接条目之后'));
     migration.categories().forEach(category=>{const node=positionButton(`${category.name} · ${category.count} 个已挂接`,{kind:'category',name:category.name});
       node.disabled=!category.available;if(!category.available){node.title='活动顺序中没有该分类条目，请选择顶部或底部';node.append(el('small','',' · 无活动锚点'));}list.append(node);});
-    container.append(list);controls.append(button('取消',()=>migration.back()),button('确认插入',()=>{void migration.confirm();},'check','mm-migration-primary'));
+    container.append(list);controls.append(button(unified?'返回':'取消',()=>migration.back()),button(unified?'确认位置':'确认插入',()=>{void migration.confirm();},'check','mm-migration-primary'));
   }
   // Both hierarchy levels share the same compositor-only center motion.
   function centeredMotion(view:HTMLDialogElement,content:HTMLElement){
@@ -201,7 +223,7 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     if(!child){
       closeOptions();closePreview(true);cancelSurfaceMotion();batchEffect?.clear();childOrigin=doc.activeElement as HTMLElement|null;childKeyboard=childOrigin?.matches(':focus-visible')??false;childParent=batchDialog??dialog;
       const view=el('dialog','mm-migration-dialog mm-migration-child');child=view;childKey=next;view.tabIndex=-1;
-      const title=state.step==='compare'?'对比与合并':state.step==='candidates'?'选择同名目标':'选择插入位置';view.setAttribute('aria-label',title);view.setAttribute('aria-modal','true');
+      const title=state.step==='compare'?'对比与合并':state.step==='candidates'?'选择同名目标':state.step==='batch-position'?'统一选择插入位置':'选择插入位置';view.setAttribute('aria-label',title);view.setAttribute('aria-modal','true');
       const header=el('header','mm-migration-head'),wrap=el('div');wrap.append(el('h2','',title),el('p','',`目标：${state.target}`));header.append(createIcon(doc,'migration'),wrap);
       childBody=el('div','mm-migration-body');const foot=el('footer','mm-migration-footer');childError=el('p','mm-migration-error');childError.setAttribute('role','alert');childHint=el('p','mm-migration-hint');childHint.setAttribute('role','status');childActions=el('div','mm-migration-actions');foot.append(childError,childHint,childActions);view.append(header,childBody,foot);
       if(state.step==='compare')buildCompare(childBody,childActions,view);else if(state.step==='candidates')buildCandidates(childBody,childActions);else buildInsert(childBody,childActions);
@@ -217,12 +239,12 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     if(leftEditor&&state.leftPrompt)leftEditor.update(state.leftPrompt,controller.state.busy);if(rightEditor&&state.rightPrompt)rightEditor.update(state.rightPrompt,controller.state.busy);
     const reason=migration.fullReason();if(fullBridge){fullBridge.disabled=!migration.valid()||controller.state.busy||!!reason;fullBridge.removeAttribute('title');}if(childBridge)childBridge.disabled=!migration.valid()||controller.state.busy;
     const note=childBody!.querySelector<HTMLElement>('[data-override-hint]');if(note)note.textContent=reason||'保留当前列表位置；注入顺序等高级属性将按来源覆盖。';
-    childActions!.querySelectorAll<HTMLButtonElement>('button').forEach(node=>node.disabled=controller.state.busy||(node.classList.contains('mm-migration-primary')&&(!migration.valid()||(state.step==='insert'&&!state.position))));
+    childActions!.querySelectorAll<HTMLButtonElement>('button').forEach(node=>node.disabled=controller.state.busy||(node.classList.contains('mm-migration-primary')&&(!migration.valid()||(['insert','batch-position'].includes(state.step)&&!state.position))));
     childBody!.querySelectorAll<HTMLElement>('[data-position]').forEach(node=>node.setAttribute('aria-pressed',String(node.dataset.position===JSON.stringify(state.position))));
     childBody!.querySelectorAll<HTMLButtonElement>('.mm-migration-card-main').forEach(node=>node.disabled=controller.state.busy||!migration.valid()||!contentEditable(state.candidates.find(p=>p.identifier===node.closest<HTMLElement>('[data-id]')?.dataset.id)!));
   }
   function finishBatch(restoreFocus=true){
-    batchEffect?.clear();const view=batchDialog;batchDialog=null;batchBody=null;batchActions=null;batchError=null;batchHint=null;batchEffect=null;batchKey='';batchClosing=false;view?.close();view?.remove();
+    batchEffect?.clear();const view=batchDialog;batchDialog=null;batchBody=null;batchActions=null;batchError=null;batchHint=null;batchEffect=null;batchRows.clear();batchSummary=null;batchClosing=false;view?.close();view?.remove();
     delete dialog.dataset.childOpen;dialog.inert=!migration.state.open;
     if(restoreFocus&&migration.state.open&&dialog.open){const origin=batchKeyboard&&batchOrigin?.isConnected?batchOrigin:dialog;origin.focus({preventScroll:true});}batchOrigin=null;
   }
@@ -240,21 +262,21 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
       closeOptions();closePreview(true);cancelSurfaceMotion();batchOrigin=doc.activeElement as HTMLElement|null;batchKeyboard=batchOrigin?.matches(':focus-visible')??false;
       const view=el('dialog','mm-migration-dialog mm-migration-child mm-migration-batch');batchDialog=view;view.tabIndex=-1;view.setAttribute('aria-label','批量迁移确认');view.setAttribute('aria-modal','true');
       const header=el('header','mm-migration-head'),wrap=el('div');wrap.append(el('h2','','批量迁移确认'),el('p','',`目标：${state.target}`));header.append(createIcon(doc,'migration'),wrap);
-      batchBody=el('div','mm-migration-body');const foot=el('footer','mm-migration-footer');batchError=el('p','mm-migration-error');batchError.setAttribute('role','alert');batchHint=el('p','mm-migration-hint');batchHint.setAttribute('role','status');batchActions=el('div','mm-migration-actions');foot.append(batchError,batchHint,batchActions);view.append(header,batchBody,foot);batchEffect=centeredMotion(view,batchBody);
+      batchBody=el('div','mm-migration-body');const foot=el('footer','mm-migration-footer');batchError=el('p','mm-migration-error');batchError.setAttribute('role','alert');batchHint=el('p','mm-migration-hint');batchHint.setAttribute('role','status');batchActions=el('div','mm-migration-actions');foot.append(batchError,batchHint,batchActions);view.append(header,batchBody,foot);buildBatch(batchBody,batchActions);batchEffect=centeredMotion(view,batchBody);
       view.addEventListener('cancel',e=>{if(e.defaultPrevented)return;e.preventDefault();if(!batchClosing&&!controller.state.busy)migration.cancelBatch();});
       view.addEventListener('keydown',e=>{if(e.defaultPrevented)return;e.stopPropagation();batchKeyboard=true;if(e.key==='Escape'){e.preventDefault();if(!e.repeat&&!batchClosing&&!controller.state.busy)migration.cancelBatch();}});view.addEventListener('pointerdown',()=>{batchKeyboard=false;});
       doc.body.append(view);dialog.inert=true;dialog.dataset.childOpen='true';try{view.showModal();}catch{finishBatch();migration.cancelBatch();return;}placeBatch();view.focus({preventScroll:true});opening=true;
     }
-    const next=JSON.stringify(state.batch?.map(i=>[i.sourceId,i.status,i.reason,i.matches,i.plan?.kind,i.plan?.kind==='replace'?[i.plan.targetId,i.plan.mode]:i.plan?.position]));
-    if(batchKey!==next){
-      const focused=doc.activeElement as HTMLElement|null,row=focused?.closest<HTMLElement>('[data-batch-source]'),id=row?.dataset.batchSource,buttonIndex=row?[...row.querySelectorAll('button')].indexOf(focused as HTMLButtonElement):-1;
-      const scroll=batchBody!.firstElementChild?.scrollTop??0;batchKey=next;batchBody!.replaceChildren();batchActions!.replaceChildren();buildBatch(batchBody!,batchActions!);if(batchBody!.firstElementChild)batchBody!.firstElementChild.scrollTop=scroll;
-      if(focused&&batchDialog.contains(focused)===false&&id&&!batchDialog.inert){const nextRow=[...batchBody!.querySelectorAll<HTMLElement>('[data-batch-source]')].find(row=>row.dataset.batchSource===id);(nextRow?.querySelectorAll<HTMLButtonElement>('button')[buttonIndex]??batchDialog).focus({preventScroll:true});}
-    }
+    updateBatch(opening);
     batchError!.textContent=state.error||(!migration.valid()?'目标或对话已改变，旧确认已失效；草稿仍保留。':'');
-    batchHint!.textContent=controller.state.busy?'正在核对来源及原生目标…':`本次将迁移：${state.batch?.filter(i=>i.status==='confirmed').map(i=>state.source!.raw.prompts.find(p=>p.identifier===i.sourceId)?.name).join('、')||'尚无已确认项'} · 确认后仍需主界面保存`;
-    batchBody!.querySelectorAll<HTMLButtonElement>('.mm-migration-batch-actions button').forEach(node=>node.disabled=controller.state.busy||!migration.valid()||(node.textContent==='核对方案'&&state.batch?.find(i=>i.sourceId===node.closest<HTMLElement>('[data-batch-source]')?.dataset.batchSource)?.status==='blocked'));
-    batchActions!.querySelectorAll<HTMLButtonElement>('button').forEach(node=>node.disabled=controller.state.busy||(node.classList.contains('mm-migration-primary')&&(!migration.valid()||!state.batch?.some(i=>i.status==='confirmed'))));
+    const counts=migration.batchSummary();
+    batchHint!.textContent=controller.state.busy?'正在核对来源及原生目标…':counts.pending?`还有 ${counts.pending} 项需要核对或跳过。`:counts.canConfirm?`将迁移 ${counts.ready+counts.confirmed} 项 · 确认后仍需主界面保存`:'没有可迁移的条目，请返回重新选择。';
+    for(const item of state.batch??[]){const row=batchRows.get(item.sourceId)?.node;row?.querySelectorAll<HTMLButtonElement>('button').forEach(node=>node.disabled=controller.state.busy||!migration.valid()||(node.dataset.review==='true'&&item.status==='blocked'));}
+    batchSummary!.querySelectorAll<HTMLButtonElement>('button').forEach(node=>node.disabled=controller.state.busy||!migration.valid());
+    batchActions!.querySelectorAll<HTMLButtonElement>('button').forEach(node=>{
+      const disabled=controller.state.busy||(node.classList.contains('mm-migration-primary')&&(!migration.valid()||!counts.canConfirm));
+      if(node.disabled!==disabled){node.disabled=disabled;if(!opening)animate(node,[{opacity:.5},{opacity:disabled?.45:1}],180);}
+    });
     if(opening)batchEffect!.run(true);
   }
   function place() {
@@ -290,11 +312,16 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
     if(disposed)return;
     const state=migration.state;
     if(!state.open){hide();return;}
-    // Hidden batch controls do not need to rerender on every review keystroke.
-    if(state.batch&&(!batchDialog||batchClosing||state.step==='batch'))renderBatch();
-    if(state.step==='compare'||state.step==='insert'||state.step==='candidates'){renderChild();return;}
-    if(child){closeChild();return;}
-    if(state.batch)return;
+    // Finish the outgoing child before opening a sibling surface. Animation completion,
+    // not a timer, owns the handoff; repeated notifications cannot resurrect old callbacks.
+    const wantsChild=['compare','insert','candidates','batch-position'].includes(state.step);
+    const desiredChild=`${state.target}:${state.step}:${state.selected??''}:${state.targetId??''}`;
+    if(child&&(!wantsChild||childKey!==desiredChild)){closeChild();return;}
+    if(wantsChild){
+      if(state.batch&&state.step!=='batch-position'&&!batchDialog)renderBatch();
+      renderChild();return;
+    }
+    if(state.batch&&state.step==='batch'){renderBatch();return;}
     if(batchDialog){closeBatch();return;}
     if(dialog.dataset.motion==='closing')cancelSurfaceMotion();dialog.inert=previewParent===dialog;
     let opening=false;

@@ -512,5 +512,22 @@ Node 325／325；Package 71／71（15 production + 56 upstream）；当前正式
 
 UI Scope Audit、资格 Matrix、完整摘要和当前宿主边界见 [Release 0.2.3](RELEASE-0.2.3.md)。Owner 已确认当前 Candidate 真实使用验收；没有新的 ST 1.19／物理移动端全宿主矩阵，Issue #1 继续 Open。历次 Candidate 的日期、摘要和当时状态保留，公开旧 Release 不替换。
 
+## 未发布：Batch Migration UX 开发候选
+
+统一插入位置和仅冲突核对的规则、重跑命令与环境边界见 [Batch Migration UX](BATCH-MIGRATION-UX-DEVELOPMENT.md)。新增 `test:migration-unified`；真实宿主脚本必须显式指向隔离实例。历史逐项新增测试已适配新的统一位置步骤，原子性、未知字段、顺序、取消和冲突断言保留。
+
+## 未发布：单条目自动分类
+
+在批量迁移开发候选上合并最低数量调整。新增 `tests/category-minimum.test.cjs`（8 项）和 `npm run test:category-minimum`（桌面／390px 共 6 项浏览器检查）。Core 共 435 项；兼容前缀与其他生产模块保持不变。完整合并候选须重新运行 Core、所有 Browser scripts、Package、Typecheck 与 Build；实际本轮结果以独立交付报告为准。
+
+## 未发布：Standalone Native Window Position Fix
+
+在批量迁移与单条分类候选上合并窗口重复打开修复。复现证据、测试命令、Hub 0.8.3 所有权边界和实际点击／程序重入区分见 [Standalone Position](STANDALONE-POSITION-DEVELOPMENT.md)。新增 `test:standalone-position`，真实宿主 opt-in 脚本单独执行，不把 Preview 当作 ST 或 Safari。
+
+
+## 0.7.0 正式发行回归
+
+本次将已验收的批量迁移、单条目分类与 Standalone 定位修复合并发行。正式版本重新运行全部 package.json 测试入口：Core、Package v1 及 21 个浏览器/性能命令；新增的 category-minimum、migration-unified、standalone-position 均为正式回归。真实 ST 1.18/1.19 的 66 项复合场景/版本和 Safari 代表性操作引用字节匹配的 DEV 独立验收；不冒充本轮正式版本的新实测。公网安装/更新须在 Release 发布后使用真实 Hub 0.8.3 单独验收，不能用离线 Package 通过代替。
+
 
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。

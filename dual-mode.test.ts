@@ -422,3 +422,18 @@ test('native queued opening cannot revive after source disposal', async () => {
   e.launchers()[0].dispatchEvent(new Event('click')); await source.dispose(); await flushNative();
   assert(e.panel.hidden && e.counts().opened === 0 && e.counts().destroyed === 0,'Disposed pending open cannot reopen or recreate the view');
 });
+
+test('Standalone repeated open retains Native placement and avoids reopening the View', async () => {
+  const e = environment(); let initializations = 0;
+  e.view.setPresentation = mode => { initializations++; e.panel.dataset.presentation = mode; e.panel.style.left = 'centered'; };
+  const source = startDualMode(e.host, e.frame, e.view); await source.settled();
+  e.launchers()[0].dispatchEvent(new Event('click')); await flushNative();
+  const placement = e.panel.style.left, count = initializations, opened = e.counts().opened;
+  for (let i = 0; i < 3; i++) e.launchers()[0].dispatchEvent(new Event('click'));
+  await flushNative();
+  assert(initializations === count && e.panel.style.left === placement, 'Visible Native geometry must not be reset');
+  assert(e.counts().opened === opened && !e.panel.hidden && !e.panel.inert, 'Repeat must not reopen or toggle an already open View');
+  await e.requestClose(); e.launchers()[0].dispatchEvent(new Event('click')); await flushNative();
+  assert(initializations === count + 1 && e.counts().opened === opened + 1, 'Hidden reopen still initializes and opens the View');
+  await source.dispose();
+});

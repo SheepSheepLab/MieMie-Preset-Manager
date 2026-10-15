@@ -102,9 +102,15 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     launcher = createPresetManagerNativeLauncher({ host, icon:ICON, onError:report, open:async () => {
       const opening = launcher;
       if (!opening || disposed || connection) return false;
-      restorePanel(); view.setPresentation?.('native');
+      restorePanel();
+      // A visible Native window already owns valid geometry (or an active flight).
+      // Repeated opens must not reset it through the View's local layout, nor
+      // reopen the View and steal focus from an editor. A closing window still
+      // queues a real reopen through the launcher's existing transition queue.
+      const entering = view.panel.hidden || view.panel.dataset.surfaceState === 'closing';
+      if (view.panel.hidden) view.setPresentation?.('native');
       const ok = await opening.show(view.panel);
-      if (ok && !disposed && !connection && launcher === opening) view.open();
+      if (ok && entering && !disposed && !connection && launcher === opening) view.open();
       return ok;
     } });
     launcher.presentation.place(view.panel);

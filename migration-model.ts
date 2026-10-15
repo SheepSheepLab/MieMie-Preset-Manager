@@ -38,9 +38,8 @@ function inertUnknown(value: unknown): boolean {
   return !!value && typeof value === 'object' && Object.entries(value).every(([key, child]) =>
     !referenceLike.test(key) && inertUnknown(child));
 }
-export function insertPrompt(raw: RawPreset, groupId: string | number, source: SourcePreset,
-  id: string, newId: string, position: MigrationPosition): RawPreset {
-  validatePreset(raw); validatePreset(source.raw);
+/** Shared insertion eligibility; batch preflight never clones the target per row. */
+export function insertionSource(source: SourcePreset, id: string) {
   const prompt = sourcePrompt(source, id);
   if (!copyable(prompt)) throw Error('仅普通自定义 Prompt 可新增迁移；内建与受保护条目不能生成新身份。');
   for (const [key, value] of Object.entries(prompt)) {
@@ -49,6 +48,12 @@ export function insertPrompt(raw: RawPreset, groupId: string | number, source: S
   const reference = group(source.raw, source.activeGroupId).order.find(e => e.identifier === id);
   if (reference && Object.keys(reference).some(key => !['identifier','enabled'].includes(key)))
     throw Error('来源含未知 Reference Metadata，无法证明新身份安全；未迁移、未丢弃字段。');
+  return {prompt,reference};
+}
+export function insertPrompt(raw: RawPreset, groupId: string | number, source: SourcePreset,
+  id: string, newId: string, position: MigrationPosition): RawPreset {
+  validatePreset(raw); validatePreset(source.raw);
+  const {prompt,reference} = insertionSource(source,id);
   if (!newId.trim() || raw.prompts.some(p => p.identifier === newId)) throw Error('新 identifier 冲突，未插入。');
   const active = group(raw, groupId);
   let index = position.kind === 'top' ? 0 : active.order.length;

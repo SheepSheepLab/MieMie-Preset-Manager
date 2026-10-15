@@ -53,7 +53,7 @@ async function run(browser, width, mode) {
     focus.push({ width, mode, stage: name, ...state });
     const expectedLabel = {
       'first migration open': '预设条目迁移', comparison: '对比与合并', insertion: '选择插入位置',
-      'batch confirmation': '批量迁移确认', 'nested comparison': '对比与合并', 'nested insertion': '选择插入位置'
+      'batch confirmation': '批量迁移确认', 'nested comparison': '对比与合并', 'nested insertion': '统一选择插入位置'
     }[name];
     if (expectedLabel) assert.equal(state.name, expectedLabel);
     assert.equal(state.focused, true);
@@ -117,15 +117,18 @@ async function run(browser, width, mode) {
   await returned(parent, 'insertion cancel');
   await select('demo-0');
   await activate(bridge());
+  await activate(active.getByRole('button',{name:'插入底部',exact:true}));
+  await activate(active.getByRole('button',{name:'确认位置',exact:true}));
+  await child.waitFor({state:'detached'});
   await rootFocus('batch confirmation');
   await page.mouse.move(0, 0);
   await page.screenshot({ path: path.join(out, `batch-${width}-${mode}.png`) });
   await keyboardRing();
   for (const [id, stage] of [['demo-0', 'nested comparison'], ['focus-new', 'nested insertion']]) {
-    await activate(active.locator(`[data-batch-source=${id}]`).getByRole('button', { name: '核对方案', exact: true }));
+    await activate(id==='focus-new'?active.getByRole('button',{name:/插入位置：.*修改/}):active.locator(`[data-batch-source=${id}]`).getByRole('button', { name: '核对方案', exact: true }));
     await rootFocus(stage);
     await keyboardRing();
-    await activate(cancel());
+    await activate(id==='focus-new'?active.getByRole('button',{name:'返回',exact:true}):cancel());
     await child.waitFor({ state: 'detached' });
     await returned(batch, `${stage} cancel`);
   }

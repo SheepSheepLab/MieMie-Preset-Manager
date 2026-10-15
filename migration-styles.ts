@@ -62,5 +62,11 @@ export const migrationStyles = `
 .mm-migration-dialog[data-motion=opening]>.mm-migration-head,.mm-migration-dialog[data-motion=opening]>.mm-migration-body,.mm-migration-dialog[data-motion=opening]>.mm-migration-footer{pointer-events:none}
 /* Virtualization is limited to large lists; variable heights are measured, never truncated. */
 .mm-migration-scroll[data-virtual=true]{display:block;overflow-anchor:none}.mm-migration-window{display:flex;flex-direction:column;gap:8px}.mm-migration-window>.mm-migration-card{content-visibility:visible;contain-intrinsic-size:none}
+.mm-migration-batch-summary{flex:none;padding:12px 20px;border-bottom:1px solid var(--mm-line);font-size:12px;color:var(--mm-muted);overflow-wrap:anywhere;max-height:30%;overflow:auto}
+.mm-migration-dialog .mm-migration-position-edit{margin-top:8px;width:100%;font-size:12px;text-align:left;justify-content:flex-start}
+.mm-migration-batch-item{flex:none;content-visibility:auto;contain-intrinsic-size:auto 94px}
+.mm-migration-batch-item[data-status=ready]{border-color:#786293}.mm-migration-batch-item[data-status=blocked] .mm-migration-batch-status{color:#ffb6ce}
+.mm-migration-batch-item[data-status=skipped]{opacity:.7}
+.mm-migration-dialog .mm-migration-actions{flex-wrap:wrap}.mm-migration-actions button{transition:opacity .18s,background .16s,border-color .16s}
 @keyframes mm-migration-in{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.mm-migration-dialog[open]{animation:none}.mm-migration-dialog *{transition:none!important}}
 `;

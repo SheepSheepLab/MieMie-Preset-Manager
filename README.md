@@ -10,8 +10,8 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前正式版本：`0.6.0`，GitHub **Stable Release**。每聊天绑定、原生双向同步与生成可靠性修复见 [Release 0.6.0](docs/RELEASE-0.6.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
-- **升级提示：0.5.1 旧绑定关系不迁移。** 旧聊天首次进入新版按新规则初始化，可重新选择预设；原生预设、聊天正文和其他扩展数据不会被主动删除。
+- 当前正式版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
+- **从 0.6.0 升级：保留有效的 binding-v2 聊天绑定。** 全局默认改变不影响已有有效绑定。仅从 0.5.1 及更早旧绑定系统升级时，旧绑定关系不迁移；该历史规则不适用于 0.6.0 → 0.7.0。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
@@ -19,6 +19,10 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
 此前 Foundation 交付包的实机已验证 Standalone / Hub 正式 PNG 入口、单实例、打开／关闭／重开、预设读取与切换、完整测试副本、Prompt 标题取消／保存、Toggle／复制／排序、导出及刷新持久化，草稿跨关闭和 Hub 停用／重新接入保留。11 份原始预设逐字未改变，未发现数据损坏。RH-01 曾出现一次 Hub 打开超时，根因未确认；后续同环境复核未再次复现，当前不作为 Foundation Merge blocker，继续观察。本阶段的统一保存与 Presentation 已通过 Maintainer Review；升版本前内容基线 SHA-256 为 `2c84664207849af59460b81c50cf4b46fedcbd16c255422e38f3720dad2b792a`。以上带环境记录的实机结果仍只适用于原 Foundation 包，不扩大为完整 Phase 1 或新版的全面实机验收。完整范围和证据见 [Real Host Validation](docs/REAL_HOST_VALIDATION.md)。
+
+## 0.7.0 批量迁移、分类与窗口定位
+
+无同名条目统一选择一次插入位置，只有同名项逐项核对；全部同名时直接进入核对。保持来源顺序，最终仍暂存并统一保存。单个符合已有标题规则的条目即可形成分类。独立悬浮球重复打开保持窗口位置，保留展开、收回及 Hero 动画。实现与测试见 [Batch Migration UX](docs/BATCH-MIGRATION-UX-DEVELOPMENT.md) 和 [Standalone Position](docs/STANDALONE-POSITION-DEVELOPMENT.md)。
 
 ## 0.6.0 每聊天绑定与生成可靠性
 
@@ -42,9 +46,9 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
 
-[MieMie-Preset-Manager-Extension-0.6.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.6.0/MieMie-Preset-Manager-Extension-0.6.0.json)
+[MieMie-Preset-Manager-Extension-0.7.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.7.0/MieMie-Preset-Manager-Extension-0.7.0.json)
 
-[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.6.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.6.0.json)
+[Release Notes](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.7.0) · [仓库交付文件](delivery/MieMie-Preset-Manager-Extension-0.7.0.json)
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，确实位于页面上方并遮挡关键操作时才避让；页面覆盖入口时保持条目对齐，内部 Dialog 沿用已验收交互。
@@ -61,7 +65,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 当前版本采用统一保存：Prompt 编辑窗口的“保存”只暂存本次编辑，取消丢弃本次编辑；条目排序、开关、复制、新增、解锁／挂接与删除先留在本地。分类右侧的软盘 SVG 保存图标（“保存修改”）在无改动时变暗，有改动时可用；点击后才统一同步酒馆并回读确认。“重新读取实际状态”在有未保存内容时确认放弃，读取成功后恢复实际数据；读取失败保留修改。关闭预设管理时也会提示未保存内容，选“是”丢弃，选“否”继续编辑。有未保存内容时须先保存或重新读取，再切换、导入、复制或导出预设。新增条目位于分类左侧。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。Copy 是 MPM 的便利功能，只允许普通自定义条目；物理 Delete 同样保守保护 Marker、内建／保留 identifier。Detach 则按固定原生资格 `system_prompt === false`，允许合法特殊条目仅移出当前顺序；定义、其他组和未知字段保留。三者独立，见 [Compatibility](docs/COMPATIBILITY.md)。
 
-整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，支持 `🕋难度-地狱`、`📕文风:FateZero` 等连字符／单冒号格式，也保留双冒号、括号等已有格式。中文全角冒号 `：` 同样可用；相同前缀至少两条时生成分类，不更改名称或数据；在分类内排序只置换该分类原有位置。
+整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，支持 `🕋难度-地狱`、`📕文风:FateZero` 等连字符／单冒号格式，也保留双冒号、括号等已有格式。中文全角冒号 `：` 同样可用；只要有一条符合现有前缀规则就生成分类，不更改名称或数据；在分类内排序只置换该分类原有位置。
 
 界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。实际 iOS Simulator Mobile Safari 已验证软件键盘、编辑保存/取消、可见区域适配及基础旋转，Owner 另确认长按排序与刷新持久化；普通触摸列表滑动由 Owner 补充确认；拖动期间旋转等未测细项保留原范围，不声称物理手机通过。
 
@@ -102,7 +106,7 @@ npm run test:browser
 
 **旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装当前版本；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
 
-`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前发布说明见 [0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前发布说明见 [0.7.0](docs/RELEASE-0.7.0.md)；[0.6.0](docs/RELEASE-0.6.0.md)、[0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
 
 | 文件 | 职责 |
 | --- | --- |

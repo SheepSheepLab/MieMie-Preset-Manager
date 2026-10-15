@@ -48,7 +48,7 @@ test('category detection is local and never mutates titles', () => {
   const mixed = ['🕋难度-地狱(多选一)', '🕋难度:普通', '📕文风:FateZero', '📕文风-简洁', '📕文风：叙事',
     'Language::English', 'Language : 中文', '单条:保持未分类', '无前缀'].map((name, i) => ({ identifier: String(i), name }));
   const untouched = structuredClone(mixed);
-  assert.deepEqual([...m.categoriesFor(mixed).values()], ['🕋难度', '🕋难度', '📕文风', '📕文风', '📕文风', 'Language', 'Language', '未分类', '未分类']);
+  assert.deepEqual([...m.categoriesFor(mixed).values()], ['🕋难度', '🕋难度', '📕文风', '📕文风', '📕文风', 'Language', 'Language', '单条', '未分类']);
   assert.deepEqual(mixed, untouched, 'category parsing never rewrites original names');
 });
 test('filtered reorder only permutes visible slots including all per-entry metadata', () => {
