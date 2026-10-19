@@ -378,5 +378,16 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   const unsubscribe=controller.subscribe(render);
   const observer=new MutationObserver(()=>{if(migration.state.open&&(panel.hidden||panel.inert||!panel.isConnected))migration.close(true);});
   observer.observe(panel,{attributes:true,attributeFilter:['hidden','inert']});cleanups.push(()=>observer.disconnect());
-  return {open:()=>migration.open(),close:()=>migration.close(true),dispose(){if(disposed)return;disposed=true;unsubscribe();cleanups.forEach(fn=>fn());migration.close(true);closePreview(true);finishHide();sourcePicker?.dispose();sourceWindow?.dispose();targetWindow?.dispose();leftEditor?.dispose();rightEditor?.dispose();body.replaceChildren();dialog.remove();}};
+  function requestBack():boolean {
+    if(!migration.state.open)return false;
+    if(controller.state.busy||childClosing||batchClosing||previewClosing)return true;
+    if(previewDialog){closePreview();return true;}
+    if(child){migration.back();return true;}
+    if(batchDialog){migration.cancelBatch();return true;}
+    if(sourcePicker&&!sourcePicker.layer.hidden){closeOptions();picker?.focus();return true;}
+    if(migration.state.step!=='list')migration.back();else migration.close();
+    return true;
+  }
+  const ownsEvent=(event:Event)=>event.composedPath().some(node=>[dialog,previewDialog,child,batchDialog].some(root=>root && (node===root || (node instanceof (doc.defaultView!.Node) && root.contains(node as Node)))));
+  return {requestBack,ownsEvent,open:()=>migration.open(),close:()=>migration.close(true),dispose(){if(disposed)return;disposed=true;unsubscribe();cleanups.forEach(fn=>fn());migration.close(true);closePreview(true);finishHide();sourcePicker?.dispose();sourceWindow?.dispose();targetWindow?.dispose();leftEditor?.dispose();rightEditor?.dispose();body.replaceChildren();dialog.remove();}};
 }

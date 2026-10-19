@@ -9,10 +9,10 @@ import { createIcon } from './icons';
 export type NativeLauncher = {
   presentation: NativePresentation; getOrigin(): HTMLButtonElement | null;
   setActive(active: boolean): void; highlight(): void;
-  show(panel: HTMLElement): Promise<boolean>; close(panel: HTMLElement): Promise<boolean>; dispose(): void;
+  show(panel: HTMLElement, isCurrent?: () => boolean): Promise<boolean>; close(panel: HTMLElement, isCurrent?: () => boolean): Promise<boolean>; release(): void; dispose(): void;
 };
 export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalone', open, onError = () => {} }: {
-  host: Window; icon: string; mode?: 'standalone' | 'shortcut'; open: () => unknown; onError?: (error: unknown) => void;
+  host: Window; icon: string; mode?: 'standalone' | 'shortcut' | 'native'; open: () => unknown; onError?: (error: unknown) => void;
 }): NativeLauncher {
   const doc = host.document, style = doc.createElement('style'), orb = doc.createElement('button');
   style.textContent = nativeLauncherStyles;
@@ -36,6 +36,15 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
   const raf = host.requestAnimationFrame?.bind(host) || ((fn:FrameRequestCallback) => host.setTimeout(fn,16));
   const caf = host.cancelAnimationFrame?.bind(host) || host.clearTimeout.bind(host);
   const presentation = createNativeFloatingPresentation(host,orb,bounds);
+  let epoch=0,ownedPanel:HTMLElement|null=null,savedStyles:[string,string,string][]=[];
+  const ownedFields=['position','left','top','right','bottom','transform','width','height','max-height','transform-origin'];
+  function retain(panel:HTMLElement){if(ownedPanel===panel)return;ownedPanel=panel;savedStyles=ownedFields.map(k=>[k,panel.style.getPropertyValue?.(k)||'',panel.style.getPropertyPriority?.(k)||'']);}
+  function release(){
+    ++epoch;pending=null;queue=Promise.resolve();cancelPointer();suppress=true;
+    presentation.release();if(followFrame)caf(followFrame);followFrame=0;
+    if(ownedPanel){ownedPanel.hidden=true;ownedPanel.inert=true;ownedPanel.dataset.surfaceState='closed';for(const[k,v,p]of savedStyles){if(v)ownedPanel.style.setProperty(k,v,p);else ownedPanel.style.removeProperty(k);}}
+    ownedPanel=null;savedStyles=[];activePanel=null;
+  }
   try {
     const value = JSON.parse(host.localStorage.getItem(PRESET_MANAGER_DOCK_KEY) || 'null');
     if (['left','right'].includes(value?.side) && Number.isFinite(value.ratio)) dock = { side:value.side, ratio:Math.max(0,Math.min(1,value.ratio)) };
@@ -85,27 +94,28 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
   function abort(e:PointerEvent) { if (!drag || drag.id !== e.pointerId) return; suppress = true; cancelPointer(); place(); settlePosition(); }
   function click(e:MouseEvent) {
     if (suppress && e.detail !== 0) { suppress = false; e.preventDefault(); return; }
-    suppress = false; if (!disposed) void Promise.resolve().then(open).catch(onError);
+    suppress = false; if (!disposed) void Promise.resolve().then(()=>!disposed&&open()).catch(onError);
   }
   const listeners: Record<string,EventListener> = {pointerdown:down as EventListener,pointermove:move as EventListener,pointerup:end as EventListener,pointercancel:abort as EventListener,lostpointercapture:abort as EventListener,click:click as EventListener};
   for (const [name,fn] of Object.entries(listeners)) orb.addEventListener(name,fn);
   for (const name of ['resize','orientationchange']) host.addEventListener(name,resize);
   host.visualViewport?.addEventListener('resize',resize); host.visualViewport?.addEventListener('scroll',resize); place();
-  function transition(panel:HTMLElement, opening:boolean): Promise<boolean> {
-    if (disposed) return Promise.resolve(false);
+  function transition(panel:HTMLElement, opening:boolean, isCurrent:()=>boolean=()=>true): Promise<boolean> {
+    const serial=epoch,valid=()=>!disposed&&serial===epoch&&isCurrent();
+    if (!valid()) return Promise.resolve(false);
     if (pending?.opening === opening) return pending.task;
     const task = queue.then(async () => {
-      if (disposed) return false;
+      if (!valid()) return false;
       if (opening && !panel.hidden) {
         // Focus requests must not displace an active editor or its selection.
         if (!doc.activeElement || !panel.contains(doc.activeElement)) panel.focus?.({preventScroll:true});
         return true;
       }
       if (!opening && panel.hidden) return true;
-      activePanel = panel; panel.hidden = false; panel.inert = true; panel.dataset.surfaceState = opening?'opening':'closing';
+      retain(panel); activePanel = panel; panel.hidden = false; panel.inert = true; panel.dataset.surfaceState = opening?'opening':'closing';
       try { await presentation.run(panel,opening); }
       catch (error) { presentation.cancel(); onError(error); }
-      if (disposed) return false;
+      if (!valid()) return false;
       panel.hidden = !opening; panel.inert = !opening; panel.dataset.surfaceState = opening?'open':'closed';
       if (opening) panel.focus?.({preventScroll:true});
       else { activePanel = null; presentation.release(); orb.inert = false; orb.focus({preventScroll:true}); }
@@ -118,10 +128,10 @@ export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalo
   return { presentation,getOrigin:() => disposed?null:orb,
     setActive(active) { if (active) orb.dataset.surfaceActive='true'; else delete orb.dataset.surfaceActive; },
     highlight() { if (!disposed) { orb.inert = false; orb.focus({preventScroll:true}); } },
-    show:panel => transition(panel,true), close:panel => transition(panel,false),
+    show:(panel,current) => transition(panel,true,current), close:(panel,current) => transition(panel,false,current), release,
     dispose() {
-      if (disposed) return; disposed = true; cancelPointer(); presentation.dispose(); if (followFrame) caf(followFrame); followFrame = 0;
-      // A delegated Shortcut never owns hidden/inert. Only our local transitions do.
+      if (disposed) return; release(); disposed = true; cancelPointer(); presentation.dispose(); if (followFrame) caf(followFrame); followFrame = 0;
+      // Only this handle's owned transitions may change hidden/inert.
       if (activePanel) { activePanel.hidden = true; activePanel.inert = true; }
       for (const [name,fn] of Object.entries(listeners)) orb.removeEventListener(name,fn);
       for (const name of ['resize','orientationchange']) host.removeEventListener(name,resize);

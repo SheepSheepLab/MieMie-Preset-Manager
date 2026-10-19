@@ -82,7 +82,7 @@ class TestMutationObserver {
   }
 }
 async function flushNative() { for (let i = 0; i < 16; i++) await Promise.resolve(); }
-type TestInstance = { activate(): Promise<void>; open(): unknown; deactivate(): void };
+type TestInstance = { activate(): Promise<void>; open(lease?: any): unknown; deactivate(): void };
 
 function environment() {
   const doc = new TestDocument();
@@ -142,7 +142,7 @@ function hubMock(
   const controllers: AbortController[] = [];
   const cleanups: (() => void)[] = [];
   const hub = {
-    apiVersion: 1,
+    apiVersion: 2,
     extensions: {
       provide(manifest: typeof PRESET_MANAGER_MANIFEST, factory: (api: any) => TestInstance) {
         assert(manifest.id === 'miemie.preset-manager', 'Wrong Hub registration identity');
@@ -245,15 +245,15 @@ export async function runDualModeTests() {
     e.emit('miemie:hub-ready');
     await source.settled();
     assert(e.launchers().length === 0 && first.panels[0] === e.view.panel, 'Hub must take the existing panel');
-    first.instances[0].open();
+    first.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!first.controllers[0].signal.aborted});
     const second = hubMock();
     e.host.__MieMieHub = second.hub;
     e.emit('miemie:hub-ready');
     await source.settled();
     assert(first.releases() === 1 && second.panels[0] === e.view.panel, 'Hub replacement must retain panel identity');
-    second.instances[0].open();
+    second.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!second.controllers[0].signal.aborted});
     const before = e.counts();
-    first.instances[0].open();
+    first.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!first.controllers[0].signal.aborted});
     first.instances[0].deactivate();
     e.emit('miemie:hub-disposed', first.hub);
     await source.settled();
@@ -280,7 +280,7 @@ export async function runDualModeTests() {
     await source.settled();
     assert(e.launchers().length === 1, 'Broken Hub must fall back within bounded waits');
     const before = e.counts();
-    hub.instances[0]?.open();
+    hub.instances[0]?.open({signal:new AbortController().signal,isCurrent:()=>!hub.controllers[0].signal.aborted});
     assert(e.counts().opened === before.opened, 'Failed Hub must lose its view capability');
     await source.dispose();
   }
@@ -295,7 +295,7 @@ export async function runDualModeTests() {
     const source = startDualMode(e.host, e.frame, e.view);
     await source.settled();
     assert(e.panel.parentNode === hiddenHubContainer, 'Active Hub must keep ownership of its panel container');
-    hub.instances[0].open();
+    hub.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!hub.controllers[0].signal.aborted});
     assert(e.panel.parentNode === hiddenHubContainer, 'Opening inside active Hub must not move the panel away');
     e.host.__MieMieHub = undefined;
     e.emit('miemie:hub-disposed', hub.hub);
@@ -349,7 +349,7 @@ test('B2 UI close routes through the active Hub Surface and returns to standalon
   const first = hubMock(); e.host.__MieMieHub = first.hub; e.emit('miemie:hub-ready');
   await source.settled();
   for (let i = 1; i <= 5; i++) {
-    first.instances[0].open(); await e.requestClose();
+    first.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!first.controllers[0].signal.aborted}); await e.requestClose();
     const surface = first.surface();
     assert(surface.state === 'closed' && !surface.launcherSuspended && surface.closeCalls === i,
       'Hub must close its Surface and restore its launcher once per UI request');
@@ -362,7 +362,7 @@ test('B2 UI close routes through the active Hub Surface and returns to standalon
   e.launchers()[0].dispatchEvent(new Event('click')); await flushNative(); await e.requestClose();
   assert(e.panel.hidden && e.launchers().length === 1 && e.panel.hiddenObservers.size === 0, 'Standalone recovers one native launcher');
   const second = hubMock(); e.host.__MieMieHub = second.hub; e.emit('miemie:hub-ready'); await source.settled();
-  second.instances[0].open(); await e.requestClose();
+  second.instances[0].open({signal:new AbortController().signal,isCurrent:()=>!second.controllers[0].signal.aborted}); await e.requestClose();
   assert(second.surface().closeCalls === 1 && first.surface().closeCalls === 5, 'Rejoin uses only the new Hub capability');
   assert(second.panels[0] === first.panels[0] && e.counts().destroyed === 0, 'No second business view');
   await source.dispose();

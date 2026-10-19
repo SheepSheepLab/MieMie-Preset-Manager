@@ -130,7 +130,7 @@ const receipts = [];
       const originalPanel = document.querySelector('.miemie-pm');
       window.makeTestHub = () => {
         const record = { state: 'closed', launcherSuspended: false, closes: 0, panels: [], instances: [], signals: [], cleanups: [] };
-        const hub = { apiVersion: 1, extensions: { provide(manifest, factory) {
+        const hub = { apiVersion: 2, extensions: { provide(manifest, factory) {
           const ctrl = new AbortController(); record.signals.push(ctrl);
           const instance = factory({ signal: ctrl.signal, onCleanup(fn) { record.cleanups.push(fn); },
             attachPanel(panel) { record.panels.push(panel); panel.hidden = true; panel.inert = true; },
@@ -151,7 +151,7 @@ const receipts = [];
       window.lifecyclePanel = originalPanel; window.firstTestHub = window.makeTestHub();
       window.__MieMieHub = window.firstTestHub.hub;
       window.dispatchEvent(new CustomEvent('miemie:hub-ready'));
-      await source.settled(); await window.firstTestHub.record.instances[0].open();
+      await source.settled(); await window.firstTestHub.record.instances[0].open({signal:new AbortController().signal,isCurrent:()=>true});
     });
     const hubState = () => panelPage.evaluate(() => {
       const r = window.firstTestHub.record;
@@ -169,7 +169,7 @@ const receipts = [];
       await closeManager(true);
       await panelPage.waitForFunction(() => window.firstTestHub.record.state === 'closed');
       assert.deepEqual(await hubState(), { state: 'closed', launcherSuspended: false, closes: i, panels: 1, instances: 1, samePanel: true });
-      await panelPage.evaluate(() => window.firstTestHub.record.instances[0].open());
+      await panelPage.evaluate(() => window.firstTestHub.record.instances[0].open({signal:new AbortController().signal,isCurrent:()=>true}));
       assert.equal(await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).count(), 0);
       await panelPage.locator('.mm-card[data-id="demo-0"]').getByRole('button', { name: '编辑条目', exact: true }).click();
       await panelPage.getByRole('dialog', { name: '编辑条目', exact: true }).getByLabel('标题', { exact: true }).fill('synthetic lifecycle draft');
@@ -189,7 +189,7 @@ const receipts = [];
     await panelPage.evaluate(async () => {
       window.secondTestHub = window.makeTestHub(); window.__MieMieHub = window.secondTestHub.hub;
       for (let i = 0; i < 5; i++) window.dispatchEvent(new CustomEvent('miemie:hub-ready'));
-      await window.__MieMiePresetManagerSource.settled(); await window.secondTestHub.record.instances[0].open();
+      await window.__MieMiePresetManagerSource.settled(); await window.secondTestHub.record.instances[0].open({signal:new AbortController().signal,isCurrent:()=>true});
     });
     assert.equal(await launcher().count(), 0);
     await closeManager(true); await panelPage.waitForFunction(() => window.secondTestHub.record.state === 'closed');

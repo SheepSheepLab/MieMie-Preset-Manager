@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/SheepSheepLab/MieMie-Hub",
+  "commit": "75010caf8402b884a07f4933cacaea4a42388824",
+  "scope": "Read-only frozen API2 development candidate test reference, not a published release or runtime dependency",
+  "files": {
+    "src/extension-packages.js": "a804252673f3d34e7c63947af74a64c3eb1d2e20e5c6546b772965931fdbde19",
+    "src/extension-runtime.js": "4dd6cd906944587a9b375aa2c4da906573f521eeacfa50162bf2c74ed0da79dd",
+    "src/hub-update-check.js": "5eac691ae4dfd11b2df1a38451dd8a3a7e130a7edbfacf3d0755333936819b36",
+    "src/motion-tuning.js": "15965b5b58f2143883d4ff04a7cac39f73dcb318274703422025ffe6cbed2728",
+    "src/product-identity.js": "1fad857304725c4f7f1318dafce4035a77fe755a1dd0bae1fc9236f8c961b45c",
+    "src/registry-client.js": "fe4d6c1a0cacccf98c853009730c5937f4472c92c46f91ed9396396757de76ab",
+    "src/script-update-fields.js": "ff227159d79c7e312c1d32af592d3f9d30f392622e40c593ffbaf2037c0a44b5",
+    "src/surface-controller.js": "58a9e585116e0b62c13134aa0d2b804f0131a0fe35959367f417288cf9f885ac",
+    "src/surface-motion.js": "6eb99d707c080de5d2eca30ddc81b9eef46dcf7fcb59acfec2586fb124d8330d",
+    "src/bootstrap.js": "4fd1398cd6a3e80dd7f9abbb439acaa5917f84133334f2ee914bfa95f7417766",
+    "src/hub-ui.js": "37947c25a513f2a85ec65217dd189d6e6a7a9963be54cd759ae533944c6b7165"
+  }
+}

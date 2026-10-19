@@ -1,5 +1,7 @@
 # MieMie Preset Manager · 咩咩预设管理
 
+> **API2 开发分支（未发行）**：本分支适配 Hub 0.9.0 / Extension API2，Package 等机器 Schema 保持 v1，产品版本暂不提升。以下既有发行及验收记录保留原范围；当前接入与独立 Gate 见 [Hub API2 开发说明](docs/HUB-API2.md)。
+
 
 
 SillyTavern Chat Completion Preset / Prompt Manager

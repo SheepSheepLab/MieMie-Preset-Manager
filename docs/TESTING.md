@@ -1,5 +1,7 @@
 # Testing · 0.2.3
 
+> API2 开发分支补充：当前契约见 [HUB-API2.md](HUB-API2.md)。本页既有 API1 / Shortcut / 历史验收描述仅对应原版本；当前适配不恢复该 Runtime，测试边界与机器校验已独立迁移。
+
 
 
 
