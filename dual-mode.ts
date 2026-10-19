@@ -31,7 +31,7 @@ type Lease = { ok: boolean; error?: string; ready?: Promise<unknown>; release?: 
 type Hub = {
   apiVersion: number;
   extensions: { provide(manifest: typeof PRESET_MANAGER_MANIFEST, factory: (api: HubApi) => HubInstance): Lease };
-  whenDisposed?: Promise<unknown>;
+  whenDisposed: Promise<unknown>;
 };
 type Connection = { hub: Hub; lease?: Lease; valid: boolean; sessions: Set<() => void> };
 type Source = { readonly disposed: boolean; dispose(): Promise<void>; settled(): Promise<void> };
@@ -134,7 +134,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     } catch (error) {
       report(error);
     }
-    if (host.__MieMieHub !== old.hub && old.hub.whenDisposed) {
+    if (host.__MieMieHub !== old.hub) {
       try {
         await bounded(old.hub.whenDisposed, '旧 Hub 清理');
       } catch (error) {
@@ -149,9 +149,11 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     removeLauncher();
     view.close();
     const factory = (api: HubApi): HubInstance => {
-      if (typeof api.closePanel !== 'function') throw new Error('Hub 缺少正式面板关闭能力，已恢复独立入口。');
+      if (!api?.signal || typeof api.signal.addEventListener !== 'function' ||
+          ['onCleanup','attachPanel','showPanel','closePanel'].some(key => typeof api[key as keyof HubApi] !== 'function'))
+        throw new Error('Hub API2 缺少必需的生命周期或 Surface 能力。');
       let ended = false;
-      let shortcut: NativeLauncher | null = null;
+      let nativeWindow: NativeLauncher | null = null;
       let surfaceLease: PresentationLease | undefined, nativeLease: PresentationLease | undefined;
       let activation: Promise<void> | null = null;
       const valid = () =>
@@ -159,7 +161,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
       const end = () => {
         if (ended) return;
         ended = true;
-        shortcut?.dispose(); shortcut = null;
+        nativeWindow?.dispose(); nativeWindow = null;
         api.signal.removeEventListener('abort', end);
         next.sessions.delete(end);
         if (activeSession === end) {
@@ -196,19 +198,19 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
               if (!valid() || signal.aborted) throw new Error('预设管理 Native session 已停用。');
               const native = createPresetManagerNativeLauncher({host, icon:ICON, mode:'native',
                 open:() => valid() && !signal.aborted ? open() : false, onError:report});
-              shortcut = native;
+              nativeWindow = native;
               return {getOrigin:native.getOrigin,dispose() {
-                if(shortcut===native){native.release();shortcut=null;nativeLease=undefined;}
+                if(nativeWindow===native){native.release();nativeWindow=null;nativeLease=undefined;}
                 native.dispose();
               }};
             },
             open(lease) {
-              if (!valid() || !lease.isCurrent() || !shortcut) return;
+              if (!valid() || !lease.isCurrent() || !nativeWindow) return;
               // A fresh Native lease must place even a visible restored root.
               if(nativeLease!==lease){view.panel.hidden=true;view.panel.inert=true;}
               nativeLease=lease;surfaceLease=undefined;
-              const native=shortcut;
-              const current=()=>valid() && nativeLease===lease && lease.isCurrent() && shortcut===native;
+              const native=nativeWindow;
+              const current=()=>valid() && nativeLease===lease && lease.isCurrent() && nativeWindow===native;
               view.setCloseHandler(() => current() ? native.close(view.panel,current) : false);
               const entering=view.panel.hidden || view.panel.dataset.surfaceState==='closing';
               if(view.panel.hidden)view.setPresentation?.('native');
@@ -218,7 +220,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
               if(nativeLease && nativeLease!==lease)return;
               nativeLease=undefined;
               view.setCloseHandler(() => false);
-              shortcut?.release();
+              nativeWindow?.release();
             },
             ownsEvent:event => view.ownsEvent?.(event) === true,
           });
@@ -245,8 +247,11 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
       };
     };
     try {
+      if (typeof hub.whenDisposed?.then !== 'function') throw new Error('Hub API2 缺少 whenDisposed 完成边界。');
       next.lease = hub.extensions.provide(PRESET_MANAGER_MANIFEST, factory);
       if (!next.lease?.ok) throw new Error(next.lease?.error || 'Hub 拒绝注册预设管理。');
+      if (typeof next.lease.ready?.then !== 'function' || typeof next.lease.release !== 'function')
+        throw new Error('Hub API2 缺少 Source ready/release。');
       const result = await bounded(next.lease.ready, 'Hub 扩展就绪', stopped.signal);
       if (result && typeof result === 'object' && 'ok' in result && result.ok === false)
         throw new Error('Hub 未能启用预设管理。');

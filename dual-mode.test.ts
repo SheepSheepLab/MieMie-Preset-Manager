@@ -143,6 +143,7 @@ function hubMock(
   const cleanups: (() => void)[] = [];
   const hub = {
     apiVersion: 2,
+    whenDisposed: Promise.resolve(),
     extensions: {
       provide(manifest: typeof PRESET_MANAGER_MANIFEST, factory: (api: any) => TestInstance) {
         assert(manifest.id === 'miemie.preset-manager', 'Wrong Hub registration identity');

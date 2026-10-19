@@ -130,7 +130,7 @@ const receipts = [];
       const originalPanel = document.querySelector('.miemie-pm');
       window.makeTestHub = () => {
         const record = { state: 'closed', launcherSuspended: false, closes: 0, panels: [], instances: [], signals: [], cleanups: [] };
-        const hub = { apiVersion: 2, extensions: { provide(manifest, factory) {
+        const hub = { apiVersion: 2, whenDisposed: Promise.resolve(), extensions: { provide(manifest, factory) {
           const ctrl = new AbortController(); record.signals.push(ctrl);
           const instance = factory({ signal: ctrl.signal, onCleanup(fn) { record.cleanups.push(fn); },
             attachPanel(panel) { record.panels.push(panel); panel.hidden = true; panel.inert = true; },

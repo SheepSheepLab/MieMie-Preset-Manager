@@ -12,7 +12,7 @@ export type NativeLauncher = {
   show(panel: HTMLElement, isCurrent?: () => boolean): Promise<boolean>; close(panel: HTMLElement, isCurrent?: () => boolean): Promise<boolean>; release(): void; dispose(): void;
 };
 export function createPresetManagerNativeLauncher({ host, icon, mode = 'standalone', open, onError = () => {} }: {
-  host: Window; icon: string; mode?: 'standalone' | 'shortcut' | 'native'; open: () => unknown; onError?: (error: unknown) => void;
+  host: Window; icon: string; mode?: 'standalone' | 'native'; open: () => unknown; onError?: (error: unknown) => void;
 }): NativeLauncher {
   const doc = host.document, style = doc.createElement('style'), orb = doc.createElement('button');
   style.textContent = nativeLauncherStyles;
