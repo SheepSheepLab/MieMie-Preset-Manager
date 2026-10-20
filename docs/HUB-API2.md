@@ -2,8 +2,8 @@
 
 This development branch targets Hub 0.9.0 Extension API **2**. It is not a new
 published product version. Existing public API1 releases and their assets remain
-unchanged. Formal versions, release assets and production rollout require Owner
-review. Do not distribute a different build under an existing released version.
+unchanged. Owner has approved product version **0.8.0** for this candidate. Release assets
+and production rollout still require separate Owner authorization. Do not distribute a different build under an existing released version.
 
 ## Runtime contract
 
