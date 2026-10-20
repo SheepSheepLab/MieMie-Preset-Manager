@@ -30,3 +30,11 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run test:package-v1
+      - name: Install locked Playwright Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Verify owned input and presentation behavior
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
+        run: |
+          npm run test:presentation
+          npm run test:migration-unified
