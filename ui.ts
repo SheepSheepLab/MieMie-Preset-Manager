@@ -1245,6 +1245,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }) as EventListener);
   listen(host, 'blur', (() => cancelDrag()) as EventListener);
   listen(panel, 'keydown', ((event: KeyboardEvent) => {
+    // Safari can end composition before emitting its IME keydown (229).
+    if (event.isComposing || event.keyCode === 229) return;
     if (editorLayer.dataset.parameterMotion && (event.key === 'Tab' ||
         (event.key === 'Escape' && editorLayer.dataset.parameterMotion === 'closing'))) {
       event.preventDefault(); event.stopPropagation(); return;

@@ -55,6 +55,20 @@ async function checkNativeIdentity(page, mode='native') {
   assert.deepEqual(await page.evaluate(()=>pinnedHub.warnings),[]);
 }
 
+// Replay the exact trusted Safari trace: compositionend precedes Escape with
+// isComposing=false, keyCode=229. This is an automated replay, not OS IME proof.
+for(const mode of ['standalone','native']){
+ const p=await pageAt({width:1200,height:900},{reducedMotion:'reduce'});
+ if(mode==='native'){await installNative(p);await nativeOpen(p);}
+ const r=await p.locator('.miemie-pm').evaluate(panel=>{
+  const records=[];for(const init of [{key:'Escape',isComposing:true,keyCode:229},{key:'Escape',isComposing:false,keyCode:229}]){
+   const e=new KeyboardEvent('keydown',{...init,bubbles:true,cancelable:true});panel.dispatchEvent(e);records.push({hidden:panel.hidden,prevented:e.defaultPrevented});
+  }return records;
+ });assert.deepEqual(r,[{hidden:false,prevented:false},{hidden:false,prevented:false}]);
+ await p.keyboard.press('Escape');await p.locator('.miemie-pm').waitFor({state:'hidden'});
+ assert.equal(await p.evaluate(()=>reorderTest.writes),0);receipts.push(mode+': recorded Safari IME cancel stays in input; later ordinary Escape closes with no data write');await p.context().close();
+}
+
 // Local SVG must preserve the real launcher lifecycle in both ownership modes.
 for(const mode of ['standalone','native'])for(const motion of ['no-preference','reduce']){
   const p=await pageAt({width:390,height:844},{reducedMotion:motion});
