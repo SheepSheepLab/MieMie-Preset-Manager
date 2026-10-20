@@ -4,8 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const webpack=require('webpack'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'),out=path.join(root,'evidence/presentation-review');fs.mkdirSync(out,{recursive:true});
-const fixture=require('./fixtures/hub-v1-contracts.json'),code=n=>fixture.excerpts.find(x=>x.name===n).code.replace(/^export /,'');
-const shortcut=fs.readFileSync(path.join(__dirname,'fixtures/hub-v1-shortcut-launchers.js'),'utf8').replace(/^export /m,'');
+const fixture=require('./fixtures/hub-api2/provenance.json');
 const receipts=[],errors=[],requests=[],screenshots=[];
 function bundle(){return new Promise((resolve,reject)=>webpack({mode:'development',devtool:false,context:root,entry:path.join(__dirname,'helpers/presentation-browser-harness.ts'),output:{path:out,filename:'harness.js'},resolve:{extensions:['.ts','.js']},module:{rules:[{test:/\.png$/,type:'asset/inline'},{test:/\.ts$/,use:{loader:require.resolve('ts-loader'),options:{transpileOnly:true,configFile:path.join(root,'tsconfig.json'),compilerOptions:{noEmit:false}}}}]},performance:{hints:false}},(e,s)=>e||s.hasErrors()?reject(e||Error(s.toString({all:false,errors:true}))):resolve()));}
 const native='[data-miemie-preset-manager-native]',standalone='[data-miemie-preset-manager-standalone]';
@@ -14,29 +13,8 @@ async function openNative(page){await page.locator(standalone).click();await pag
 async function returnWindow(page){await page.getByRole('button',{name:'关闭预设管理',exact:true}).click();await page.locator('.miemie-pm').waitFor({state:'hidden'});}
 async function shot(page,name){await page.screenshot({path:path.join(out,name),fullPage:false});screenshots.push(name);}
 async function hit(locator){return locator.evaluate(n=>{const r=n.getBoundingClientRect(),el=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return (el===n||n.contains(el))&&r.width>=43.9&&r.height>=43.9;});}
-function hubCode(){return `window.createPinnedHub=function(){
-const host=window,doc=document,HUB_PRODUCT={englishName:'MieMie Hub'},HUB_COPY={extensionCenter:'Center',settings:'Settings'},NATIVE_PRESENTATION_TIMEOUT_MS=5000;
-const SURFACE_TUNING={fallbackOffset:12,fallbackScale:.9,contentEnterStart:.2,contentEnterEnd:.8,contentExitEnd:.6,faceEnterEnd:.7,faceExitStart:.2,faceExitEnd:.8};
-const shell={root:doc.createElement('div'),orb:doc.createElement('button')},root=doc.createElement('nav'),honeycomb=doc.createElement('button');
-shell.root.style.cssText='--mie-motion-surface-open:180ms;--mie-motion-surface-close:160ms;--mie-motion-hero:200ms;--mie-z-surface:2147483500';
-honeycomb.style.cssText='position:fixed;left:24px;top:24px;width:64px;height:64px';honeycomb.innerHTML='<span>预设</span>';root.hidden=true;shell.root.append(shell.orb,root,honeycomb);doc.body.append(shell.root);
-const panels=new Set(),extensionPanels=new Map(),warnings=[],sources=new Map(),withdrawing=new Set(),bundledPolicies=new Map(),savedHubState={extensions:{}};
-let disposed=false,hubDisposed=false,menuButtons=[],lastError='',factoryCount=0,attachCount=0,closeCount=0,paused=false,surface,shortcuts,extensionRuntime,runtime,hubUI;
-const onError=e=>warnings.push(String(e)),launcher={capture:()=>({kind:'launcher',rect:honeycomb.getBoundingClientRect()}),originRect:()=>honeycomb.getBoundingClientRect(),originElement:()=>honeycomb,resume(){paused=false;},suspend(){paused=true;},highlight(){honeycomb.focus();},open:async()=>{root.hidden=false;},close:async()=>{root.hidden=true;},setItems(items){this.items=items;}};
-${['createSurfaceMotion','createSurfaceController','createExtensionRuntime','registerSource','provide','renderMenu'].map(code).join('\n')}
-${shortcut}
-function place(){const entry=extensionPanels.get(surface?.state);if(entry&&!surface.placeNative(entry.panel))window.presentationTest.view.setPresentation('hub');}
-surface=createSurfaceController({host,shell,root,launcher,panels,resolve:key=>extensionPanels.get(key),place,onState(){},onError});
-const methods={${['attachPanel','showPanel','closePanel'].map(code).join(',')}};
-hubUI={...methods,refresh(){renderMenu();shortcuts?.sync();}};
-shortcuts=createShortcutLaunchers({host,runtime:{get:id=>extensionRuntime.get(id),open:id=>extensionRuntime.open(id)},launch:(...args)=>surface.launch(...args),onError});
-extensionRuntime=createExtensionRuntime({onChange:()=>hubUI.refresh(),onPanel(id,title,p,opts){attachCount++;return hubUI.attachPanel(id,title,p,opts);},onShowPanel:id=>hubUI.showPanel(id),onClosePanel:id=>{closeCount++;return hubUI.closePanel(id);},onShortcut:(id,mount)=>shortcuts.register(id,mount)});
-runtime=extensionRuntime;const go=(...args)=>surface.go(...args);const hub={apiVersion:1,extensions:{provide(m,f){return provide(m,api=>{factoryCount++;return f(api);});}}};
-const resize=()=>{surface.resize();place();};host.addEventListener('resize',resize);
-return {hub,surface,shortcuts,runtime:extensionRuntime,warnings,panels,launcher,shell,root,
-counts:()=>({factoryCount,attachCount,closeCount,paused}),honeycomb:()=>surface.launch('miemie.preset-manager',()=>extensionRuntime.open('miemie.preset-manager')),
-async dispose(){hubDisposed=true;await extensionRuntime.dispose();surface.dispose();shortcuts.dispose();host.removeEventListener('resize',resize);shell.root.remove();}};
-};`;}
+const {hubCode}=require('./helpers/hub-api2-browser.cjs');
+
 (async()=>{
 await bundle();fs.writeFileSync(path.join(out,'preview.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>咩咩预设管理 · Presentation Review</title><style>body{margin:0;background:#100d19;font-family:system-ui;color:#c5b8d6}body>p{padding:20px;max-width:40em}</style><p>Presentation 候选 · 全部为 synthetic 演示数据，修改仅保存于本页内存。</p><script src="harness.js"></script></html>');
 const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'chromium-headless-shell',headless:true});
@@ -44,43 +22,57 @@ async function pageAt(size={width:1512,height:859},options={}){const context=awa
 try{
 // Owner regression: repeated launch of an already-open Hub Surface is a focus
 // request, not a new presentation entry. Exercise the production source and the
-// pinned Hub Runtime/Shortcut/Surface without substituting any open handler.
+// pinned Hub Runtime/Native/Surface without substituting any open handler.
 const panelGeometry = page => page.locator('.miemie-pm').evaluate(p => {
   const r = p.getBoundingClientRect();
   return {mode:p.dataset.presentation,left:r.left,top:r.top,width:r.width,height:r.height};
 });
 const panelPlacement = page => page.locator('.miemie-pm').evaluate(p =>
   Object.fromEntries(['left','top','right','bottom','width','height','max-height','transform-origin','will-change'].map(k=>[k,p.style.getPropertyValue(k)])));
-async function installShortcut(page) {
+async function installNative(page) {
   await returnWindow(page);
   await page.addScriptTag({content:hubCode()});
   await page.evaluate(async()=>{
     window.pinnedHub=createPinnedHub();window.__MieMieHub=pinnedHub.hub;
     dispatchEvent(new CustomEvent('miemie:hub-ready'));await presentationTest.source.settled();
-    pinnedHub.shortcuts.set('miemie.preset-manager',true);
-    window.shortcutRefs={panel:presentationTest.view.panel,controller:presentationTest.controller};
-    window.shortcutMotionCount=0;const animate=Element.prototype.animate;
-    Element.prototype.animate=function(...args){shortcutMotionCount++;return animate.apply(this,args);};
+    pinnedHub.nativeEntries.set('miemie.preset-manager',true);
+    window.nativeRefs={panel:presentationTest.view.panel,controller:presentationTest.controller};
+    window.nativeMotionCount=0;const animate=Element.prototype.animate;
+    Element.prototype.animate=function(...args){nativeMotionCount++;return animate.apply(this,args);};
   });
 }
-async function shortcutOpen(page) {
+async function nativeOpen(page) {
   await page.locator(native).click();
   await page.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
 }
-async function checkShortcutIdentity(page) {
-  assert(await page.evaluate(()=>presentationTest.view.panel===shortcutRefs.panel&&presentationTest.controller===shortcutRefs.controller));
+async function checkNativeIdentity(page, mode='native') {
+  assert(await page.evaluate(()=>presentationTest.view.panel===nativeRefs.panel&&presentationTest.controller===nativeRefs.controller));
   assert.equal(await page.locator('.miemie-pm').count(),1);
   assert.equal(await page.locator(native).count(),1);
-  assert.deepEqual(await page.evaluate(()=>pinnedHub.counts()),{factoryCount:1,attachCount:1,closeCount:0,paused:true});
-  assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'panel:miemie.preset-manager');
+  assert.deepEqual(await page.evaluate(()=>pinnedHub.counts()),{factoryCount:1,attachCount:1,closeCount:0,paused:mode==='hub'});
+  assert.equal(await page.evaluate(()=>pinnedHub.surface.ownsNative(presentationTest.view.panel)),mode==='native');
   assert.equal(await page.evaluate(()=>reorderTest.writes),0);
   assert.deepEqual(await page.evaluate(()=>pinnedHub.warnings),[]);
 }
 
+// Replay the exact trusted Safari trace: compositionend precedes Escape with
+// isComposing=false, keyCode=229. This is an automated replay, not OS IME proof.
+for(const mode of ['standalone','native']){
+ const p=await pageAt({width:1200,height:900},{reducedMotion:'reduce'});
+ if(mode==='native'){await installNative(p);await nativeOpen(p);}
+ const r=await p.locator('.miemie-pm').evaluate(panel=>{
+  const records=[];for(const init of [{key:'Escape',isComposing:true,keyCode:229},{key:'Escape',isComposing:false,keyCode:229}]){
+   const e=new KeyboardEvent('keydown',{...init,bubbles:true,cancelable:true});panel.dispatchEvent(e);records.push({hidden:panel.hidden,prevented:e.defaultPrevented});
+  }return records;
+ });assert.deepEqual(r,[{hidden:false,prevented:false},{hidden:false,prevented:false}]);
+ await p.keyboard.press('Escape');await p.locator('.miemie-pm').waitFor({state:'hidden'});
+ assert.equal(await p.evaluate(()=>reorderTest.writes),0);receipts.push(mode+': recorded Safari IME cancel stays in input; later ordinary Escape closes with no data write');await p.context().close();
+}
+
 // Local SVG must preserve the real launcher lifecycle in both ownership modes.
-for(const mode of ['standalone','shortcut'])for(const motion of ['no-preference','reduce']){
+for(const mode of ['standalone','native'])for(const motion of ['no-preference','reduce']){
   const p=await pageAt({width:390,height:844},{reducedMotion:motion});
-  if(mode==='shortcut')await installShortcut(p);else await returnWindow(p);
+  if(mode==='native')await installNative(p);else await returnWindow(p);
   await p.waitForFunction(()=>{const i=document.querySelector('[data-miemie-preset-manager-native] img');return i?.complete&&i.naturalWidth>0;});
   assert.equal(await p.locator(`${native} svg`).count(),0);
   const bounds=await p.locator(native).evaluate(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height,label:n.getAttribute('aria-label'),imageWidth:n.querySelector('img').getBoundingClientRect().width,imageHeight:n.querySelector('img').getBoundingClientRect().height}));
@@ -105,7 +97,7 @@ for(const mode of ['standalone','shortcut'])for(const motion of ['no-preference'
     await returnWindow(p);
   }
   assert.equal(await p.evaluate(()=>reorderTest.writes),0);
-  if(mode==='shortcut'){assert.equal(await p.evaluate(()=>pinnedHub.counts().factoryCount),1);assert.deepEqual(await p.evaluate(()=>pinnedHub.warnings),[]);}
+  if(mode==='native'){assert.equal(await p.evaluate(()=>pinnedHub.counts().factoryCount),1);assert.deepEqual(await p.evaluate(()=>pinnedHub.warnings),[]);}
   await p.evaluate(async()=>{await presentationTest.source.dispose();fallbackRefs.image.dispatchEvent(new Event('error'));dispatchEvent(new Event('resize'));});
   assert.equal(await p.locator(native).count(),0);assert.equal(await p.locator('[data-preset-manager-icon-fallback]').count(),0);
   receipts.push(`${mode}/${motion}: real PNG decode error uses local SVG; drag/Dock, repeated open/close, same instance and dispose/late error remain safe`);
@@ -114,52 +106,54 @@ for(const mode of ['standalone','shortcut'])for(const motion of ['no-preference'
 
 for (const width of [1512,390]) {
   const p=await pageAt({width,height:844},{reducedMotion:'reduce'});
-  await installShortcut(p);await shortcutOpen(p);
+  await installNative(p);await nativeOpen(p);
   const original=await panelGeometry(p);assert.equal(original.mode,'native');
   if(width===1512) assert(original.left>width/2,'Desktop native entry must be beside its orb, not centered');
-  await p.evaluate(async()=>{const c=presentationTest.controller;await c.move('c','a',c.revision());window.shortcutDirty=JSON.stringify(c.state.pendingRaw);});
+  await p.evaluate(async()=>{const c=presentationTest.controller;await c.move('c','a',c.revision());window.nativeDirty=JSON.stringify(c.state.pendingRaw);});
   for(let i=0;i<6;i++) {
     await p.locator(native).click();await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
     assert.deepEqual(await panelGeometry(p),original,'Repeated native click must preserve Surface presentation and geometry');
   }
-  await checkShortcutIdentity(p);
-  assert.equal(await p.evaluate(()=>shortcutMotionCount),0);
+  await checkNativeIdentity(p);
+  assert.equal(await p.evaluate(()=>nativeMotionCount),0);
   await p.locator('.mm-card[data-id=a]').getByRole('button',{name:'编辑条目',exact:true}).click();
   const draft=p.getByRole('dialog',{name:'编辑条目',exact:true}).getByLabel('内容',{exact:true});
-  await draft.fill('Synthetic draft survives repeat Shortcut clicks');
+  await draft.fill('Synthetic draft survives repeat Native clicks');
   // The mobile editor intentionally shields the orb. Invoke its real button
   // handler directly to also cover an open request while a draft is active.
   await p.locator(native).evaluate(n=>{n.click();n.click();});
   await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   assert.deepEqual(await panelGeometry(p),original);
-  assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Shortcut clicks');
-  assert.equal(await p.evaluate(()=>JSON.stringify(presentationTest.controller.state.pendingRaw)),await p.evaluate(()=>shortcutDirty));
-  receipts.push(`${width}px: six pointer Shortcut clicks plus two real-handler draft requests retain native placement, one panel/controller, dirty and draft, zero writes or new motion`);
-  await p.evaluate(()=>pinnedHub.honeycomb());assert.deepEqual(await panelGeometry(p),original);
-  receipts.push(`${width}px: Honeycomb focus of an already-open Shortcut Surface retains its current native origin`);
+  assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Native clicks');
+  assert.equal(await p.evaluate(()=>JSON.stringify(presentationTest.controller.state.pendingRaw)),await p.evaluate(()=>nativeDirty));
+  receipts.push(`${width}px: six pointer Native clicks plus two real-handler draft requests retain native placement, one panel/controller, dirty and draft, zero writes or new motion`);
+  await p.evaluate(()=>pinnedHub.honeycomb());assert.equal((await panelGeometry(p)).mode,'hub');
+  assert.equal(await p.evaluate(()=>pinnedHub.surface.ownsNative(presentationTest.view.panel)),false);
+  assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Native clicks');
+  receipts.push(`${width}px: API2 Honeycomb takes ownership from Native without rebuilding the view or clearing the draft`);
   await p.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));
-  assert.equal(await p.evaluate(()=>pinnedHub.surface.state),'closed');
-  await shortcutOpen(p);assert.deepEqual(await panelGeometry(p),original);
-  assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Shortcut clicks');
-  await p.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));
+  assert.equal(await p.evaluate(()=>pinnedHub.surface.state),'menu');
+  await nativeOpen(p);assert.deepEqual(await panelGeometry(p),original);
+  assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Native clicks');
+  await p.evaluate(()=>pinnedHub.surface.acquireHub('miemie.preset-manager','test-native-release'));
   await p.evaluate(()=>pinnedHub.honeycomb());const hubGeometry=await panelGeometry(p);assert.equal(hubGeometry.mode,'hub');
   for(let i=0;i<4;i++){await p.evaluate(()=>pinnedHub.honeycomb());assert.deepEqual(await panelGeometry(p),hubGeometry);}
-  await checkShortcutIdentity(p);
+  await checkNativeIdentity(p,'hub');
   receipts.push(`${width}px: formal close/reopen retains native origin; a fresh Honeycomb entry resets to Hub placement and repeated Hub opens stay stable`);
   await p.evaluate(async()=>{await presentationTest.source.dispose();await pinnedHub.dispose();});await p.close();
 }
-const flightPage=await pageAt();await installShortcut(flightPage);
+const flightPage=await pageAt();await installNative(flightPage);
 await flightPage.locator(native).click();
 await flightPage.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='opening');
 const flightPlacement=await panelPlacement(flightPage);
-const flightMotion=await flightPage.evaluate(()=>shortcutMotionCount);
+const flightMotion=await flightPage.evaluate(()=>nativeMotionCount);
 await flightPage.evaluate(()=>{for(let i=0;i<8;i++)document.querySelector('[data-miemie-preset-manager-native]').click();});
 assert.equal(await flightPage.locator('.miemie-pm').evaluate(p=>p.inert),true,'Repeat opens cannot unlock the active flight');
 assert.deepEqual(await panelPlacement(flightPage),flightPlacement,'Repeat opens cannot clear the active flight placement');
 await flightPage.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
-assert.equal(await flightPage.evaluate(()=>shortcutMotionCount),flightMotion+2,'Only the original window motion and its two hero landing animations run');
+assert.equal(await flightPage.evaluate(()=>nativeMotionCount),flightMotion+2,'Only the original window motion and its two hero landing animations run');
 assert.equal(await flightPage.locator('[data-preset-manager-surface-splash]').count(),0);
-await checkShortcutIdentity(flightPage);
+await checkNativeIdentity(flightPage);
 const settled=await panelGeometry(flightPage);
 for(let i=0;i<3;i++)await flightPage.locator(native).click();
 assert.deepEqual(await panelGeometry(flightPage),settled);
@@ -172,11 +166,11 @@ assert.equal(await flightPage.locator('.miemie-pm').evaluate(p=>p.inert),true,'Q
 assert.deepEqual(await panelPlacement(flightPage),closingPlacement);
 await flightPage.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
 assert.deepEqual(await panelGeometry(flightPage),settled);
-assert.equal(await flightPage.evaluate(()=>pinnedHub.counts().closeCount),1);
+assert.equal(await flightPage.evaluate(()=>pinnedHub.counts().closeCount),0,'Native close is owned by the product, never a Hub Surface close');
 assert.equal(await flightPage.locator('.miemie-pm').count(),1);
 assert.equal(await flightPage.locator('[data-preset-manager-surface-splash]').count(),0);
 assert.deepEqual(await flightPage.evaluate(()=>pinnedHub.warnings),[]);
-receipts.push('Formal closePanel with immediate repeated Shortcut reopen serializes both flights, retains one panel and restores native placement');
+receipts.push('Formal closePanel with immediate repeated Native reopen serializes both flights, retains one panel and restores native placement');
 await flightPage.evaluate(async()=>{await presentationTest.source.dispose();await pinnedHub.dispose();});await flightPage.close();
 // Owner regression: rect overlap alone must never move card actions. Use the
 // real production view/orb and browser paint order, including stacking contexts.
@@ -277,7 +271,7 @@ await page.setViewportSize({width:1512,height:859});
 await page.locator('.mm-card[data-id=a]').getByRole('button',{name:'编辑条目',exact:true}).click();let editor=page.getByRole('dialog',{name:'编辑条目',exact:true});await editor.getByLabel('标题',{exact:true}).fill('写作-Presentation local draft');await shot(page,'03-desktop-editor.png');await editor.getByRole('button',{name:'保存',exact:true}).click();
 assert.equal(await page.evaluate(()=>window.reorderTest.writes),0);assert.equal(await page.evaluate(()=>window.reorderTest.calls.length),0);assert.equal(await page.getByRole('button',{name:'保存修改',exact:true}).isEnabled(),true);await shot(page,'02-desktop-dirty.png');await page.getByRole('button',{name:'关闭预设管理',exact:true}).click();let confirm=page.getByRole('dialog',{name:'关闭预设管理',exact:true});assert(await confirm.isVisible());await shot(page,'05-desktop-confirm.png');await confirm.getByRole('button',{name:'否',exact:true}).click();assert.equal(await page.evaluate(()=>window.presentationTest.controller.state.dirty),true);receipts.push('Footer Return retains dirty discard Yes/No protection; editor Save remains local only, no Host writes');
 await page.getByRole('button',{name:'更多预设操作',exact:true}).click();await shot(page,'04-desktop-more.png');await page.keyboard.press('Escape');
-// Dirty + editor draft crosses Standalone / Hub / Shortcut / Standalone.
+// Dirty + editor draft crosses Standalone / Hub / Native / Standalone.
 await page.evaluate(async()=>{const c=presentationTest.controller;c.category('写作');await c.move('c','a',c.revision());window.sessionBeforeHandoff=JSON.stringify({pending:c.state.pendingRaw,revision:c.state.localRevision,category:c.state.category,preset:c.state.snapshot.name});});
 await page.locator('.mm-card[data-id=a]').getByRole('button',{name:'编辑条目',exact:true}).click();editor=page.getByRole('dialog',{name:'编辑条目',exact:true});await editor.getByLabel('内容',{exact:true}).fill('Synthetic unsaved editor draft across Hub handoff.');
 await page.addScriptTag({content:hubCode()});await page.evaluate(async()=>{window.pinnedHub=createPinnedHub();window.__MieMieHub=pinnedHub.hub;for(let i=0;i<5;i++)dispatchEvent(new CustomEvent('miemie:hub-ready'));await presentationTest.source.settled();});
@@ -285,12 +279,12 @@ assert.equal(await page.locator(standalone).count(),0,JSON.stringify(await page.
 await page.evaluate(()=>{window.motionLog=[];return pinnedHub.honeycomb();});assert.equal(await page.locator('[data-miemie-preset-manager-native]').count(),0);assert(await page.evaluate(()=>motionLog.some(x=>x.hubHero)&&!motionLog.some(x=>x.hero)));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'panel:miemie.preset-manager');assert.equal(await editor.getByLabel('内容',{exact:true}).inputValue(),'Synthetic unsaved editor draft across Hub handoff.');assert.equal(await page.evaluate(()=>presentationTest.controller.state.dirty),true);receipts.push('Pinned Hub validate/provide/Surface: repeated ready creates one factory/panel; Honeycomb uses only Hub motion; local Dirty and editor draft survive');
 // Programmatic presentation close deliberately preserves dirty and draft, as Hub navigation does.
 await page.evaluate(()=>pinnedHub.runtime.get('miemie.preset-manager').enabled);await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'menu');assert.equal(await page.evaluate(()=>pinnedHub.counts().paused),false);receipts.push('Formal Hub closePanel-equivalent Surface close restores Launcher state without disposing business');
-await page.evaluate(()=>pinnedHub.shortcuts.set('miemie.preset-manager',true));assert.equal(await page.locator(native).count(),1);assert.equal(await page.locator(native).getAttribute('data-miemie-preset-manager-mode'),'shortcut');assert.equal(await page.locator(native).evaluate(n=>n.offsetWidth),64);
-await page.evaluate(()=>{window.motionLog=[];});await page.locator(native).click();await page.waitForFunction(()=>document.querySelector('.miemie-pm').dataset.surfaceState==='open'&&!document.querySelector('.miemie-pm').inert);assert(await page.evaluate(()=>motionLog.some(x=>x.hero)&&!motionLog.some(x=>x.hubHero)));assert.equal(await page.evaluate(()=>pinnedHub.counts().factoryCount),1);assert.equal(await editor.getByLabel('内容',{exact:true}).inputValue(),'Synthetic unsaved editor draft across Hub handoff.');receipts.push('Actual pinned Shortcut registry preference on mounts shared Native Launcher; Hub open uses same panel/controller and Native motion only');
-await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'menu');await page.evaluate(()=>pinnedHub.shortcuts.set('miemie.preset-manager',false));assert.equal(await page.locator(native).count(),0);await page.evaluate(()=>pinnedHub.honeycomb());assert(await page.evaluate(()=>document.querySelector('.miemie-pm').dataset.presentation==='hub'));receipts.push('Shortcut close returns to captured origin; preference off cleans native component; next Honeycomb open resets geometry and uses Hub presentation');
-// Dispose while Native shortcut flight is in progress.
-await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));await page.evaluate(()=>pinnedHub.surface.go('closed'));await page.evaluate(()=>pinnedHub.shortcuts.set('miemie.preset-manager',true));await page.locator(native).click();await page.waitForFunction(()=>document.querySelector('.miemie-pm').dataset.surfaceState==='opening');await page.evaluate(()=>pinnedHub.shortcuts.set('miemie.preset-manager',false));await page.waitForFunction(()=>document.querySelector('.miemie-pm').dataset.surfaceState==='open');assert.equal(await page.locator('[data-preset-manager-surface-splash]').count(),0);assert.equal(await page.locator(native).count(),0);receipts.push('Shortcut preference off during flight cancels visuals without hiding or duplicating Hub-owned panel');await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'closed');receipts.push('Shortcut opened from closed Hub returns to closed, rather than forcing honeycomb menu');
-await page.evaluate(async()=>{const old=__MieMieHub;delete window.__MieMieHub;dispatchEvent(new CustomEvent('miemie:hub-disposed',{detail:old}));await presentationTest.source.settled();await pinnedHub.dispose();});assert.equal(await page.locator(standalone).count(),1);await openNative(page);assert.equal(await editor.getByLabel('内容',{exact:true}).inputValue(),'Synthetic unsaved editor draft across Hub handoff.');assert(await page.evaluate(()=>presentationTest.view.panel===originalPresentationRefs.panel&&presentationTest.controller===originalPresentationRefs.controller));assert.equal(await page.evaluate(()=>reorderTest.writes),0);assert.equal(await page.evaluate(()=>{const c=presentationTest.controller;return JSON.stringify({pending:c.state.pendingRaw,revision:c.state.localRevision,category:c.state.category,preset:c.state.snapshot.name});}),await page.evaluate(()=>sessionBeforeHandoff));receipts.push('Hub disposed restores Standalone after cleanup; same panel/controller, dirty/category and draft retained; no writes');
+await page.evaluate(()=>pinnedHub.nativeEntries.set('miemie.preset-manager',true));assert.equal(await page.locator(native).count(),1);assert.equal(await page.locator(native).getAttribute('data-miemie-preset-manager-mode'),'native');assert.equal(await page.locator(native).evaluate(n=>n.offsetWidth),64);
+await page.evaluate(()=>{window.motionLog=[];});await page.locator(native).click();await page.waitForFunction(()=>document.querySelector('.miemie-pm').dataset.surfaceState==='open'&&!document.querySelector('.miemie-pm').inert);assert(await page.evaluate(()=>motionLog.some(x=>x.hero)&&!motionLog.some(x=>x.hubHero)));assert.equal(await page.evaluate(()=>pinnedHub.counts().factoryCount),1);assert.equal(await editor.getByLabel('内容',{exact:true}).inputValue(),'Synthetic unsaved editor draft across Hub handoff.');receipts.push('Actual pinned Native registry preference on mounts shared Native Launcher; Hub open uses same panel/controller and Native motion only');
+await page.evaluate(()=>pinnedHub.surface.acquireHub('miemie.preset-manager','test-native-release'));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'menu');await page.evaluate(()=>pinnedHub.nativeEntries.set('miemie.preset-manager',false));assert.equal(await page.locator(native).count(),0);await page.evaluate(()=>pinnedHub.honeycomb());assert(await page.evaluate(()=>document.querySelector('.miemie-pm').dataset.presentation==='hub'));receipts.push('Native close returns to captured origin; preference off cleans native component; next Honeycomb open resets geometry and uses Hub presentation');
+// Dispose while Native native flight is in progress.
+await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));await page.evaluate(()=>pinnedHub.surface.go('closed'));await page.evaluate(()=>pinnedHub.nativeEntries.set('miemie.preset-manager',true));await page.locator(native).click();await page.waitForFunction(()=>document.querySelector('.miemie-pm').dataset.surfaceState==='opening');await page.evaluate(()=>pinnedHub.nativeEntries.set('miemie.preset-manager',false));await page.waitForFunction(()=>document.querySelector('.miemie-pm').hidden);assert.equal(await page.locator('[data-preset-manager-surface-splash]').count(),0);assert.equal(await page.locator(native).count(),0);receipts.push('API2 Native OFF during flight revokes the lease and closes only the native presentation; no late writes or duplicate business');await page.evaluate(()=>pinnedHub.surface.close('panel:miemie.preset-manager'));assert.equal(await page.evaluate(()=>pinnedHub.surface.state),'closed');receipts.push('Native opened from closed Hub returns to closed, rather than forcing honeycomb menu');
+await page.evaluate(async()=>{const old=__MieMieHub;delete window.__MieMieHub;dispatchEvent(new CustomEvent('miemie:hub-disposed',{detail:old}));await pinnedHub.dispose();await presentationTest.source.settled();});assert.equal(await page.locator(standalone).count(),1);await openNative(page);assert.equal(await editor.getByLabel('内容',{exact:true}).inputValue(),'Synthetic unsaved editor draft across Hub handoff.');assert(await page.evaluate(()=>presentationTest.view.panel===originalPresentationRefs.panel&&presentationTest.controller===originalPresentationRefs.controller));assert.equal(await page.evaluate(()=>reorderTest.writes),0);assert.equal(await page.evaluate(()=>{const c=presentationTest.controller;return JSON.stringify({pending:c.state.pendingRaw,revision:c.state.localRevision,category:c.state.category,preset:c.state.snapshot.name});}),await page.evaluate(()=>sessionBeforeHandoff));receipts.push('Hub disposed restores Standalone after cleanup; same panel/controller, dirty/category and draft retained; no writes');
 await page.evaluate(async()=>{window.nextHub=createPinnedHub();window.__MieMieHub=nextHub.hub;dispatchEvent(new CustomEvent('miemie:hub-ready'));await presentationTest.source.settled();await nextHub.honeycomb();});assert.equal(await page.locator(standalone).count(),0);assert.equal(await page.locator('.miemie-pm').count(),1);assert.deepEqual(await page.evaluate(()=>nextHub.warnings),[]);await page.evaluate(async()=>{await presentationTest.source.dispose();await nextHub.dispose();});assert.equal(await page.locator(native).count(),0);assert.equal(await page.locator('[data-preset-manager-surface-splash]').count(),0);receipts.push('Hub re-ready shares one view/controller; final disposal removes all native launcher, styles and animation DOM');await page.close();
 // Touch, safe area, visual viewport and compact screenshots.
 page=await pageAt({width:390,height:844},{hasTouch:true,isMobile:true});await shot(page,'09-mobile-main-390.png');await returnWindow(page);
@@ -306,6 +300,6 @@ await page.evaluate(async()=>{await presentationTest.source.dispose();window.iso
 // Drag screenshot comes from the unchanged rAF/local reorder flow in production UI.
 page=await pageAt();r=await page.locator('.mm-card[data-id=a] .mm-card-title').boundingBox();await page.mouse.move(r.x+5,r.y+5);await page.mouse.down();await page.mouse.move(r.x+8,r.y+90,{steps:5});await page.locator('.mm-drag-ghost').waitFor();await shot(page,'06-desktop-drag.png');assert.equal(await page.evaluate(()=>reorderTest.calls.length),0);await page.mouse.up();assert.equal(await page.evaluate(()=>reorderTest.calls.length),0);receipts.push('Drag Ghost / local rAF reorder persists, pointermove/drop perform zero adapter I/O');await page.close();
 assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);receipts.push('No uncaught page errors, telemetry, CDN or remote asset requests in synthetic browser review');
-const result={kind:'offline production UI with synthetic adapter and pinned real Hub contracts',realHost:false,physicalMobile:false,passed:receipts.length,pageErrors:errors.length,externalRequests:requests.length,receipts,screenshots,hubCommit:fixture.commit,shortcutSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'fixtures/hub-v1-shortcut-launchers.js'))).digest('hex')};fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));
+const result={kind:'offline production UI with synthetic adapter and pinned real Hub contracts',realHost:false,physicalMobile:false,passed:receipts.length,pageErrors:errors.length,externalRequests:requests.length,receipts,screenshots,hubCommit:fixture.commit,api2Provenance:fixture.files};fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));
 }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

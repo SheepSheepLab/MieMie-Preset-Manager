@@ -1245,6 +1245,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }) as EventListener);
   listen(host, 'blur', (() => cancelDrag()) as EventListener);
   listen(panel, 'keydown', ((event: KeyboardEvent) => {
+    // Safari can end composition before emitting its IME keydown (229).
+    if (event.isComposing || event.keyCode === 229) return;
     if (editorLayer.dataset.parameterMotion && (event.key === 'Tab' ||
         (event.key === 'Escape' && editorLayer.dataset.parameterMotion === 'closing'))) {
       event.preventDefault(); event.stopPropagation(); return;
@@ -1253,15 +1255,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       event.preventDefault();
       event.stopPropagation();
       if (event.repeat) return;
-      if (drag) cancelDrag();
-      else if (confirmClose) confirmClose();
-      else if (controller.state.parametersDraft && !controller.state.busy) controller.cancelParameters();
-      else if (controller.state.draft && !controller.state.busy) controller.cancelEdit();
-      else if (!menu.hidden) {
-        menu.hidden = true;
-        moreButton.setAttribute('aria-expanded', 'false');
-        moreButton.focus();
-      } else requestClose();
+      requestBack();
       return;
     }
     const target = event.target as HTMLElement;
@@ -1373,7 +1367,21 @@ export function createManagerView(host: Window, controller: ManagerController): 
       dialog('重新读取实际状态', el('p', 'mm-confirm-copy', '有未保存的内容。重新读取将放弃这些修改并同步酒馆，是否继续？'), '重新读取', reloadActual, true);
     } else void run(reloadActual);
   }
+  function requestBack():boolean {
+    if(migrationView.requestBack())return true;
+    if (drag) cancelDrag();
+    else if (confirmClose) confirmClose();
+    else if (controller.state.parametersDraft && !controller.state.busy) controller.cancelParameters();
+    else if (controller.state.draft && !controller.state.busy) controller.cancelEdit();
+    else if (!menu.hidden) {
+      menu.hidden = true;
+      moreButton.setAttribute('aria-expanded', 'false');
+      moreButton.focus();
+    } else requestClose();
+    return true;
+  }
   function requestClose() {
+    const closing=closeHandler;
     closePresetChoices();
     if (disposed || controller.state.busy || fileBusy) return;
     cancelDrag();
@@ -1381,8 +1389,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
     moreButton.setAttribute('aria-expanded', 'false');
     if (controller.state.dirty) {
       dialog('关闭预设管理', el('p', 'mm-confirm-copy', '有未保存的内容，是否关闭？选择“是”将丢弃未保存的修改。'), '是', async () => {
+        if(disposed || closing!==closeHandler)return;
         controller.cancelChanges();
-        if (closeHandler) await closeHandler(); else close();
+        if (closing) await closing(); else close();
       }, true, '否');
       return;
     }
@@ -1410,6 +1419,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
     open,
     close,
     setCloseHandler(handler) { closeHandler = handler; },
+    requestBack,
+    ownsEvent:event => migrationView.ownsEvent(event),
     setPresentation,
     dispose() {
       if (disposed) return;

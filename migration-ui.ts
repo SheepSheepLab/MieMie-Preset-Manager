@@ -228,7 +228,7 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
       childBody=el('div','mm-migration-body');const foot=el('footer','mm-migration-footer');childError=el('p','mm-migration-error');childError.setAttribute('role','alert');childHint=el('p','mm-migration-hint');childHint.setAttribute('role','status');childActions=el('div','mm-migration-actions');foot.append(childError,childHint,childActions);view.append(header,childBody,foot);
       if(state.step==='compare')buildCompare(childBody,childActions,view);else if(state.step==='candidates')buildCandidates(childBody,childActions);else buildInsert(childBody,childActions);
       view.addEventListener('cancel',e=>{if(e.defaultPrevented)return;e.preventDefault();if(!childClosing&&!controller.state.busy)migration.back();});
-      view.addEventListener('keydown',e=>{if(e.defaultPrevented)return;e.stopPropagation();childKeyboard=true;if(e.key==='Escape'){e.preventDefault();if(!e.repeat&&!childClosing&&!controller.state.busy)migration.back();}});
+      view.addEventListener('keydown',e=>{if(e.isComposing||e.keyCode===229||e.defaultPrevented)return;e.stopPropagation();childKeyboard=true;if(e.key==='Escape'){e.preventDefault();if(!e.repeat&&!childClosing&&!controller.state.busy)migration.back();}});
       view.addEventListener('pointerdown',()=>{childKeyboard=false;});
       childEffect=centeredMotion(view,childBody);doc.body.append(view);childParent.inert=true;childParent.dataset.childOpen='true';
       try{view.showModal();}catch{finishChild();migration.back();return;}
@@ -264,7 +264,7 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
       const header=el('header','mm-migration-head'),wrap=el('div');wrap.append(el('h2','','批量迁移确认'),el('p','',`目标：${state.target}`));header.append(createIcon(doc,'migration'),wrap);
       batchBody=el('div','mm-migration-body');const foot=el('footer','mm-migration-footer');batchError=el('p','mm-migration-error');batchError.setAttribute('role','alert');batchHint=el('p','mm-migration-hint');batchHint.setAttribute('role','status');batchActions=el('div','mm-migration-actions');foot.append(batchError,batchHint,batchActions);view.append(header,batchBody,foot);buildBatch(batchBody,batchActions);batchEffect=centeredMotion(view,batchBody);
       view.addEventListener('cancel',e=>{if(e.defaultPrevented)return;e.preventDefault();if(!batchClosing&&!controller.state.busy)migration.cancelBatch();});
-      view.addEventListener('keydown',e=>{if(e.defaultPrevented)return;e.stopPropagation();batchKeyboard=true;if(e.key==='Escape'){e.preventDefault();if(!e.repeat&&!batchClosing&&!controller.state.busy)migration.cancelBatch();}});view.addEventListener('pointerdown',()=>{batchKeyboard=false;});
+      view.addEventListener('keydown',e=>{if(e.isComposing||e.keyCode===229||e.defaultPrevented)return;e.stopPropagation();batchKeyboard=true;if(e.key==='Escape'){e.preventDefault();if(!e.repeat&&!batchClosing&&!controller.state.busy)migration.cancelBatch();}});view.addEventListener('pointerdown',()=>{batchKeyboard=false;});
       doc.body.append(view);dialog.inert=true;dialog.dataset.childOpen='true';try{view.showModal();}catch{finishBatch();migration.cancelBatch();return;}placeBatch();view.focus({preventScroll:true});opening=true;
     }
     updateBatch(opening);
@@ -367,6 +367,7 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   }
   on(dialog,'cancel',((event:Event)=>{if(event.defaultPrevented)return;event.preventDefault();if(controller.state.busy)return;if(sourcePicker&&!sourcePicker.layer.hidden){closeOptions();picker?.focus();}else if(migration.state.step!=='list')migration.back();else migration.close();}) as EventListener);
   on(dialog,'keydown',((event:KeyboardEvent)=>{
+    if(event.isComposing||event.keyCode===229)return;
     if(event.defaultPrevented)return;event.stopPropagation();
     if(event.key==='Escape'){event.preventDefault();if(event.repeat||controller.state.busy)return;if(sourcePicker&&!sourcePicker.layer.hidden){closeOptions();picker?.focus();}else if(migration.state.step!=='list')migration.back();else migration.close();}
     else if(options&&sourcePicker&&!sourcePicker.layer.hidden&&['ArrowDown','ArrowUp','Home','End'].includes(event.key)){
@@ -378,5 +379,16 @@ export function createMigrationView(host: Window, panel: HTMLElement, controller
   const unsubscribe=controller.subscribe(render);
   const observer=new MutationObserver(()=>{if(migration.state.open&&(panel.hidden||panel.inert||!panel.isConnected))migration.close(true);});
   observer.observe(panel,{attributes:true,attributeFilter:['hidden','inert']});cleanups.push(()=>observer.disconnect());
-  return {open:()=>migration.open(),close:()=>migration.close(true),dispose(){if(disposed)return;disposed=true;unsubscribe();cleanups.forEach(fn=>fn());migration.close(true);closePreview(true);finishHide();sourcePicker?.dispose();sourceWindow?.dispose();targetWindow?.dispose();leftEditor?.dispose();rightEditor?.dispose();body.replaceChildren();dialog.remove();}};
+  function requestBack():boolean {
+    if(!migration.state.open)return false;
+    if(controller.state.busy||childClosing||batchClosing||previewClosing)return true;
+    if(previewDialog){closePreview();return true;}
+    if(child){migration.back();return true;}
+    if(batchDialog){migration.cancelBatch();return true;}
+    if(sourcePicker&&!sourcePicker.layer.hidden){closeOptions();picker?.focus();return true;}
+    if(migration.state.step!=='list')migration.back();else migration.close();
+    return true;
+  }
+  const ownsEvent=(event:Event)=>event.composedPath().some(node=>[dialog,previewDialog,child,batchDialog].some(root=>root && (node===root || (node instanceof (doc.defaultView!.Node) && root.contains(node as Node)))));
+  return {requestBack,ownsEvent,open:()=>migration.open(),close:()=>migration.close(true),dispose(){if(disposed)return;disposed=true;unsubscribe();cleanups.forEach(fn=>fn());migration.close(true);closePreview(true);finishHide();sourcePicker?.dispose();sourceWindow?.dispose();targetWindow?.dispose();leftEditor?.dispose();rightEditor?.dispose();body.replaceChildren();dialog.remove();}};
 }

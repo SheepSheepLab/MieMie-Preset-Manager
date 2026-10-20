@@ -13,20 +13,25 @@ const WAIT_MS = 1500;
 // Package identity comes from the release manifest; Runtime uses the embedded PNG.
 export const PRESET_MANAGER_MANIFEST = Object.freeze({ ...manifest, icon: ICON });
 
+type PresentationLease = { signal: AbortSignal; isCurrent(): boolean };
 type HubApi = {
   signal: AbortSignal;
   attachPanel(panel: HTMLElement, options: { icon: string }): unknown;
-  showPanel(): unknown;
-  closePanel(): unknown;
-  registerShortcutLauncher?(provider: { mount(context: { open(): unknown }): NativeLauncher }): unknown;
+  showPanel(lease?: PresentationLease): unknown;
+  closePanel(lease?: PresentationLease): unknown;
+  registerNativeWindow?(provider: {
+    mount(context: {open(): unknown; signal: AbortSignal}): {getOrigin(): HTMLButtonElement | null; dispose(): void};
+    open(lease: PresentationLease): void; release(lease: PresentationLease): void; ownsEvent(event: Event): boolean;
+  }): unknown;
+  registerBackHandler?(handler: (request: {isCurrent(): boolean}) => boolean): unknown;
   onCleanup(fn: () => void): unknown;
 };
-type HubInstance = { activate(): Promise<void>; open(): unknown; deactivate(): void };
+type HubInstance = { activate(): Promise<void>; open(lease?: PresentationLease): unknown; deactivate(): void };
 type Lease = { ok: boolean; error?: string; ready?: Promise<unknown>; release?: () => unknown };
 type Hub = {
   apiVersion: number;
   extensions: { provide(manifest: typeof PRESET_MANAGER_MANIFEST, factory: (api: HubApi) => HubInstance): Lease };
-  whenDisposed?: Promise<unknown>;
+  whenDisposed: Promise<unknown>;
 };
 type Connection = { hub: Hub; lease?: Lease; valid: boolean; sessions: Set<() => void> };
 type Source = { readonly disposed: boolean; dispose(): Promise<void>; settled(): Promise<void> };
@@ -49,7 +54,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
   let closeSession: (() => unknown) | null = null;
 
   const report = (error: unknown) => console.warn('[咩咩预设管理]', error);
-  view.setCloseHandler(() => {
+  function closeStandalone() {
     if (disposed) return undefined;
     // Hub owns visibility and launcher restoration, including its animation.
     // Never locally hide a Hub surface ahead of its formal close operation.
@@ -63,10 +68,11 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
       view.close();
     }
     return undefined;
-  });
+  }
+  view.setCloseHandler(closeStandalone);
   function currentHub(): Hub | null {
     const hub = host.__MieMieHub as Hub | undefined;
-    return hub?.apiVersion === 1 && typeof hub.extensions?.provide === 'function' && !retiredHubs.has(hub) ? hub : null;
+    return hub?.apiVersion === 2 && typeof hub.extensions?.provide === 'function' && !retiredHubs.has(hub) ? hub : null;
   }
   function restorePanel(returnToOriginal = false) {
     if (!view.panel.isConnected || (returnToOriginal && view.panel.parentNode !== panelParent))
@@ -99,6 +105,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
   function makeLauncher() {
     if (disposed || launcher) return;
     restorePanel(); view.setPresentation?.('native');
+    view.setCloseHandler(() => closeStandalone());
     launcher = createPresetManagerNativeLauncher({ host, icon:ICON, onError:report, open:async () => {
       const opening = launcher;
       if (!opening || disposed || connection) return false;
@@ -127,7 +134,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     } catch (error) {
       report(error);
     }
-    if (host.__MieMieHub !== old.hub && old.hub.whenDisposed) {
+    if (host.__MieMieHub !== old.hub) {
       try {
         await bounded(old.hub.whenDisposed, '旧 Hub 清理');
       } catch (error) {
@@ -142,16 +149,19 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     removeLauncher();
     view.close();
     const factory = (api: HubApi): HubInstance => {
-      if (typeof api.closePanel !== 'function') throw new Error('Hub 缺少正式面板关闭能力，已恢复独立入口。');
+      if (!api?.signal || typeof api.signal.addEventListener !== 'function' ||
+          ['onCleanup','attachPanel','showPanel','closePanel'].some(key => typeof api[key as keyof HubApi] !== 'function'))
+        throw new Error('Hub API2 缺少必需的生命周期或 Surface 能力。');
       let ended = false;
-      let shortcut: NativeLauncher | null = null;
+      let nativeWindow: NativeLauncher | null = null;
+      let surfaceLease: PresentationLease | undefined, nativeLease: PresentationLease | undefined;
       let activation: Promise<void> | null = null;
       const valid = () =>
         !disposed && !ended && next.valid && connection === next && currentHub() === hub && !api.signal.aborted;
       const end = () => {
         if (ended) return;
         ended = true;
-        shortcut?.dispose(); shortcut = null;
+        nativeWindow?.dispose(); nativeWindow = null;
         api.signal.removeEventListener('abort', end);
         next.sessions.delete(end);
         if (activeSession === end) {
@@ -171,44 +181,77 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
           if (!valid()) return;
           if (activeSession !== end) activeSession?.();
           activeSession = end;
-          closeSession = () => valid() && activeSession === end ? api.closePanel() : false;
+          view.setCloseHandler(() => false);
+          closeSession = null;
           restorePanel();
           view.setPresentation?.('hub');
           await api.attachPanel(view.panel, { icon: ICON });
           if (!valid()) { end(); return; }
-          if (typeof api.registerShortcutLauncher === 'function') api.registerShortcutLauncher({
-            mount({ open }) {
-              if (!valid()) throw new Error('预设管理 Shortcut session 已停用。');
-              shortcut?.dispose();
-              const native = createPresetManagerNativeLauncher({ host, icon: ICON, mode:'shortcut',
-                open:() => valid() ? open() : false, onError:report });
-              shortcut = native;
-              return native;
+          api.registerBackHandler?.(request => {
+            if (!valid() || !request.isCurrent()) return true;
+            if (view.requestBack) return view.requestBack();
+            if (surfaceLease?.isCurrent()) void api.closePanel(surfaceLease);
+            return true;
+          });
+          api.registerNativeWindow?.({
+            mount({open, signal}) {
+              if (!valid() || signal.aborted) throw new Error('预设管理 Native session 已停用。');
+              const native = createPresetManagerNativeLauncher({host, icon:ICON, mode:'native',
+                open:() => valid() && !signal.aborted ? open() : false, onError:report});
+              nativeWindow = native;
+              return {getOrigin:native.getOrigin,dispose() {
+                if(nativeWindow===native){native.release();nativeWindow=null;nativeLease=undefined;}
+                native.dispose();
+              }};
             },
+            open(lease) {
+              if (!valid() || !lease.isCurrent() || !nativeWindow) return;
+              // A fresh Native lease must place even a visible restored root.
+              if(nativeLease!==lease){view.panel.hidden=true;view.panel.inert=true;}
+              nativeLease=lease;surfaceLease=undefined;
+              const native=nativeWindow;
+              const current=()=>valid() && nativeLease===lease && lease.isCurrent() && nativeWindow===native;
+              view.setCloseHandler(() => current() ? native.close(view.panel,current) : false);
+              const entering=view.panel.hidden || view.panel.dataset.surfaceState==='closing';
+              if(view.panel.hidden)view.setPresentation?.('native');
+              void native.show(view.panel,current).then(ok=>{if(ok&&entering&&current())view.open();}).catch(report);
+            },
+            release(lease) {
+              if(nativeLease && nativeLease!==lease)return;
+              nativeLease=undefined;
+              view.setCloseHandler(() => false);
+              nativeWindow?.release();
+            },
+            ownsEvent:event => view.ownsEvent?.(event) === true,
           });
           })();
           return activation;
         },
-        open() {
-          if (!valid() || activeSession !== end) return false;
+        open(lease) {
+          if (!valid() || activeSession !== end || !lease?.isCurrent()) return false;
+          surfaceLease=lease;nativeLease=undefined;
+          closeSession=()=>valid() && surfaceLease===lease && lease.isCurrent() ? api.closePanel(lease) : false;
+          view.setCloseHandler(closeSession);
           restorePanel();
           // Hub owns the current Surface origin and its opening/closing flight.
           // Repeated launch is only a focus request: resetting a visible panel
           // would erase Native placement, and view.open() would unlock a flight.
-          // A fresh hidden entry starts with Hub geometry; the Shortcut provider
-          // applies Native placement when Hub actually enters that Surface.
+          // A fresh hidden entry starts with Hub geometry; Native uses its own lease.
           if (view.panel.hidden) {
             view.setPresentation?.('hub');
             view.open();
           }
-          return api.showPanel();
+          return api.showPanel(lease);
         },
         deactivate: end,
       };
     };
     try {
+      if (typeof hub.whenDisposed?.then !== 'function') throw new Error('Hub API2 缺少 whenDisposed 完成边界。');
       next.lease = hub.extensions.provide(PRESET_MANAGER_MANIFEST, factory);
       if (!next.lease?.ok) throw new Error(next.lease?.error || 'Hub 拒绝注册预设管理。');
+      if (typeof next.lease.ready?.then !== 'function' || typeof next.lease.release !== 'function')
+        throw new Error('Hub API2 缺少 Source ready/release。');
       const result = await bounded(next.lease.ready, 'Hub 扩展就绪', stopped.signal);
       if (result && typeof result === 'object' && 'ok' in result && result.ok === false)
         throw new Error('Hub 未能启用预设管理。');

@@ -1,0 +1,192 @@
+// Reuse the previous Hub's completion boundary before constructing a successor.
+// This private, transient slot is not an Extension API or a second cleanup queue.
+const previousHubDisposal=h.__MieMieHubDisposal;
+if(previousHubDisposal){
+  let cancelled=false;const cancel=()=>{cancelled=true;};
+  window.addEventListener('pagehide',cancel,{once:true});window.addEventListener('unload',cancel,{once:true});
+  void previousHubDisposal.then(()=>{
+    window.removeEventListener('pagehide',cancel);window.removeEventListener('unload',cancel);
+    if(!cancelled&&!h.__MieMieHub)startHub();
+  });
+}else startHub();
+function startHub(){
+const hubShell=createHubRoot(h,HUB_ASSETS);
+const HUB_STATE_KEY = 'miemie_hub_extensions_v1';
+let hubUI, hubDisposed = false, savedHubState = {version: 1, extensions: {}};
+const sources = new Map(), withdrawing = new Set();
+// Official distribution policy is separate from the standard Extension Manifest.
+const bundledPolicies = new Map(BUNDLED_EXTENSIONS.map(entry => [entry.manifest.id, Object.freeze({...entry.policy})]));
+try {
+  const stored = JSON.parse(h.localStorage.getItem(HUB_STATE_KEY));
+  if (stored?.version === 1 && stored.extensions && typeof stored.extensions === 'object' && !Array.isArray(stored.extensions)) savedHubState = stored;
+} catch (_) {}
+function persistHubChange(event) {
+  if (hubDisposed || event.kind === 'transition' || event.kind === 'launcher' || withdrawing.has(event.extension.manifest.id)) return;
+  const item = event.extension, id = item.manifest.id;
+  savedHubState.extensions[id] = {registered: event.kind !== 'uninstall', enabled: item.enabled};
+  try { h.localStorage.setItem(HUB_STATE_KEY, JSON.stringify(savedHubState)); }
+  catch (_) { hubUI?.report('扩展状态本次未能保存；当前页面仍可使用。'); }
+}
+const extensionRuntime = createExtensionRuntime({
+  // Helper may remove this iframe before bounded async cleanup completes.
+  // Helper already provides host Lodash. Its delay callback belongs to the
+  // host realm, so iframe removal cannot discard the timeout. No new timers.
+  setTimeout: h._?.delay || h.setTimeout.bind(h), clearTimeout: h.clearTimeout.bind(h),
+  resolveClassification: bundledClassificationResolver(BUNDLED_EXTENSIONS),
+  onChange(event) { persistHubChange(event); hubUI?.runtimeChanged(event,withdrawing.has(event.extension.manifest.id)||hubDisposed); },
+  onMessage(id, title, text) { hubUI?.showMessage(id, title, text); },
+  onClose(id) { hubUI?.closeMessage(id); },
+  onNativeWindow: (id,provider) => hubUI.registerNativeWindow(id,provider),
+  onRequestOpen: id => hubUI.requestSurface(id),
+  onBeforeOpen: (id,lease) => hubUI.acquireHub(id,lease),
+  onCancelOpen: (id,lease) => hubUI.cancelSurface(id,lease),
+  onPanel: (...args) => hubUI.attachPanel(...args),
+  onShowPanel: (id,lease) => hubUI.showPanel(id,lease),
+  onClosePanel: (id,lease) => hubUI.closePanel(id,lease),
+  onError(id, error) { hubUI?.report(id + ' · ' + error); },
+});
+async function registerSource(id, enable = true) {
+  const source = sources.get(id);
+  if (!source || hubDisposed) return {ok: false, error: '扩展脚本尚未载入。'};
+  const result = extensionRuntime.register(source.manifest, source.factory);
+  return result.ok && enable ? extensionRuntime.enable(id) : result;
+}
+// A source is merely an already-loaded local factory retained for re-registration.
+// Uninstall removes its running registration but deliberately keeps user data.
+function provide(manifest, factory) {
+  try {
+    if (hubDisposed) throw Error('Hub 已关闭。');
+    const checked = extensionRuntime.validate(manifest), id = checked.id;
+    if (typeof factory !== 'function') throw Error('扩展工厂必须是函数。');
+    if (sources.has(id) || extensionRuntime.get(id) || withdrawing.has(id)) throw Error('扩展脚本已经载入：' + id);
+    const previous = savedHubState.extensions[id];
+    const source = {manifest: checked, factory}; sources.set(id, source);
+    const ready = previous?.registered === false && bundledPolicies.get(id)?.management !== 'hub' ? Promise.resolve({ok: true}) : registerSource(id, bundledPolicies.get(id)?.management === 'hub' || previous?.enabled !== false);
+    hubUI?.refresh();
+    return {ok: true, ready, async release() {
+      if (sources.get(id) !== source || hubDisposed) return;
+      sources.delete(id); withdrawing.add(id);
+      try { if (extensionRuntime.get(id)) await extensionRuntime.uninstall(id); }
+      finally { withdrawing.delete(id); hubUI?.refresh(); }
+    }};
+  } catch (error) { return {ok: false, error: error.message}; }
+}
+// Capture the iframe-bound API, never derive an installed ID from the package.
+const hubScriptHost = createHubScriptHost({currentVersion: HUB_VERSION,
+  getScriptId: typeof getScriptId === 'function' ? getScriptId : undefined,
+  getScriptTrees: typeof getScriptTrees === 'function' ? getScriptTrees : undefined,
+  updateScriptTreesWith: typeof updateScriptTreesWith === 'function' ? updateScriptTreesWith : undefined,
+});
+const readSavedExtensionScript = createHubSavedScriptReader({fetch: (...args) => window.fetch(...args), origin: h.location.origin,
+    getRequestHeaders: () => {
+      const context = h.SillyTavern?.getContext?.();
+      if (typeof context?.getRequestHeaders !== 'function') throw Error('宿主保存确认接口不可用。');
+      return context.getRequestHeaders();
+    },
+  });
+const hubSelfUpdater = createHubSelfUpdater({currentVersion: HUB_VERSION, host: hubScriptHost,
+  getRegistryBaseURL: () => registryClient.getBase(),
+  storage: {getItem: key => h.sessionStorage.getItem(key), setItem: (key, value) => h.sessionStorage.setItem(key, value), removeItem: key => h.sessionStorage.removeItem(key)},
+  backup(script, version) {
+    // A recovery download is not a guarantee that the browser saved the file.
+    // Its object URL lives briefly in the parent so our own iframe reload does
+    // not revoke it before the browser has started reading the backup.
+    const blob = new h.Blob([JSON.stringify(script, null, 2) + '\n'], {type: 'application/json'});
+    const url = h.URL.createObjectURL(blob), link = h.document.createElement('a');
+    link.href = url; link.download = 'MieMie-Hub-backup-' + version + '-' + Date.now() + '.json';
+    link.hidden = true; h.document.body.appendChild(link);
+    try {link.click();}
+    finally {link.remove(); h.setTimeout(() => h.URL.revokeObjectURL(url), 60000);}
+  },
+  readSavedScript: readSavedExtensionScript,
+});
+const packageManager = createExtensionPackageManager({
+  readSavedScript: readSavedExtensionScript,
+  getRunningVersion: (id, target) => {
+    const record = extensionRuntime.get(id), manifest = record?.manifest;
+    if (!record?.enabled || manifest?.apiVersion !== 2) return null;
+    if (target && (manifest.id !== target.id || manifest.repository?.toLowerCase() !== target.repository?.toLowerCase())) return null;
+    return manifest.version;
+  },
+  getScriptTrees: typeof getScriptTrees === 'function' ? getScriptTrees : undefined,
+  updateScriptTreesWith: typeof updateScriptTreesWith === 'function' ? updateScriptTreesWith : undefined,
+  fetch: (...args) => window.fetch(...args), crypto: window.crypto,
+  getRegistryBaseURL: () => registryClient.getBase(),
+  storage: {getItem: key => h.localStorage.getItem(key), setItem: (key,value) => h.localStorage.setItem(key,value)},
+  onChange() {hubUI?.refresh();},
+  confirmUninstall: () => h.confirm('确定卸载此扩展？将删除该酒馆助手脚本条目及其 data，不创建备份；工具独立保存的设置和其他脚本不受影响。'),
+  async backup(script) {
+    const bytes = JSON.stringify(script, null, 2) + '\n';
+    const url = h.URL.createObjectURL(new h.Blob([bytes], {type: 'application/json'}));
+    const link = h.document.createElement('a'); link.href = url; link.download = 'MieMie-Extension-recovery-' + Date.now() + '.json';
+    link.hidden = true; h.document.body.appendChild(link);
+    try {link.click();} finally {link.remove(); h.setTimeout(() => h.URL.revokeObjectURL(url), 60000);}
+  },
+});
+const packageUI = Object.create(packageManager);
+async function withPackagePreference(id, enabled, action) {
+  const previous = savedHubState.extensions[id];
+  savedHubState.extensions[id] = {registered: true, enabled};
+  try {
+    h.localStorage.setItem(HUB_STATE_KEY, JSON.stringify(savedHubState));
+    const result = await action();
+    if (result?.ok === false) throw Error(result.error);
+    return result;
+  } catch (error) {
+    if (previous) savedHubState.extensions[id] = previous; else delete savedHubState.extensions[id];
+    try {h.localStorage.setItem(HUB_STATE_KEY, JSON.stringify(savedHubState));} catch (_) {}
+    throw error;
+  }
+}
+packageUI.setEnabled = (id, enabled) => withPackagePreference(id, enabled, () => packageManager.setEnabled(id, enabled));
+packageUI.uninstall = async id => {const result=await packageManager.uninstall(id);if(result?.action==='uninstalled')hubUI?.forgetNativeEntry(id);return result;};
+packageUI.install = (candidate, {onProgress, signal} = {}) => {
+  if (!/^[a-z0-9][a-z0-9._-]{1,79}$/.test(candidate?.id || '')) return Promise.reject(Error('Extension ID 无效。'));
+  if (bundledPolicies.get(candidate.id)?.management === 'hub') return Promise.reject(Error('此随包工具随 Hub 整体更新，无需单独安装。'));
+  return withPackagePreference(candidate.id, true, () => packageManager.install(candidate, {onProgress, signal}));
+};
+const registryClient = createRegistryClient({host: h, defaultBaseURL: HUB_DEFAULT_REGISTRY_URL, fetch: (...args) => window.fetch(...args), crypto: window.crypto});
+hubUI = createHubUI(h, hubShell, HUB_ASSETS, extensionRuntime, {
+  list: () => [...sources.values()].map(s => JSON.parse(JSON.stringify(s.manifest))),
+  register: registerSource,
+  policy: id => bundledPolicies.get(id),
+}, HUB_VERSION, hubSelfUpdater, {packages: packageUI, registry: registryClient});
+// Keep the previous Hub bridge for callers; no polishing implementation lives here.
+const combinedUI = {open: hubUI.open, toggle: hubUI.toggle, back: hubUI.back};
+h.__meemeCombinedUI = combinedUI;
+const bundledReady = loadBundledExtensions(BUNDLED_EXTENSIONS, provide);
+let finishHubDisposal;
+const whenDisposed = new Promise(resolve => {finishHubDisposal = resolve;});
+const publicHub = Object.freeze({
+  version: HUB_VERSION, apiVersion: 2, open: hubUI.open,
+  ready: bundledReady, whenDisposed,
+  extensions: Object.freeze({
+    register: extensionRuntime.register, enable: extensionRuntime.enable,
+    disable: extensionRuntime.disable, uninstall: extensionRuntime.uninstall,
+    open: extensionRuntime.open, list: extensionRuntime.list, get: extensionRuntime.get,
+    provide,
+  }),
+});
+h.__MieMieHub = publicHub;
+h.dispatchEvent(new h.CustomEvent('miemie:hub-ready', {detail: publicHub}));
+// System UI, Shell and runtime have been constructed. Only a pending
+// local handoff triggers persistence readback; ordinary startup never phones home.
+void Promise.resolve(publicHub.ready).then(() => {if (!hubDisposed) return hubSelfUpdater.resume();});
+function cleanupHub() {
+  if (hubDisposed) return;
+  hubDisposed = true;
+  hubSelfUpdater.dispose();
+  h.__MieMieHubDisposal=whenDisposed;
+  // dispose() revokes every extension synchronously before its first await.
+  void Promise.resolve(extensionRuntime.dispose()).finally(()=>{
+    if(h.__MieMieHubDisposal===whenDisposed)delete h.__MieMieHubDisposal;
+    finishHubDisposal();
+  });
+  sources.clear(); hubUI.dispose(); hubShell.dispose();
+  if (h.__MieMieHub === publicHub) delete h.__MieMieHub;
+  if (h.__meemeCombinedUI === combinedUI) delete h.__meemeCombinedUI;
+  h.dispatchEvent(new h.CustomEvent('miemie:hub-disposed', {detail: publicHub}));
+}
+window.addEventListener('pagehide', cleanupHub, {once: true});
+window.addEventListener('unload', cleanupHub, {once: true});
+}

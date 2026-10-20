@@ -1,5 +1,7 @@
 
 
+> 当前接入导航：原始企划和后续 Owner 澄清全文保留；本分支的 Hub 接入仅使用 Runtime API2，见 [HUB-API2](HUB-API2.md)。原第 20 节 API1 示例是当时需求背景，不是当前 Manifest。
+
 > 2026-10-15：0.6.0 的绑定规则以 [PER-CHAT-PRESET-BINDING.md](PER-CHAT-PRESET-BINDING.md) 为准：一个聊天记住一个预设，原生双向同步，默认只初始化/删除回退，旧 schema 忽略且保留。正式版本说明见 [Release 0.6.0](RELEASE-0.6.0.md)。
 # 《咩咩预设管理 MieMie Preset Manager》完整开发企划
 

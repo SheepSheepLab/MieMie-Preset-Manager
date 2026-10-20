@@ -80,6 +80,8 @@ export interface ManagerView {
   open(): void;
   /** Local hiding for lifecycle cleanup; user actions go through the installed route. */
   close(): void;
+  requestBack?(): boolean;
+  ownsEvent?(event: Event): boolean;
   setCloseHandler(handler: (() => unknown) | null): void;
   /** Visual ownership only; never alters the local edit session. */
   setPresentation?(mode: 'local' | 'native' | 'hub'): void;

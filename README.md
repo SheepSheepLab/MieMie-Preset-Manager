@@ -1,5 +1,7 @@
 # MieMie Preset Manager · 咩咩预设管理
 
+> **API2 开发分支（未发行）**：本分支适配 Hub 0.9.0 / Extension API2，Package 等机器 Schema 保持 v1；Owner 已批准本分支版本 **0.8.0**，尚未发行。以下既有发行及验收记录保留原范围；当前接入与独立 Gate 见 [Hub API2 开发说明](docs/HUB-API2.md)。
+
 
 
 SillyTavern Chat Completion Preset / Prompt Manager
@@ -10,10 +12,11 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前正式版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
+- 当前源码候选：`0.8.0`，Owner 已批准版本号、尚未发行；说明见 [0.8.0 发行草稿](docs/RELEASE-API2-DRAFT.md)。
+- 已发布历史版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
 - **从 0.6.0 升级：保留有效的 binding-v2 聊天绑定。** 全局默认改变不影响已有有效绑定。仅从 0.5.1 及更早旧绑定系统升级时，旧绑定关系不迁移；该历史规则不适用于 0.6.0 → 0.7.0。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
-- Extension / Product ID：`miemie.preset-manager`；MieMie Hub API：`1`。
+- Extension / Product ID：`miemie.preset-manager`；本分支 MieMie Hub Runtime API：`2`，正式 0.7.0 的 API1 记录保持历史范围。
 - 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
 
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
@@ -44,7 +47,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 安装当前版本
 
-交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展：
+交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前 0.8.0 尚未发布，可在隔离环境从本分支构建 `delivery/MieMie-Preset-Manager-Extension-0.8.0.json`；以下公开下载仅指历史 0.7.0：
 
 [MieMie-Preset-Manager-Extension-0.7.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.7.0/MieMie-Preset-Manager-Extension-0.7.0.json)
 
@@ -52,7 +55,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 1. 准备可恢复的预设备份，在目标酒馆的 Tavern Helper 脚本库中导入 JSON，只启用一个实例。
 2. 未运行兼容 Hub 时，点击 64px 正式 PNG 原生悬浮入口；它可拖动并贴靠左/右边，位置按比例保存。窗口从入口展开，底部“返回”收回窗口；入口持续保留，确实位于页面上方并遮挡关键操作时才避让；页面覆盖入口时保持条目对齐，内部 Dialog 沿用已验收交互。
-3. 运行 MieMie Hub API v1 时，独立入口收起，从 Hub 打开“咩咩预设管理”。Hub 退出后恢复独立入口，再次出现时重新接入，保留同一业务 Session。若 Hub 提供 Shortcut capability，用户可在 Hub 中选择“显示悬浮球”，使用同一个 Native 入口；蜂窝动画仍由 Hub 控制。
+3. 本分支运行于 Hub Runtime API2：独立入口收起，从 Hub 打开“咩咩预设管理”；用户可开启通过 `registerNativeWindow` 注册的原生入口。蜂窝与 Native 共享 Controller／View／Panel，Hub 退出后按完成边界恢复 Standalone。已发布 0.7.0 使用 API1／Shortcut；上方公开下载和历史发行记录仍指该原包，不是本分支候选下载。
 4. 按 [Testing](docs/TESTING.md) 在目标 ST 版本上验证，记录 ST commit、Tavern Helper 和 Hub 的实际版本。
 
 运行时需要宿主的原生预设管理器、事件总线、请求头、Chat Completion 设置，以及 Tavern Helper 的 `getTavernVersion()`、`builtin.promptManager`。缺少能力时在写入前停止。Hub 可选；不要求用户安装 Node.js，不从 CDN 加载业务代码。
@@ -106,7 +109,7 @@ npm run test:browser
 
 **旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装当前版本；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
 
-`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前发布说明见 [0.7.0](docs/RELEASE-0.7.0.md)；[0.6.0](docs/RELEASE-0.6.0.md)、[0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前 0.8.0 候选见 [发行草稿](docs/RELEASE-API2-DRAFT.md)；历史发行说明见 [0.7.0](docs/RELEASE-0.7.0.md)；[0.6.0](docs/RELEASE-0.6.0.md)、[0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
 
 | 文件 | 职责 |
 | --- | --- |
@@ -137,3 +140,7 @@ SheepSheep 是 Founder / Project Initiator；SheepSheepLab 是官方 GitHub 开�
 - [指定 PNG 的来源与素材使用范围](ASSETS-LICENSE.md)
 - [第三方声明](THIRD_PARTY_NOTICES.md)
 - [测试夹具来源](tests/fixtures/README.md)
+
+## API2 新版候选审核
+
+最低 Runtime 要求、Standalone 与 Package v1 边界见 [新版发行说明草稿](docs/RELEASE-API2-DRAFT.md)。本分支版本已按 Owner 裁定同步为 **0.8.0**，尚未创建 Tag／Release；公开历史下载仍是原版本资产，不替换旧 Asset。当前结果见 [API2 Pre-Main](docs/TESTING.md#api2-pre-main2026-10-20)，生产与正式发行由 Owner 独立决定。
