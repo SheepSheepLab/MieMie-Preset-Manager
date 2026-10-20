@@ -13,8 +13,17 @@ const receipts = [], errors = [], timings = [];
 const baselineSHA = '0a6b61f023c5164bb841a8d8e32e697ce691e8a6';
 const baselineRoot = path.join(evidence, 'reorder-baseline');
 fs.mkdirSync(path.join(baselineRoot, 'tests/helpers'), { recursive: true });
-for (const file of ['controller.ts', 'contracts.ts', 'model.ts', 'ui.ts', 'styles.ts', 'icons.ts'])
-  fs.writeFileSync(path.join(baselineRoot, file), execFileSync('git', ['show', `${baselineSHA}:${file}`], { cwd: root }));
+// Clean-history checkouts do not contain the original performance-baseline tree.
+// An explicitly supplied historical snapshot must match every pinned source hash.
+const snapshot = process.env.MIEMIE_REORDER_BASELINE_DIR;
+const baselineLock = require('./helpers/reorder-baseline-lock.json');
+for (const file of ['controller.ts', 'contracts.ts', 'model.ts', 'ui.ts', 'styles.ts', 'icons.ts']) {
+  const bytes = snapshot ? fs.readFileSync(path.join(snapshot, file))
+    : execFileSync('git', ['show', `${baselineSHA}:${file}`], { cwd: root });
+  if (snapshot) assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'),
+    baselineLock.files[file], `Historical baseline changed: ${file}`);
+  fs.writeFileSync(path.join(baselineRoot, file), bytes);
+}
 fs.copyFileSync(path.join(root, 'tests/helpers/reorder-browser-harness.ts'), path.join(baselineRoot, 'tests/helpers/reorder-browser-harness.ts'));
 function bundle(source, name) {
   return new Promise((resolve, reject) => webpack({ mode: 'development', devtool: false,
