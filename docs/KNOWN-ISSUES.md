@@ -1,5 +1,7 @@
 # Known Issues · 0.6.0
 
+> 本文保留 0.6.0／0.5.x 的已知问题与 Owner 例外；API2 候选的 Back／Escape 及真实桌面验收见 [TESTING](TESTING.md#api2-pre-main2026-10-20)。历史失败和设备缺口不追溯改为 PASS。
+
 
 
 ## 当前版本与社区反馈

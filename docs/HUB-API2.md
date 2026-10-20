@@ -76,3 +76,11 @@ that case. Their capability checks do not dispatch an API1 implementation.
 Standalone uses the extension's own close route and data, independently of Hub.
 Historical API1 fixtures and published packages remain evidence only, outside
 the current production build closure.
+
+## 预设管理的单 Controller 与原生数据边界
+
+`index.ts` 创建 Controller／View，`dual-mode.ts → startDualMode → currentHub → attachHub → extensions.provide` 只接入 API2。Adapter 保留同一 Controller／View／Panel，连接 Session 单独撤销；Hub退出等待release和whenDisposed的有界完成，恢复原父容器。缺必需Surface／生命周期／Source合同报告失败；注册失败可清理后恢复本地入口，不计为Hub成功。兼容Hub的正常停用／注销不自动复活业务。
+
+`factory.activate` 注册可选 Back 与 Native Window；Native的mount/open/release使用自身 `native-launcher.ts`，release撤销旧Lease和动画。`view.requestBack()` 先处理内部Dialog／picker／迁移与Dirty确认，捕获旧请求的确认不能关闭后来新展示。Native OFF不销毁Controller或清空Pending。
+
+预设完整raw、未知字段、所有prompt_order分组、Prompt身份、来源只读迁移、binding-v2和统一保存继续由原model/controller/st-adapter维护；面板返回不等于保存。Editor保存先暂存，Unified Save经冲突预检、原生保存、磁盘回读及应用确认。无后端CAS的边界不因API2消失；louisSSR的贡献、copyright与固定历史夹具完整保留。当前证据见 [TESTING](TESTING.md#api2-pre-main2026-10-20)。
