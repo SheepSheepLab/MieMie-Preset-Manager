@@ -1,5 +1,7 @@
 # Per Chat Preset Binding 0.6.0 Candidate
 
+> 版本导航：下文是 0.6.0 阶段完整业务合同，已发行的对应说明见 [Release 0.6.0](RELEASE-0.6.0.md)。本次 API2 适配不修改 binding-v2、原生数据或生成安全规则。
+
 0.6.0 尚未发布。此文档取代 0.5.1 的 inherit / override 业务规则。公开历史和旧数据保持不变。
 
 ## 正式规则

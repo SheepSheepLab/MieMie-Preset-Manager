@@ -1,5 +1,7 @@
 # Testing · 0.2.3
 
+> API2 开发分支补充：当前契约见 [HUB-API2.md](HUB-API2.md)。本页既有 API1 / Shortcut / 历史验收描述仅对应原版本；当前适配不恢复该 Runtime，测试边界与机器校验已独立迁移。
+
 
 
 
@@ -531,3 +533,41 @@ UI Scope Audit、资格 Matrix、完整摘要和当前宿主边界见 [Release 0
 
 
 > 隐私历史迁移说明：文中涉及的提交标识已对应至迁移后历史；历史测试时间、结论及贡献归属保持原意，不表示重新执行了当时的验收。原始记录由维护者受保护保存。
+
+## API2 Pre-Main（2026-10-20）
+
+本节独立追加，不替换上方长期Golden Path、0.2.x／0.6／0.7发行记录或当时的Pending。实测源码 `14398fac6bc6504bbe9b61a748c918d4390596bb`；产物 `MieMie-Preset-Manager-Extension-0.7.0.json`，完整附件 SHA-256 `2d7785c156cffb6898887a614dae783d95f134817c71dd8a2d707c19f27c1147`。解析后 content SHA-256 `3ffafe765e91897c260f027ed36fda2cbd1ae0831395a80b2d10c7c64634dfac`。 本分支内部版本暂留，不能替换已发布同版资产。
+
+| 检查层 | 实际回执 |
+| --- | --- |
+| 主套件 | **447 PASS／0 FAIL**；Node/API2、model、controller、原生契约、Binding、Generation、迁移、Dirty与安全回读 |
+| 正式构建 | TypeScript与build通过；build额外**21项机器产物测试**独立计数，不混入447 |
+| Package v1专项 | 正式生产包与历史固定Hub机器夹具分别执行；Manifest／Build Identity Schema1，完整字节与content双hash |
+| 浏览器／性能 | package.json既有适用入口全部执行；最后owned IME变更后presentation与migration-unified重跑，后者11项；性能为合成本机诊断，不声称真实端到端加速 |
+| 真实ST | 1.18.0／1.19.0×Chromium／Safari每组9项，当前产物；同Hub与其他两款共存每浏览器7项 |
+| Round Trip | 实际ST Adapter在隔离宿主保存并读回，完整对象比较仅允许预期字段；未知字段、原始对象、Prompt顺序／其他分组保留 |
+| Lifecycle | 双入口同Controller／Panel、NativeOFF不卸载、Hub重接入、Back／Escape／焦点／Lease、迟到Dirty确认不控制新展示 |
+| Migration | 来源只读、未知字段拒绝边界、原子暂存、取消保留已有Pending、统一保存／冲突与失败恢复；不重建数据模型 |
+| Linux CI | [development regression](https://github.com/SheepSheepLab/MieMie-Preset-Manager/actions/runs/39353334708)成功，含正式owned presentation／unified迁移浏览器检查 |
+
+真实环境：macOS 26.6（25G72）、Chromium 151.0.7922.34、Apple Safari 26.6，ST 1.18.0／1.19.0、Tavern Helper 4.11.3。ST 1.19 源码为 `7e8663cd9c184a550b37238218bdd32c6efc68e9`；1.18 测试副本无 Git 元数据，按完整文件 hash 锁定，不能编造 commit。公开 Default 派生测试数据、专用 dataRoot 与本机合成模型响应；未调用真实外部模型供应商。
+
+IME保护涵盖View、floating-picker与migration自有子层的isComposing／keyCode229；本产品使用捕获事件回归及真实浏览器专项，**没有逐产品执行真实OS拼音**。真实OS拼音实测仅Polisher，不移用为Preset实测。物理移动未执行，既有0.2.3 Simulator与Owner回执继续按原版本范围保存。
+
+Runtime API2 与 Managed Package v1 为两道 Gate：开发候选 Runtime／Native 已测范围 PASS，隔离机器包流程 PASS；**生产 Registry API2、生产 Origin／OAuth、正式新版本及 Assets、正式在线安装更新、物理移动 Safari、真实外部模型服务及 Owner 手工验收仍分别 Pending**。Standalone、Package 身份／完整性与用户数据保护继续保留，不增加旧 Hub Runtime 兼容义务。
+
+原始证据为 **Owner 私有审核材料，尚未公开下载**：`MieMie-Hub-0.9.0-Final-Pre-Main-Review.zip`，SHA-256 `8c06fdad93ff68c5be5699b742d98e4849000b532eaa072bc3279165ee473d73`。包内 `evidence/FINAL-INTEGRATION-LOCK.json`、`FINAL-ACCEPTANCE-RESULTS.json`、`FINAL-BUILD-AUDIT.json`、`FINAL-CI-RESULTS.json` 关联真实源码、产物和日志；不以本机路径充当公共证据。以下是该阶段的既有执行记录，本轮文档维护不声称重新运行 Safari 或宿主；本轮新 HEAD 的本地／Linux CI 回执另随 Owner 审核包交付。
+
+包内 `final-Preset-owned-ime-build.log`、`portable-*-MieMie-Preset-Manager.json`、`D-preset-roundtrip.json`、`D-managed-host.json` 和CI日志分层保留。构建会写入delivery；历史受管发行资产恢复原字节，当前候选另外存放，不静默替换0.7.0正式资产。原生保存不提供跨客户端CAS，未确认的服务器状态不写成成功。
+
+## 产品版本对齐候选（2026-10-20）
+
+Owner 已批准本版 **0.8.0**，当前仍为未发行候选。本节追加独立新执行记录；上方旧产品版本、Pre-Main hash、历史Golden、Safari／OS输入法与手工结论保留原对象范围，不追溯改写。
+
+本轮最终版本的 `npm test`：**447 PASS／0 FAIL／0 SKIP**。正式构建连续两次产物逐字一致；TypeScript check、build 自带21项机器测试及 Package v1专项通过；21为独立子套件，不累计到447。 当前附件 `MieMie-Preset-Manager-Extension-0.8.0.json`，完整附件 SHA-256 `f3c95148e6c2f7849867539199dbf63b79e7ec1b74bc28eed1e06d7820efb3fa`；解析后 content SHA-256 `8c570e0f0d552df81842d9ba8416c378d9eaf72f900f4e479a469b8a2a9f14c9`。最终签名 HEAD 的空目录锁文件重建、Linux CI及原始日志单独随 Owner 本轮审核包交付。
+
+Manifest Schema1、Package1、Metadata1、Build Identity1 均保持；Manifest 为 API2／hubApi2–2，Build Identity 不增加 apiVersion。新版只要求 Hub Runtime API2，Standalone、数据键和原业务模型不变。本轮当前版本断言与UI文字随版本更新，历史夹具及已发布资产原样保留；生成脚本在显式产品版本归一化后与进入本轮的API2候选逐字一致，没有新增旧Runtime或兼容层。
+
+Runtime 与 Managed Package 分开记录：实际最终脚本的API2注册路径审计通过，未含API1注册或Shortcut调用；三款实际新字节的隔离机器流程涵盖首次安装、从前一API2开发候选更新、保存回读、同实例／用户名称／data／文件夹／排序／启用保持、恢复、取消与物理卸载。Node合成GitHub／saved tree不计为真实宿主或生产；本轮真实隔离Tavern及浏览器业务结果另见 Owner 回执。既有公开API1包仅在安全管理规则内识别，不恢复API1 Runtime；不把旧Hub向后兼容列为新版发行Gate。
+
+本节不声称重新执行真实Safari／OS输入法／OS动画设置或物理移动设备。生产 Registry API2、生产Origin／OAuth、正式新Assets及真实在线Managed、物理移动Safari、真实外部模型供应商、Owner手工验收及正式发行授权仍独立Pending。

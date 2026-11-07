@@ -6,7 +6,7 @@ const {hash,encode,REPOSITORY,SCRIPT_ID}=require('../tools/package-v1.cjs');
 const manifest=require('../manifest.json'),pkg=require('../package.json');
 const dir=path.join(__dirname,'../delivery'),read=n=>fs.readFileSync(path.join(dir,n));
 const metadata=JSON.parse(read('MieMie-Extension-update.json')),bytes=read(metadata.asset.name),script=JSON.parse(bytes);
-const hub=import(process.env.HUB_PACKAGE_MODULE || './fixtures/hub-package-v1/src/extension-packages.js');
+const hub=import(process.env.HUB_PACKAGE_MODULE || './fixtures/hub-api2/src/extension-packages.js');
 const futureVersion = pkg.version.split('.').map((n,i)=>i===2?Number(n)+1:n).join('.');
 const clone=x=>structuredClone(x);
 const release={id:201,tag_name:metadata.tag,draft:false,prerelease:false};
@@ -38,7 +38,7 @@ test('Production release checksums match every raw file; metadata within 64KiB',
 });
 test('Hub rejects missing manifest fields, unsafe icon, long launcher, API and repository mismatch',async()=>{
  const h=await hub;for(const field of ['schemaVersion','apiVersion','id','name','version','author','description','entry','repository','license']){const x=clone(manifest);delete x[field];assert.throws(()=>h.validateExtensionManifest(x,REPOSITORY),undefined,field);}
- for(const patch of [{icon:'../private.png'},{icon:'data:image/png;base64,abc'},{icon:'/private/icon.png'},{contributes:{launcher:{title:manifest.name,icon:'x'.repeat(17)}}},{hubApi:{min:2,max:2}},{repository:'https://github.com/Someone/Else'}])assert.throws(()=>h.validateExtensionManifest({...manifest,...patch},REPOSITORY));
+ for(const patch of [{icon:'../private.png'},{icon:'data:image/png;base64,abc'},{icon:'/private/icon.png'},{contributes:{launcher:{title:manifest.name,icon:'x'.repeat(17)}}},{hubApi:{min:1,max:1}},{repository:'https://github.com/Someone/Else'}])assert.throws(()=>h.validateExtensionManifest({...manifest,...patch},REPOSITORY));
 });
 test('Hub rejects invalid tags, filename, unknown metadata/download URL, size and identity mismatch',async()=>{
  const h=await hub;for(const patch of [{tag:'v0.2.1-beta'},{version:'0.2.1\n'},{downloadUrl:'https://example.test/unsafe'},{unknown:true},{asset:{...metadata.asset,name:'咩咩.json'}},{asset:{...metadata.asset,name:'../unsafe.json'}},{asset:{...metadata.asset,size:16777217}},{manifest:{...manifest,id:'miemie.other'}},{manifest:{...manifest,version:futureVersion}}])assert.throws(()=>h.validateExtensionPackageMetadata({...metadata,...patch},REPOSITORY,release));

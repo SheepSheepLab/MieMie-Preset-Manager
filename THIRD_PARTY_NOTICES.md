@@ -39,7 +39,7 @@ MieMie Preset Manager 的项目代码按 [GPL-3.0-or-later](LICENSE) 提供，�
 
 SillyTavern 和 [Tavern Helper / JS-Slash-Runner](https://github.com/N0VI028/JS-Slash-Runner) 是宿主及接口参考来源，具体核对版本见 [兼容说明](docs/COMPATIBILITY.md)，SillyTavern 文件哈希见 [源码溯源记录](docs/source-provenance.json)。除上文列明的 SillyTavern 测试资料外，本项目没有随生产包分发这两个宿主的实现。
 
-Hub 集成只使用公开生命周期、面板挂载和可选 Shortcut capability。本项目不包含 Polisher 的业务实现、Extension JSON 或美术素材。
+当前分支 Hub 集成只使用公开 API2 生命周期、面板挂载、可选 Native Window 与 Back；下方固定 API1／Shortcut 测试来源仍是历史证据，不进入生产包。本项目不包含 Polisher 的业务实现、Extension JSON 或美术素材。
 
 `icons.ts` 中的内联 SVG 控件是本项目编写的几何界面图形，随软件代码使用 GPL-3.0-or-later；没有引入第三方图标库或字体，也不将这些 SVG 控件声称为官方角色资产。正式产品 PNG 由维护者提供，其单独素材记录见 ASSETS-LICENSE.md。品牌身份与指定素材的边界仍见 [BRAND.md](BRAND.md) 和 [ASSETS-LICENSE.md](ASSETS-LICENSE.md)。对宿主或其他项目的提及不表示获得其官方背书。
 

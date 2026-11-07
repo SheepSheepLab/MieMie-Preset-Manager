@@ -13,7 +13,7 @@ export function createPickerEscapeGuard(doc:Document,trigger:HTMLButtonElement,i
     return !modal||modal.contains(trigger);
   }
   function consume(event:Event){event.preventDefault();event.stopImmediatePropagation();dismiss();}
-  function keydown(event:KeyboardEvent){if(event.key==='Escape'&&interactive())consume(event);}
+  function keydown(event:KeyboardEvent){if(event.key==='Escape'&&!event.isComposing&&event.keyCode!==229&&interactive())consume(event);}
   function cancel(event:Event){if(interactive()&&(event.target as Node).contains(trigger))consume(event);}
   function listen(add:boolean){
     if(listening===add)return;listening=add;

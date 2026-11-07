@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/SheepSheepLab/MieMie-Preset-Manager",
+  "commit": "5ceead3be47525be7352772ed58d58344bf22c44",
+  "scope": "Historical API1 adapter test only; never bundled or used by current API2 entry",
+  "files": {
+    "dual-mode.ts": "b2a3c597cb72a043936a17e6ddfefa313eae04ef35eb327fddd6b7d64ce0e658",
+    "manifest.json": "10057143ff77b2ae34fc05fcff8581fea38c250320b8714ee7098607397c1cf6"
+  }
+}

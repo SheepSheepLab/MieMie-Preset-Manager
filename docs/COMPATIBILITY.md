@@ -1,5 +1,7 @@
 # SillyTavern Compatibility Notes · 0.2.3
 
+> 本页原版本的原生数据、Binding 和历史测试范围保留；当前分支 Runtime API2、Native、Lease 与新增结果见 [HUB-API2](HUB-API2.md) 和 [TESTING](TESTING.md#api2-pre-main2026-10-20)。
+
 
 
 > 0.6.0 Candidate 当前证据见 [Release 0.6.0](RELEASE-0.6.0.md)。新版绑定/生成规则以 [Binding](PER-CHAT-PRESET-BINDING.md) 为准；下文标注历史阶段的验收不自动扩大为新版完整矩阵。

@@ -4,7 +4,13 @@
 const fs=require('node:fs'),path=require('node:path');
 const officialPNG=fs.readFileSync(path.join(__dirname,'../assets/preset-manager-icon.png'));
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm');
-const {PRESET_MANAGER_MANIFEST:manifest,startDualMode}=require('../.test-build/dual-mode.js');
+// Historical API1 compatibility remains tested against its original pinned adapter.
+// Current API2 adapter is exercised independently in api2-contract.test.cjs.
+const ts=require('typescript');
+const historicalSource=fs.readFileSync(path.join(__dirname,'fixtures/api1-adapter/dual-mode.ts'),'utf8');
+const historicalModule={exports:{}};
+new Function('require','exports',ts.transpileModule(historicalSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText)(name=>name==='./manifest.json'?require('./fixtures/api1-adapter/manifest.json'):require('../.test-build/'+name.replace('./','')+'.js'),historicalModule.exports);
+const {PRESET_MANAGER_MANIFEST:manifest,startDualMode}=historicalModule.exports;
 const fixture=require('./fixtures/hub-v1-contracts.json');
 const code=name=>{const item=fixture.excerpts.find(x=>x.name===name);assert(item,'Missing pinned excerpt '+name);return item.code;};
 class Element extends EventTarget{
@@ -39,23 +45,23 @@ function harness(){
  return{host,frame,view,panel,instances,context,warnings,launcher,provided:()=>provided,created:()=>created,presentation:()=>presentation,paused:()=>paused,requestClose:()=>closeHandler(),open:()=>context.surface.launch(manifest.id,()=>context.runtime.open(manifest.id),{kind:'shortcut',rect:{left:1,top:1,width:44,height:44}}),cleanup:async source=>{await source.dispose();await context.runtime.dispose();}};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));async function flush(){for(let i=0;i<8;i++)await tick();}
-test('Hub v1 production manifest passes original validate/provide and activates the factory',async()=>{
+test('Historical Hub v1 production manifest passes original validate/provide and activates the factory',async()=>{
  const h=harness(),source=startDualMode(h.host,h.frame,h.view);try{await source.settled();assert.equal(h.provided(),manifest,'Never substitute or normalize the production manifest');assert.equal(manifest.contributes.launcher.icon,'预设');assert.equal(h.created(),1);assert.equal(h.context.runtime.get(manifest.id).state,'enabled');assert.equal(h.presentation(),manifest.icon);assert.match(h.presentation(),/^data:image\/png;base64,/);assert.deepEqual(Buffer.from(h.presentation().split(',')[1],'base64'),officialPNG);assert.equal(h.context.extensionPanels.size,1);assert.deepEqual(h.warnings,[]);}finally{await h.cleanup(source);}
 });
-test('Hub v1 original renderMenu selects the production presentation image over text fallback',async()=>{
+test('Historical Hub v1 original renderMenu selects the production presentation image over text fallback',async()=>{
  const h=harness(),source=startDualMode(h.host,h.frame,h.view);try{await source.settled();h.context.renderMenu();const button=h.launcher.items.find(n=>n.dataset.hubApp===manifest.id),icon=button.children[0];assert.equal(icon.className,'mm-launcher-image','Production presentation must pass the actual Hub image policy');assert.equal(icon.children[0].tag,'img');assert.equal(icon.children[0].src,h.presentation());icon.children[0].onerror();assert.equal(icon.textContent,'预设');}finally{await h.cleanup(source);}
 });
-test('Hub v1 production source opens, formally closes, reopens and releases one Surface',async()=>{
+test('Historical Hub v1 production source opens, formally closes, reopens and releases one Surface',async()=>{
  const h=harness(),source=startDualMode(h.host,h.frame,h.view);try{await source.settled();for(let i=0;i<3;i++){await h.open();assert.equal(h.context.surface.state,'panel:'+manifest.id);assert.equal(h.paused(),true);h.requestClose();await flush();assert.equal(h.context.surface.state,'closed');assert.equal(h.panel.dataset.surfaceState,'closed');assert.equal(h.panel.hidden,true);assert.equal(h.paused(),false);assert.equal(h.created(),1);assert.equal(h.context.extensionPanels.size,1);}}finally{await h.cleanup(source);assert.equal(h.context.extensionPanels.size,0);assert.equal(h.context.surface.state,'closed');}
 });
-test('Hub v1 original provide rejects oversized SVG launcher metadata before invoking any factory',()=>{
+test('Historical Hub v1 original provide rejects oversized SVG launcher metadata before invoking any factory',()=>{
  const h=harness();let called=0;const invalid={...manifest,contributes:{launcher:{...manifest.contributes.launcher,icon:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"/>')}}};assert(invalid.contributes.launcher.icon.length>16);const result=h.context.provide(invalid,()=>{called++;});assert.equal(result.ok,false);assert.match(result.error,/短文本或 emoji/);assert.equal(called,0);assert.equal(h.context.sources.size,0);assert.equal(h.context.runtime.list().length,0);assert.equal(manifest.contributes.launcher.icon,'预设');
 });
 
-test('Standalone uses the same unmodified official PNG as the production Hub presentation',async()=>{
+test('Historical Standalone uses the same unmodified official PNG as the production Hub presentation',async()=>{
  const h=harness();h.host.__MieMieHub=undefined;const source=startDualMode(h.host,h.frame,h.view);try{await source.settled();const launcher=h.panel.parentNode.children.find(n=>'miemiePresetManagerStandalone' in n.dataset);assert(launcher);assert.equal(launcher.children[0].src,manifest.icon);assert.deepEqual(Buffer.from(launcher.children[0].src.split(',')[1],'base64'),officialPNG);}finally{await h.cleanup(source);}
 });
 
-test('Hub activation and repeated ready are idempotent for the production source',async()=>{
+test('Historical Hub activation and repeated ready are idempotent for the production source',async()=>{
  const h=harness(),source=startDualMode(h.host,h.frame,h.view);try{await source.settled();await Promise.all([h.instances[0].activate(),h.instances[0].activate()]);for(let i=0;i<5;i++)h.host.dispatchEvent(new Event('miemie:hub-ready'));await source.settled();assert.equal(h.created(),1);assert.equal(h.context.extensionPanels.size,1);assert.deepEqual(h.warnings,[]);await h.open();assert.equal(h.panel.hidden,false);}finally{await h.cleanup(source);}
 });

@@ -1,0 +1,12 @@
+{
+  "scope": "Original pre-reorder baseline; immutable source bytes, not current implementation",
+  "originalCommit": "ac81136caf623ce8f197296294b19c5f2a4f9cf6",
+  "files": {
+    "controller.ts": "e7128168b9f21a8d7a23caf071ce6c7a46a673556e0bcf95a253ae175b3db158",
+    "contracts.ts": "b43a55bbd5c1c9bb180be7129f85e583554a4e7480349566873d6d759053294a",
+    "model.ts": "a2de3aa8d965d67c455024979c2c31092af35e79fb11d34fffa14bbff23c0f04",
+    "ui.ts": "0b327406e944068ac071ab682ccbdc1c0a8f8f210f7b0eb92c6f639abbd59ab4",
+    "styles.ts": "810528fe963e16aa86bd7a1b7e5c120d06d8c2c7acd264947b04cc3634668f83",
+    "icons.ts": "5112e3cfd096dd7c55218e2399f39059c1f6f10b6c4bd4000c360f1db0b4f065"
+  }
+}
