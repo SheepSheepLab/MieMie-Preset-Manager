@@ -6,8 +6,19 @@ export const nativeLauncherStyles = `
 [data-miemie-preset-manager-native][hidden]{display:none!important}
 [data-miemie-preset-manager-native] img{width:100%;height:100%;object-fit:contain;border-radius:50%;pointer-events:none}
 [data-miemie-preset-manager-native] svg{width:100%;height:100%;box-sizing:border-box;padding:10px;border-radius:50%;pointer-events:none}
-@media(hover:hover){[data-miemie-preset-manager-native]:hover{scale:1.06;box-shadow:0 6px 20px #000a,0 0 18px #c49af566}}
-[data-miemie-preset-manager-native]:active{scale:.95;cursor:grabbing}
+@media(hover:hover){[data-miemie-preset-manager-native]:not([data-pm-tucked]):hover{scale:1.06;box-shadow:0 6px 20px #000a,0 0 18px #c49af566}}
+[data-miemie-preset-manager-native]:active{cursor:grabbing}
+[data-miemie-preset-manager-native]:not([data-pm-tucked]):active{scale:.95}
 [data-miemie-preset-manager-native]:focus-visible{outline:2px solid #e0c8ff;outline-offset:3px}
-@media(prefers-reduced-motion:reduce){[data-miemie-preset-manager-native]{transition:none}}
+[data-miemie-preset-manager-native][data-pm-tucked]{transition:translate 190ms ease-out,border-color .16s,box-shadow .16s}
+[data-miemie-preset-manager-native][data-pm-tucked]:not([data-pm-gesture],[data-pm-expanded]):is([data-pm-hover],[data-pm-peek],:focus-visible){translate:var(--mm-pm-peek) 0}
+[data-miemie-preset-manager-native][data-pm-gesture]{transition:none}
+[data-miemie-preset-manager-native][data-pm-ready]{border-color:#dfc6ff}
+[data-miemie-preset-manager-native][data-pm-gesture=grabbed]{cursor:grabbing;border-color:#dfc6ff;box-shadow:0 0 0 4px #bea0ff45,0 4px 16px #0009;animation:mm-pm-grab 200ms ease-out}
+@keyframes mm-pm-grab{from{scale:.92}to{scale:1}}
+[data-preset-manager-pull]{position:fixed;display:block;z-index:2147483299;overflow:hidden;pointer-events:none}
+[data-preset-manager-pull][hidden]{display:none!important}
+[data-preset-manager-pull] path{fill-opacity:.64;stroke:#b495ff57;stroke-width:1;transition:fill-opacity .11s,stroke .11s}
+[data-preset-manager-pull][data-ready] path{fill-opacity:1;stroke:#dfc6ff94}
+@media(prefers-reduced-motion:reduce){[data-miemie-preset-manager-native],[data-preset-manager-pull] path{transition:none!important;animation:none!important}}
 `;

@@ -24,6 +24,8 @@ export const managerStyles = `
 .miemie-pm .mm-button{border:1px solid transparent;border-radius:10px;background:transparent;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;flex-shrink:0;line-height:1.2}
 .miemie-pm .mm-button:hover:not(:disabled){background:#c49af51f}
 .miemie-pm .mm-button.mm-icon{width:44px;padding:10px}
+.miemie-pm .mm-button.mm-launcher-settings-button{border:0;padding:8px;color:#e3cef9}
+.miemie-pm .mm-launcher-settings-button svg{width:24px;height:24px}
 .miemie-pm .mm-button.mm-save{background:transparent;position:relative}
 .miemie-pm .mm-button.mm-save:after{content:"";display:none;position:absolute;left:50%;bottom:3px;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#77f5a4;box-shadow:0 0 4px #77f5a499,0 0 8px #77f5a433;pointer-events:none}
 .miemie-pm .mm-session-actions[data-dirty=true] .mm-save:after{display:block}
@@ -94,6 +96,43 @@ export const managerStyles = `
 .miemie-pm .mm-field>span{font-size:13px;font-weight:550}
 .miemie-pm textarea{resize:vertical;min-height:220px;line-height:1.7;tab-size:2}
 .miemie-pm .mm-dialog-actions{justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--mm-line);flex:none}
+.miemie-pm .mm-launcher-settings-layer{background:#0b0818a8;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.miemie-pm .mm-launcher-settings{width:min(440px,100%);animation:mm-launcher-settings-in .18s cubic-bezier(.2,.8,.3,1)}
+@keyframes mm-launcher-settings-in{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.miemie-pm .mm-launcher-settings{animation:none}}
+.miemie-pm .mm-launcher-card{display:grid;gap:12px;min-width:0;padding:14px;border:1px solid var(--mm-line);border-radius:16px;background:linear-gradient(145deg,var(--mm-panel),var(--mm-bg))}
+.miemie-pm .mm-launcher-card-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.miemie-pm .mm-launcher-card-heading h4{margin:0;font-size:16px;line-height:1.3}
+.miemie-pm .mm-launcher-card-heading small{font-size:11px;color:var(--mm-muted)}
+.miemie-pm .mm-launcher-size-row{display:grid;grid-template-columns:minmax(0,1fr) 64px;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#100c1b65}
+.miemie-pm .mm-launcher-size-fields{min-width:0;display:grid;gap:4px}
+.miemie-pm .mm-launcher-size-heading,.miemie-pm .mm-launcher-size-stops{display:flex;justify-content:space-between;align-items:center;gap:4px}
+.miemie-pm .mm-launcher-size-label,.miemie-pm .mm-launcher-mode-copy strong{font-weight:650}
+.miemie-pm .mm-launcher-size-value{color:#e3cef9;font-size:12px;font-variant-numeric:tabular-nums;border:1px solid var(--mm-line);border-radius:99px;padding:1px 7px}
+.miemie-pm .mm-launcher-size-stops{color:var(--mm-muted);font-size:10px;line-height:1}
+.miemie-pm .mm-launcher-size-input{appearance:none;-webkit-appearance:none;width:100%;height:36px;min-width:0;padding:0 8px;border:0;border-radius:10px;background:#100c1c;cursor:pointer}
+.miemie-pm .mm-launcher-size-input::-webkit-slider-runnable-track{height:5px;border-radius:10px;background:linear-gradient(to right,var(--mm-accent) var(--mm-size-fill),var(--mm-off) var(--mm-size-fill))}
+.miemie-pm .mm-launcher-size-input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:19px;height:19px;margin-top:-7px;border:1px solid #e3cef9;border-radius:50%;background:#ddbefb;box-shadow:0 0 8px #bd8bff70}
+.miemie-pm .mm-launcher-size-input::-moz-range-track{height:5px;border-radius:10px;background:var(--mm-off)}
+.miemie-pm .mm-launcher-size-input::-moz-range-progress{height:5px;border-radius:10px;background:var(--mm-accent)}
+.miemie-pm .mm-launcher-size-input::-moz-range-thumb{width:17px;height:17px;border:1px solid #e3cef9;border-radius:50%;background:#ddbefb}
+.miemie-pm .mm-launcher-size-preview{position:relative;overflow:hidden;height:64px;border:1px solid var(--mm-line);border-radius:12px;background:radial-gradient(ellipse at 70% 40%,#392750,var(--mm-bg));pointer-events:none}
+.miemie-pm .mm-launcher-size-preview img{position:absolute;top:50%;right:50%;transform:translate(50%,-50%);width:var(--mm-preview-diameter);height:var(--mm-preview-diameter);object-fit:cover;border:2px solid #c49af5a0;border-radius:50%;box-shadow:0 0 0 4px #c49af526,0 2px 12px #0008;transition:right .19s ease-out}
+.miemie-pm .mm-launcher-size-preview[data-tucked] img{right:0}
+.miemie-pm .mm-launcher-mode-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:10px;align-items:center}
+.miemie-pm .mm-launcher-mode-copy{display:grid;gap:4px;min-width:0}
+.miemie-pm .mm-button.mm-launcher-mode-switch{width:52px;padding:0;border-radius:14px}
+.miemie-pm .mm-launcher-mode-track{display:block;width:43px;height:25px;padding:3px;border:1px solid #796395;border-radius:20px;background:#35274d;transition:background .16s,border-color .16s}
+.miemie-pm .mm-launcher-mode-track:after{content:"";display:block;width:17px;height:17px;border-radius:50%;background:#ccbedc;transition:translate .16s,background .16s}
+.miemie-pm .mm-launcher-mode-switch[aria-checked=true] .mm-launcher-mode-track{background:#613f9b;border-color:#c49af5}
+.miemie-pm .mm-launcher-mode-switch[aria-checked=true] .mm-launcher-mode-track:after{translate:18px 0;background:#fbf7ff}
+.miemie-pm .mm-launcher-settings .mm-dialog-actions .mm-button{width:100%}
+.miemie-pm[data-compact=true] .mm-launcher-settings :is(.mm-dialog-head,.mm-dialog-body,.mm-dialog-actions){padding-inline:12px}
+.miemie-pm[data-compact=true] .mm-launcher-card{padding:10px}
+.miemie-pm[data-compact=true] .mm-launcher-size-row{grid-template-columns:minmax(0,1fr) 56px;padding:8px;gap:8px}
+.miemie-pm[data-compact=true] .mm-launcher-size-preview{height:56px}
+@media(pointer:coarse){.miemie-pm .mm-launcher-size-input{height:40px}}
+@media(prefers-reduced-motion:reduce){.miemie-pm .mm-launcher-mode-track,.miemie-pm .mm-launcher-mode-track:after{transition:none}}
 .miemie-pm details{border-top:1px solid var(--mm-line);padding-top:12px}
 .miemie-pm summary{cursor:pointer;min-height:44px;display:list-item;padding:8px 0}
 .miemie-pm .mm-advanced{display:grid;gap:16px;padding-top:12px}

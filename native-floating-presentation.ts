@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Geometry and pixels only. Hidden/inert, Hub navigation and business belong to callers.
 export type NativeBounds = { left: number; top: number; right: number; bottom: number; size: number };
+type Point = {left: number; top: number};
 export type NativePresentation = {
   place(panel: HTMLElement): void;
-  run(panel: HTMLElement, opening: boolean): Promise<boolean>;
+  run(panel: HTMLElement, opening: boolean, returnDock?: Point): Promise<boolean>;
   cancel(): void; release(): void; follow(): void; dispose(): void;
 };
 export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonElement, bounds: () => NativeBounds): NativePresentation {
@@ -20,7 +21,8 @@ export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonEl
     for (const cleanup of [...cleanups]) cleanup();
   }
   function fit(panel: HTMLElement) {
-    const b = { ...bounds() }, o = orb.getBoundingClientRect(), css = host.getComputedStyle(panel);
+    const b = { ...bounds() };
+    const o = orb.getBoundingClientRect(), css = host.getComputedStyle(panel);
     const safe = (side: string) => Math.max(10,parseFloat(css.getPropertyValue(`--mm-safe-${side}`)) || 0);
     const v = host.visualViewport;
     b.left = Math.max(b.left,(v?.offsetLeft || 0)+safe('left'));
@@ -43,9 +45,10 @@ export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonEl
     const value = parseFloat(raw) * (raw.endsWith('ms') ? 1 : 1000);
     return Number.isFinite(value) ? Math.max(0, Math.min(2000, value)) : fallback;
   }
-  async function animate(element: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions) {
+  async function animate(element: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions, startTime?: CSSNumberish | null) {
     const animation = element.animate(frames, { ...options, fill:'both' });
     animations.add(animation);
+    if (startTime != null) animation.startTime = startTime;
     try { await animation.finished; } catch { /* Cancellation settles at the current endpoint. */ }
     finally { animation.cancel(); animations.delete(animation); }
   }
@@ -79,7 +82,7 @@ export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonEl
       ]); } finally { cleanup(); }
     } };
   }
-  async function run(panel: HTMLElement, opening: boolean) {
+  async function run(panel: HTMLElement, opening: boolean, returnDock?: Point) {
     if (disposed || !orb.isConnected) return false;
     const epoch = generation; activePanel = panel; fit(panel);
     const header = opening ? panel.querySelector<HTMLImageElement>('[data-tool-icon]') : null;
@@ -87,6 +90,7 @@ export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonEl
     const r = panel.getBoundingClientRect(), o = orb.getBoundingClientRect();
     if (typeof panel.animate === 'function' && !reduced() && r.width && r.height && o.width) {
       const css = host.getComputedStyle(orb);
+      const dock = !opening && typeof orb.animate === 'function' ? returnDock : undefined;
       const small = { transform:`translate(${o.left-r.left}px,${o.top-r.top}px) scale(${o.width/r.width},${o.height/r.height})`, opacity:0, clipPath:'inset(0 round 50%)' };
       const large = { transform:'none', opacity:1, clipPath:`inset(0 round ${host.getComputedStyle(panel).borderRadius})` };
       const origin = panel.style.transformOrigin, willChange = panel.style.willChange;
@@ -97,10 +101,20 @@ export function createNativeFloatingPresentation(host: Window, orb: HTMLButtonEl
         delete orb.dataset.surfaceActive; panel.style.transformOrigin = origin; panel.style.willChange = willChange; cleanups.delete(cleanup);
       };
       cleanups.add(cleanup);
-      try { await animate(panel,opening?[small,large]:[large,small],{
+      const motion = {
         duration:timing(css,opening?'--mm-native-motion-open':'--mm-native-motion-close',opening?520:460),
         easing:css.getPropertyValue('--mm-native-ease-surface').trim() || 'ease',
-      }); } catch (error) { hero?.cleanup(); throw error; } finally { cleanup(); }
+      };
+      try {
+        const startTime = dock ? doc.timeline?.currentTime : null;
+        const panelFlight = animate(panel,opening?[small,large]:[large,small],motion,startTime);
+        if (dock) {
+          // Keep the original panel flight relative to the orb and move both by the same offset.
+          const retreat = [{translate:'0px 0px'},{translate:`${dock.left-o.left}px ${dock.top-o.top}px`}];
+          const retreatMotion = {duration:motion.duration, easing:'ease-in-out'};
+          await Promise.all([panelFlight, animate(panel,retreat,retreatMotion,startTime), animate(orb,retreat,retreatMotion,startTime)]);
+        } else await panelFlight;
+      } catch (error) { hero?.cleanup(); throw error; } finally { cleanup(); }
     }
     try { if (hero && epoch === generation) await hero.land(); } finally { hero?.cleanup(); }
     return !disposed;

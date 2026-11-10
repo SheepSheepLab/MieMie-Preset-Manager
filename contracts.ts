@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See LICENSE for terms; distributed without warranty.
 
+import type { LauncherAppearance } from './launcher-appearance';
+
 /** Native JSON stays authoritative. Unknown keys at every level are retained. */
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type NativePrompt = { identifier: string; name?: string; role?: string; content?: string; system_prompt?: boolean; marker?: boolean; injection_position?: number; injection_depth?: number; injection_order?: number; injection_trigger?: string[]; forbid_overrides?: boolean; [key: string]: unknown };
@@ -77,6 +79,7 @@ export interface ManagerController {
 }
 export interface ManagerView {
   panel: HTMLElement;
+  readonly launcherAppearance?: LauncherAppearance;
   open(): void;
   /** Local hiding for lifecycle cleanup; user actions go through the installed route. */
   close(): void;

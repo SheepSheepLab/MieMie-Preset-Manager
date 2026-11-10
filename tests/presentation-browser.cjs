@@ -18,7 +18,7 @@ const {hubCode}=require('./helpers/hub-api2-browser.cjs');
 (async()=>{
 await bundle();fs.writeFileSync(path.join(out,'preview.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>咩咩预设管理 · Presentation Review</title><style>body{margin:0;background:#100d19;font-family:system-ui;color:#c5b8d6}body>p{padding:20px;max-width:40em}</style><p>Presentation 候选 · 全部为 synthetic 演示数据，修改仅保存于本页内存。</p><script src="harness.js"></script></html>');
 const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'chromium-headless-shell',headless:true});
-async function pageAt(size={width:1512,height:859},options={}){const context=await browser.newContext({viewport:size,...Object.fromEntries(Object.entries(options).filter(([key])=>key!=='mockViewport'))});if(options.mockViewport)await context.addInitScript(()=>{const v=Object.assign(new EventTarget(),{width:390,height:844,offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{value:v,configurable:true});window.mockViewport=v;});const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.error('browser:',m.text());});page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});await page.goto(require('node:url').pathToFileURL(path.join(out,'preview.html')).href);await ready(page);return page;}
+async function pageAt(size={width:1512,height:859},options={}){const context=await browser.newContext({viewport:size,...Object.fromEntries(Object.entries(options).filter(([key])=>!['mockViewport','withoutTopLayer'].includes(key)))});if(options.withoutTopLayer)await context.addInitScript(()=>{HTMLElement.prototype.showPopover=undefined;});if(options.mockViewport)await context.addInitScript(()=>{const v=Object.assign(new EventTarget(),{width:390,height:844,offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{value:v,configurable:true});window.mockViewport=v;});const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='warning'||m.type()==='error')console.error('browser:',m.text());});page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});await page.goto(require('node:url').pathToFileURL(path.join(out,'preview.html')).href);await ready(page);return page;}
 try{
 // Owner regression: repeated launch of an already-open Hub Surface is a focus
 // request, not a new presentation entry. Exercise the production source and the
@@ -42,6 +42,8 @@ async function installNative(page) {
   });
 }
 async function nativeOpen(page) {
+  await page.locator(native).hover();
+  await page.waitForFunction(()=>!document.querySelector('[data-miemie-preset-manager-native]').getAnimations().length);
   await page.locator(native).click();
   await page.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
 }
@@ -104,16 +106,218 @@ for(const mode of ['standalone','native'])for(const motion of ['no-preference','
   await p.close();
 }
 
+// Exercise the same product settings from the Standalone window and Hub-owned entries.
+const settingsButton = page => page.getByRole('button',{name:'悬浮球设置',exact:true});
+const settingsDialog = page => page.getByRole('dialog',{name:'悬浮球设置',exact:true});
+const sizeSlider = page => settingsDialog(page).getByRole('slider',{name:'悬浮球大小'});
+const dockSwitch = page => settingsDialog(page).getByRole('switch',{name:'潜航模式'});
+const orbPosition = page => page.locator(native).evaluate(n=>({
+  left:parseFloat(n.style.left),top:parseFloat(n.style.top),size:parseFloat(n.style.width),
+}));
+async function checkLauncherPreview(page,tucked,diameter) {
+  await page.waitForFunction(({tucked,diameter})=>{
+    const preview=document.querySelector('.mm-launcher-size-preview');
+    const image=preview?.querySelector('img');
+    if(!image||preview.hasAttribute('data-tucked')!==tucked)return false;
+    const frame=preview.getBoundingClientRect(), orb=image.getBoundingClientRect();
+    const center=tucked?frame.right-preview.clientLeft:frame.left+frame.width/2;
+    return getComputedStyle(preview).overflow==='hidden'&&
+      Math.abs(orb.left+orb.width/2-center)<.5&&Math.abs(orb.width-diameter)<.5;
+  },{tucked,diameter});
+}
+async function checkDockGap(page,side) {
+  await page.mouse.move(150,30);
+  await page.waitForFunction(side=>{
+    const orb=document.querySelector('[data-miemie-preset-manager-native]');
+    const panel=document.querySelector('.miemie-pm');
+    if(!orb||!panel||panel.inert||panel.dataset.surfaceState!=='open')return false;
+    const ball=orb.getBoundingClientRect(), panelRect=panel.getBoundingClientRect();
+    const gap=side==='left'?panelRect.left-ball.right:ball.left-panelRect.right;
+    return Math.abs(ball.left-parseFloat(orb.style.left))<.5&&Math.abs(gap-12)<.5;
+  },side);
+}
+async function checkDockReturn(page,from,to,panelStart) {
+  const sample=await page.waitForFunction(({from,to,panelStart})=>{
+    const orb=document.querySelector('[data-miemie-preset-manager-native]');
+    const panel=presentationTest.view.panel;
+    const ball=orb.getBoundingClientRect(), windowRect=panel.getBoundingClientRect();
+    const retreatProgress=(ball.left-from)/(to-from);
+    if (panel.dataset.surfaceState!=='closing' || retreatProgress<.15 || retreatProgress>.55) return false;
+    const [windowMotion,windowRetreat]=panel.getAnimations(), [orbMotion]=orb.getAnimations();
+    const timing=windowMotion.effect.getComputedTiming(), progress=timing.progress;
+    return {
+      sameClock:windowMotion.startTime===orbMotion.startTime&&windowRetreat.startTime===orbMotion.startTime,
+      shrinkPace:[timing.duration,timing.easing],
+      gentleRetreat:retreatProgress<progress,
+      leftError:(windowRect.left-ball.left)-(panelStart.left-from)*(1-progress),
+      topError:windowRect.top-(panelStart.top+(ball.top-panelStart.top)*progress),
+      widthError:windowRect.width-(panelStart.width+(ball.width-panelStart.width)*progress),
+      heightError:windowRect.height-(panelStart.height+(ball.height-panelStart.height)*progress),
+    };
+  },{from,to,panelStart});
+  const {sameClock,shrinkPace,gentleRetreat,...errors}=await sample.jsonValue();
+  assert(sameClock);
+  assert.deepEqual(shrinkPace,[460,'cubic-bezier(0.32, 0.72, 0, 1)']);
+  assert(gentleRetreat);
+  assert(Object.values(errors).every(value=>Math.abs(value)<.5),JSON.stringify(errors));
+  await page.waitForFunction(to=>{
+    const orb=document.querySelector('[data-miemie-preset-manager-native]');
+    return presentationTest.view.panel.hidden && !orb.getAnimations().length && Math.abs(orb.getBoundingClientRect().left-to)<.5;
+  },to);
+}
+{
+  const p=await pageAt({width:1200,height:900});
+  assert.deepEqual(await settingsButton(p).evaluate(n=>({
+    border:getComputedStyle(n).borderTopWidth,icon:n.querySelector('svg').getBoundingClientRect().width,
+    target:n.getBoundingClientRect().width,
+  })),{border:'0px',icon:24,target:44});
+  await settingsButton(p).click();
+  const card=settingsDialog(p).locator('.mm-launcher-card');
+  assert.equal(await card.getByRole('slider',{name:'悬浮球大小'}).count(),1);
+  assert.equal(await card.getByRole('switch',{name:'潜航模式'}).count(),1);
+  await p.locator('.miemie-pm').screenshot({path:path.join(out,'launcher-settings-desktop.png'),animations:'disabled'});
+  assert.equal(await sizeSlider(p).inputValue(),'100');
+  assert.equal(await dockSwitch(p).getAttribute('aria-checked'),'false');
+  await checkLauncherPreview(p,false,34);
+  await p.keyboard.press('Tab');
+  assert.equal(await sizeSlider(p).evaluate(n=>n===document.activeElement),true);
+  await sizeSlider(p).press('Home');
+  assert.equal((await orbPosition(p)).size,32);
+  await sizeSlider(p).press('End');
+  assert.equal((await orbPosition(p)).size,96);
+  await dockSwitch(p).click();
+  assert.equal(await dockSwitch(p).getAttribute('aria-checked'),'true');
+  assert.equal((await orbPosition(p)).left,1200-48);
+  await checkLauncherPreview(p,true,51);
+  await dockSwitch(p).click();
+  await checkLauncherPreview(p,false,51);
+  await dockSwitch(p).click();
+  await checkLauncherPreview(p,true,51);
+  await p.keyboard.press('Escape');
+  assert.equal(await settingsDialog(p).isVisible(),false);
+  assert.equal(await settingsButton(p).evaluate(n=>n===document.activeElement),true);
+  await returnWindow(p);
+  const orb=await orbPosition(p), y=orb.top+orb.size/2;
+  await p.mouse.move(1100,y);
+  await p.mouse.move(1190,y);
+  await p.waitForFunction(()=>document.querySelector('[data-pm-tucked]').getBoundingClientRect().left<1148);
+  assert.equal(await p.locator(native).evaluate(n=>getComputedStyle(n).cursor),'grab');
+  await p.mouse.click(1190,y);
+  assert.equal(await p.locator('.miemie-pm').isVisible(),false);
+  await p.mouse.move(1190,y); await p.mouse.down(); await p.mouse.move(1140,y+9,{steps:4});
+  assert.equal(await p.locator(native).evaluate(n=>getComputedStyle(n).cursor),'grabbing');
+  assert.equal(await p.locator(native).getAttribute('data-pm-ready'),'');
+  assert.equal((await orbPosition(p)).top,orb.top);
+  assert.equal(await p.locator('[data-preset-manager-pull][data-ready]').isVisible(),true);
+  await p.mouse.up();
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
+  await checkDockGap(p,'right');
+  const expandedRight=await orbPosition(p);
+  assert.equal(expandedRight.left,1200-10-96);
+  await p.mouse.move(expandedRight.left+48,expandedRight.top+48);
+  assert.equal(await p.locator(native).evaluate(n=>getComputedStyle(n).translate),'none');
+  await checkDockGap(p,'right');
+  await installNative(p);
+  assert.equal(await p.locator(standalone).count(),0);
+  assert.equal((await orbPosition(p)).size,96);
+  assert.equal(await p.locator(native).getAttribute('data-pm-tucked'),'');
+  await p.evaluate(()=>pinnedHub.honeycomb());
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
+  await settingsButton(p).click();
+  assert.equal(await sizeSlider(p).inputValue(),'150');
+  await checkLauncherPreview(p,true,51);
+  await sizeSlider(p).press('Home');
+  assert.equal((await orbPosition(p)).size,32);
+  await checkLauncherPreview(p,true,17);
+  await settingsDialog(p).getByRole('button',{name:'返回',exact:true}).click();
+  assert.equal(await settingsButton(p).evaluate(n=>n===document.activeElement),true);
+  await returnWindow(p);
+  const mounted=await orbPosition(p), mountedY=mounted.top+mounted.size/2;
+  await p.mouse.move(1194,mountedY); await p.mouse.down(); await p.mouse.move(1170,mountedY,{steps:3}); await p.mouse.up();
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
+  assert.equal(await p.evaluate(()=>pinnedHub.surface.ownsNative(presentationTest.view.panel)),true);
+  await checkDockGap(p,'right');
+  assert.equal((await orbPosition(p)).left,1200-10-32);
+  const rightPanel=await panelGeometry(p);
+  await Promise.all([checkDockReturn(p,1200-10-32,1200-16,rightPanel),returnWindow(p)]);
+  assert.equal((await orbPosition(p)).left,1200-16);
+  assert.equal(await p.evaluate(()=>reorderTest.writes),0);
+  await p.evaluate(()=>localStorage.setItem('miemie_preset_manager_dock_v1',JSON.stringify({side:'left',ratio:.6})));
+  await p.reload(); await ready(p);
+  await returnWindow(p);
+  const left=await orbPosition(p), leftY=left.top+left.size/2;
+  await p.mouse.move(6,leftY); await p.mouse.down(); await p.mouse.move(35,leftY,{steps:3}); await p.mouse.up();
+  await checkDockGap(p,'left');
+  assert.equal((await orbPosition(p)).left,10);
+  const leftPanel=await panelGeometry(p);
+  await Promise.all([checkDockReturn(p,10,-16,leftPanel),p.locator(native).click()]);
+  assert.equal((await orbPosition(p)).left,-16);
+  receipts.push('Launcher settings: stable open gap; Return in Hub Native and orb click in Standalone synchronize both animations on the same clock and converge at the right and left edges');
+  await p.context().close();
+}
+{
+  const p=await pageAt({width:390,height:844},{hasTouch:true,isMobile:true,reducedMotion:'reduce'});
+  await returnWindow(p);
+  await p.locator(native).tap();
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open');
+  assert.equal(await hit(p.locator(native)),false);
+  await returnWindow(p);
+  await p.locator(native).tap();
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open');
+  await settingsButton(p).tap();
+  await sizeSlider(p).press('End');
+  await dockSwitch(p).tap();
+  await checkLauncherPreview(p,true,51);
+  await p.setViewportSize({width:320,height:740});
+  await checkLauncherPreview(p,true,51);
+  assert.ok(await settingsDialog(p).locator('.mm-launcher-card').evaluate(n=>n.scrollWidth<=n.clientWidth));
+  await p.setViewportSize({width:390,height:844});
+  await p.screenshot({path:path.join(out,'launcher-settings-mobile.png'),animations:'disabled'});
+  await settingsDialog(p).getByRole('button',{name:'返回',exact:true}).tap();
+  await returnWindow(p);
+  const cdp=await p.context().newCDPSession(p);
+  const send=(type,x,y)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:x===undefined?[]:[{x,y,id:0}]});
+  const orb=await orbPosition(p), y=Math.round(orb.top+orb.size/2);
+  await send('touchStart',375,y); await send('touchMove',366,y); await send('touchEnd');
+  assert.equal(await p.locator('.miemie-pm').isVisible(),false);
+  await send('touchStart',375,y);
+  await p.waitForFunction(()=>document.querySelector('[data-pm-gesture="grabbed"]'));
+  const grabbed=await orbPosition(p);
+  assert.equal(grabbed.left+grabbed.size/2,375);
+  assert.equal(grabbed.top+grabbed.size/2,y);
+  await send('touchMove',22,y+65); await send('touchEnd');
+  await p.waitForFunction(()=>JSON.parse(localStorage.getItem('miemie_preset_manager_dock_v1')).side==='left');
+  assert.equal((await orbPosition(p)).left,-48);
+  assert.equal(await p.locator('.miemie-pm').isVisible(),false);
+  await p.reload(); await ready(p);
+  assert.equal((await orbPosition(p)).size,96);
+  assert.equal(await p.locator(native).getAttribute('data-pm-tucked'),'');
+  await returnWindow(p);
+  const next=await orbPosition(p), nextY=Math.round(next.top+next.size/2);
+  await send('touchStart',20,nextY); await send('touchMove',80,nextY+8); await send('touchEnd');
+  await p.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='open'&&!presentationTest.view.panel.inert);
+  assert.ok(await p.locator('.miemie-pm').evaluate(n=>{const r=n.getBoundingClientRect();return r.left>=10&&r.right<=380;}));
+  await returnWindow(p);
+  assert.equal(await p.locator(native).evaluate(n=>n.getAnimations().length),0);
+  assert.equal((await orbPosition(p)).left,-48);
+  assert.equal(await p.evaluate(()=>reorderTest.writes),0);
+  receipts.push('Touch opens from the regular launcher and closes via Return when covered; tucked short pull cancels, 0.9s hold centers, horizontal pull opens, and reduced motion returns directly to the stored dock');
+  await p.context().close();
+}
+
 for (const width of [1512,390]) {
   const p=await pageAt({width,height:844},{reducedMotion:'reduce'});
   await installNative(p);await nativeOpen(p);
   const original=await panelGeometry(p);assert.equal(original.mode,'native');
   if(width===1512) assert(original.left>width/2,'Desktop native entry must be beside its orb, not centered');
   await p.evaluate(async()=>{const c=presentationTest.controller;await c.move('c','a',c.revision());window.nativeDirty=JSON.stringify(c.state.pendingRaw);});
-  for(let i=0;i<6;i++) {
-    await p.locator(native).click();await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-    assert.deepEqual(await panelGeometry(p),original,'Repeated native click must preserve Surface presentation and geometry');
-  }
+  assert.equal(await p.locator(native).getAttribute('aria-label'),'关闭咩咩预设管理');
+  if(width===1512)await p.locator(native).click();
+  else await p.getByRole('button',{name:'关闭预设管理',exact:true}).click();
+  const confirm=p.getByRole('dialog',{name:'关闭预设管理',exact:true});
+  await confirm.waitFor();
+  await confirm.getByRole('button',{name:'否',exact:true}).click();
+  assert.deepEqual(await panelGeometry(p),original,'Cancelling the close must preserve Native placement');
   await checkNativeIdentity(p);
   assert.equal(await p.evaluate(()=>nativeMotionCount),0);
   await p.locator('.mm-card[data-id=a]').getByRole('button',{name:'编辑条目',exact:true}).click();
@@ -126,7 +330,7 @@ for (const width of [1512,390]) {
   assert.deepEqual(await panelGeometry(p),original);
   assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Native clicks');
   assert.equal(await p.evaluate(()=>JSON.stringify(presentationTest.controller.state.pendingRaw)),await p.evaluate(()=>nativeDirty));
-  receipts.push(`${width}px: six pointer Native clicks plus two real-handler draft requests retain native placement, one panel/controller, dirty and draft, zero writes or new motion`);
+  receipts.push(`${width}px: the ${width===1512?'orb':'Return button'} opens the dirty-close confirmation, declining preserves Native placement, programmatic opens retain draft and no data is written`);
   await p.evaluate(()=>pinnedHub.honeycomb());assert.equal((await panelGeometry(p)).mode,'hub');
   assert.equal(await p.evaluate(()=>pinnedHub.surface.ownsNative(presentationTest.view.panel)),false);
   assert.equal(await draft.inputValue(),'Synthetic draft survives repeat Native clicks');
@@ -143,6 +347,8 @@ for (const width of [1512,390]) {
   await p.evaluate(async()=>{await presentationTest.source.dispose();await pinnedHub.dispose();});await p.close();
 }
 const flightPage=await pageAt();await installNative(flightPage);
+// Compare the flight's placement independently of the regular orb's hover scale.
+await flightPage.locator(native).evaluate(n=>{n.style.scale='1';});
 await flightPage.locator(native).click();
 await flightPage.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='opening');
 const flightPlacement=await panelPlacement(flightPage);
@@ -155,9 +361,12 @@ assert.equal(await flightPage.evaluate(()=>nativeMotionCount),flightMotion+2,'On
 assert.equal(await flightPage.locator('[data-preset-manager-surface-splash]').count(),0);
 await checkNativeIdentity(flightPage);
 const settled=await panelGeometry(flightPage);
-for(let i=0;i<3;i++)await flightPage.locator(native).click();
+await flightPage.locator(native).dblclick();
+await flightPage.locator('.miemie-pm').waitFor({state:'hidden'});
+assert.equal(await flightPage.locator(native).getAttribute('aria-label'),'打开咩咩预设管理');
+await nativeOpen(flightPage);
 assert.deepEqual(await panelGeometry(flightPage),settled);
-receipts.push('Normal motion: burst clicks during opening preserve geometry/inert and one flight; repeated clicks after landing do not move the panel');
+receipts.push('Normal motion: burst open requests preserve geometry/inert and one flight; a real orb double-click closes once without reopening');
 await flightPage.getByRole('button',{name:'关闭预设管理',exact:true}).click();
 await flightPage.waitForFunction(()=>presentationTest.view.panel.dataset.surfaceState==='closing');
 const closingPlacement=await panelPlacement(flightPage);
@@ -173,12 +382,12 @@ assert.deepEqual(await flightPage.evaluate(()=>pinnedHub.warnings),[]);
 receipts.push('Formal closePanel with immediate repeated Native reopen serializes both flights, retains one panel and restores native placement');
 await flightPage.evaluate(async()=>{await presentationTest.source.dispose();await pinnedHub.dispose();});await flightPage.close();
 // Owner regression: rect overlap alone must never move card actions. Use the
-// real production view/orb and browser paint order, including stacking contexts.
+// real production view/orb and fallback stacking behavior without popovers.
 async function clearanceState(page){return page.locator('.mm-card').evaluateAll(nodes=>nodes.map(n=>({side:n.dataset.orbClearance||'',left:n.style.getPropertyValue('--mm-orb-left'),right:n.style.getPropertyValue('--mm-orb-right')})));}
 async function noClearance(page){await page.waitForFunction(()=>[...document.querySelectorAll('.mm-card')].every(n=>!n.dataset.orbClearance&&!n.style.getPropertyValue('--mm-orb-left')&&!n.style.getPropertyValue('--mm-orb-right')));}
 async function overlapCard(page,above){await page.evaluate(above=>{const p=presentationTest.view.panel,o=document.querySelector('[data-miemie-preset-manager-native]'),r=p.querySelector('.mm-card[data-id=c]').getBoundingClientRect();p.style.setProperty('z-index',above?'2147483500':'2147483000','important');o.style.setProperty('left',`${r.right-64}px`,'important');o.style.setProperty('top',`${r.top+r.height/2-32}px`,'important');o.style.setProperty('transform','none','important');o.style.setProperty('transition','none','important');},above);}
 for(const width of [1512,390]){
-const p=await pageAt({width,height:844},{reducedMotion:'reduce'});
+const p=await pageAt({width,height:844},{reducedMotion:'reduce',withoutTopLayer:true});
 await overlapCard(p,true);await noClearance(p);
 assert.deepEqual(await clearanceState(p),Array(4).fill({side:'',left:'',right:''}));
 const aligned=await p.locator('.mm-card').evaluateAll(nodes=>nodes.map(n=>n.querySelector('button[aria-label="编辑条目"]').getBoundingClientRect().right));assert(Math.max(...aligned)-Math.min(...aligned)<.5);
@@ -195,7 +404,7 @@ await overlapCard(p,true);await noClearance(p);
 if(width===390){await p.screenshot({path:path.join(out,'13-mobile-panel-above-orb-aligned.png')});screenshots.push('13-mobile-panel-above-orb-aligned.png');}else{await p.screenshot({path:path.join(out,'14-desktop-panel-above-orb-aligned.png')});screenshots.push('14-desktop-panel-above-orb-aligned.png');}
 await p.close();
 }
-let clearancePage=await pageAt({width:390,height:844},{reducedMotion:'reduce'});
+let clearancePage=await pageAt({width:390,height:844},{reducedMotion:'reduce',withoutTopLayer:true});
 for(const [name,hide,show]of [
 ['hidden',o=>{o.hidden=true;},o=>{o.hidden=false;}],
 ['display none',o=>{o.style.display='none';},o=>{o.style.removeProperty('display');}],
@@ -216,7 +425,7 @@ await clearancePage.evaluate(()=>{const o=document.querySelector('[data-miemie-p
 await clearancePage.evaluate(()=>document.body.append(savedClearanceOrb));await overlapCard(clearancePage,false);await clearancePage.waitForFunction(()=>!!document.querySelector('.mm-card[data-id=c]').style.getPropertyValue('--mm-orb-right'));
 await clearancePage.evaluate(async()=>presentationTest.source.dispose());await noClearance(clearancePage);assert.equal(await clearancePage.locator(native).count(),0);
 receipts.push('Detached/disposed native orb and no-orb mode clear previous card clearance');await clearancePage.close();
-clearancePage=await pageAt({width:390,height:844},{reducedMotion:'reduce'});await overlapCard(clearancePage,false);await clearancePage.waitForFunction(()=>!!document.querySelector('.mm-card[data-id=c]').style.getPropertyValue('--mm-orb-right'));
+clearancePage=await pageAt({width:390,height:844},{reducedMotion:'reduce',withoutTopLayer:true});await overlapCard(clearancePage,false);await clearancePage.waitForFunction(()=>!!document.querySelector('.mm-card[data-id=c]').style.getPropertyValue('--mm-orb-right'));
 await clearancePage.evaluate(()=>{const o=document.querySelector('[data-miemie-preset-manager-native]');o.style.setProperty('left','0px','important');o.style.setProperty('top','0px','important');});await noClearance(clearancePage);
 await overlapCard(clearancePage,false);await clearancePage.waitForFunction(()=>!!document.querySelector('.mm-card[data-id=c]').style.getPropertyValue('--mm-orb-right'));
 await clearancePage.setViewportSize({width:1512,height:859});await clearancePage.locator(native).evaluate(n=>{n.style.removeProperty('left');n.style.removeProperty('top');});await noClearance(clearancePage);
@@ -294,7 +503,7 @@ for(const size of [{width:320,height:740},{width:390,height:420},{width:844,heig
 await page.setViewportSize({width:390,height:420});await page.locator('.mm-card[data-id=a]').getByRole('button',{name:'编辑条目',exact:true}).click();editor=page.getByRole('dialog',{name:'编辑条目',exact:true});await editor.getByLabel('内容',{exact:true}).fill('Synthetic keyboard-height draft');await shot(page,'12-mobile-keyboard-height.png');assert(await hit(editor.getByRole('button',{name:'保存',exact:true})));receipts.push('Keyboard-height editor keeps Save/Cancel reachable without page scale');await editor.getByRole('button',{name:'取消',exact:true}).click();await page.getByRole('button',{name:'关闭预设管理',exact:true}).click();await page.getByRole('dialog',{name:'关闭预设管理',exact:true}).getByRole('button',{name:'是',exact:true}).click();await page.locator('.miemie-pm').waitFor({state:'hidden'});assert(await page.locator(standalone).evaluate(n=>!n.inert&&document.activeElement===n));assert.equal(await page.evaluate(()=>reorderTest.writes),0);receipts.push('Mobile dirty Return confirms discard, completes native close and restores keyboard focus to previously shielded orb');await page.close();
 page=await pageAt({width:390,height:844},{mockViewport:true});await returnWindow(page);await openNative(page);
 await page.evaluate(()=>{const orb=document.querySelector('[data-miemie-preset-manager-native]'),panel=document.querySelector('.miemie-pm');for(const [side,value]of Object.entries({top:32,right:18,bottom:24,left:12})){orb.style.setProperty('--mm-native-safe-'+side,value+'px');panel.style.setProperty('--mm-safe-'+side,value+'px');}Object.assign(mockViewport,{height:340,offsetTop:100});mockViewport.dispatchEvent(new Event('resize'));mockViewport.dispatchEvent(new Event('scroll'));});
-await page.mouse.move(0,0);await page.waitForFunction(()=>document.querySelector('.miemie-pm').offsetHeight===284&&Math.abs(document.querySelector('[data-miemie-preset-manager-native]').getBoundingClientRect().width-64)<.1);const vv=await page.evaluate(()=>{const p=document.querySelector('.miemie-pm').getBoundingClientRect(),o=document.querySelector('[data-miemie-preset-manager-native]').getBoundingClientRect();return {panel:[p.left,p.top,p.width,p.height],orb:{left:o.left,top:o.top,right:o.right,bottom:o.bottom}};});assert.deepEqual(vv.panel,[12,132,360,284]);assert(vv.orb.left>=11&&vv.orb.right<=373&&vv.orb.top>=131&&vv.orb.bottom<=417,JSON.stringify(vv));receipts.push('Native orb and actual panel both clamp safe-area and panned/reduced visualViewport; resize and scroll cancel old flights');await page.close();
+await page.mouse.move(0,0);await page.waitForFunction(()=>document.querySelector('.miemie-pm').offsetHeight===284&&Math.abs(document.querySelector('[data-miemie-preset-manager-native]').getBoundingClientRect().width-64)<.1);const vv=await page.evaluate(()=>{const p=document.querySelector('.miemie-pm').getBoundingClientRect(),o=document.querySelector('[data-miemie-preset-manager-native]').getBoundingClientRect();return {panel:[p.left,p.top,p.width,p.height],orb:{left:o.left,top:o.top,right:o.right,bottom:o.bottom}};});assert.deepEqual(vv.panel,[12,132,360,284]);assert(Math.abs(vv.orb.top-264)<.1);assert(vv.orb.left>=11&&vv.orb.right<=373&&vv.orb.top>=131&&vv.orb.bottom<=417,JSON.stringify(vv));receipts.push('Native orb and actual panel both clamp safe-area and panned/reduced visualViewport; resize and scroll cancel old flights');await page.close();
 page=await pageAt({width:1512,height:859},{reducedMotion:'reduce'});await returnWindow(page);await page.evaluate(()=>{window.animationCount=0;const a=Element.prototype.animate;Element.prototype.animate=function(...args){animationCount++;return a.apply(this,args);};});await openNative(page);assert.equal(await page.evaluate(()=>animationCount),0);await returnWindow(page);assert.equal(await page.evaluate(()=>animationCount),0);receipts.push('Reduced motion skips all window/hero animation and retains open/close/focus lifecycle');
 await page.evaluate(async()=>{await presentationTest.source.dispose();window.isolatedOpenCount=0;window.isolated=presentationTest.isolatedLauncher(()=>isolatedOpenCount++);});await page.evaluate(()=>{isolated.dispose();dispatchEvent(new Event('resize'));dispatchEvent(new Event('orientationchange'));});assert.equal(await page.locator(native).count(),0);assert.equal(await page.locator('style').filter({hasText:'--mm-native-motion-open'}).count(),0);receipts.push('Dispose removes owned launcher/styles and viewport listeners; no animation residue on later resize');await page.close();
 // Drag screenshot comes from the unchanged rAF/local reorder flow in production UI.

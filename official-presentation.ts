@@ -111,7 +111,7 @@ export function protectNativeControls(host: Window, panel: HTMLElement): () => v
     const critical = active && fixed.some(node => overlaps(node.getBoundingClientRect(),o!));
     // Keep the existing temporary fixed-control shield until the intersection
     // ends; otherwise our own lowering would alternate with restoration.
-    const lower = active && (modal || critical) && (lowered || covers(panel,root,o!,root));
+    const lower = active && !orb?.hasAttribute('data-miemie-window-layer') && (modal || critical) && (lowered || covers(panel,root,o!,root));
     const changes = [...panel.querySelectorAll<HTMLElement>('.mm-card')].map(node => {
       const r = node.getBoundingClientRect(), hit = active && !lower && overlaps(r,o!) && covers(node,r,o!,root);
       const side = hit ? (o!.left + o!.width / 2 > root.left + root.width / 2 ? 'right':'left') : '';

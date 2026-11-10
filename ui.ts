@@ -10,8 +10,10 @@ import { managerStyles } from './styles';
 import { ICON } from './product-icon';
 import { PRESET_MANAGER_PRODUCT } from './product-identity';
 import { mountCharacterHeader, protectNativeControls } from './official-presentation';
+import { observeWindowLayer } from './window-layer';
 import { createParameterPresentation } from './parameter-presentation';
 import { createMigrationView } from './migration-ui';
+import { createLauncherAppearance, LAUNCHER_HOLD_MS, LAUNCHER_MAX_SIZE, LAUNCHER_MIN_SIZE } from './launcher-appearance';
 
 import { EDITOR_ROLES, EDITOR_TRIGGERS as TRIGGERS } from './prompt-editor-fields';
 const INTERACTIVE = 'button,input,select,textarea,a,summary,[role="switch"],[contenteditable="true"]';
@@ -19,6 +21,7 @@ let pickerSequence = 0;
 
 export function createManagerView(host: Window, controller: ManagerController): ManagerView {
   const doc = host.document;
+  const launcherAppearance = createLauncherAppearance(host);
   let disposed = false;
   let localError = '';
   let fileBusy = false;
@@ -155,7 +158,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
   let closeHandler: (() => unknown) | null = null;
   const closeButton = button('关闭预设管理', undefined, requestClose, 'mm-secondary mm-return');
   closeButton.textContent = '返回';
-  brandline.append(logo, brand);
+  const launcherSettingsButton = button('悬浮球设置', 'settings', openLauncherSettings, 'mm-icon mm-launcher-settings-button');
+  launcherSettingsButton.setAttribute('aria-haspopup', 'dialog');
+  brandline.append(logo, brand, launcherSettingsButton);
   const toolbar = el('div', 'mm-toolbar');
   const presetField = el('div', 'mm-preset-field');
   const presetControl = el('div', 'mm-preset-control');
@@ -374,8 +379,86 @@ export function createManagerView(host: Window, controller: ManagerController): 
   editorLayer.hidden = true;
   const confirmLayer = el('div', 'mm-modal-layer mm-confirm-layer');
   confirmLayer.hidden = true;
+  const launcherLayer = el('div', 'mm-modal-layer mm-launcher-settings-layer');
+  launcherLayer.hidden = true;
+  const launcherDialog = el('section', 'mm-dialog mm-launcher-settings');
+  launcherDialog.id = pickerId('launcher-settings');
+  launcherDialog.setAttribute('role', 'dialog');
+  launcherDialog.setAttribute('aria-modal', 'true');
+  launcherDialog.setAttribute('aria-label', '悬浮球设置');
+  launcherSettingsButton.setAttribute('aria-controls', launcherDialog.id);
+  const launcherHeading = el('div', 'mm-dialog-head');
+  const launcherTitle = el('h3', '', '悬浮球设置'); launcherTitle.tabIndex = -1;
+  launcherHeading.append(launcherTitle);
+  const launcherBody = el('div', 'mm-dialog-body');
+  const launcherCard = el('section', 'mm-launcher-card');
+  const launcherCardHeading = el('div', 'mm-launcher-card-heading');
+  launcherCardHeading.append(el('h4', '', '悬浮球'), el('small', '', '外观与手势'));
+  const sizeRow = el('div', 'mm-launcher-size-row');
+  const sizeLabel = el('label', 'mm-launcher-size-label', '悬浮球大小');
+  const sizeInput = el('input', 'mm-launcher-size-input');
+  sizeInput.type = 'range'; sizeInput.min = String(LAUNCHER_MIN_SIZE); sizeInput.max = String(LAUNCHER_MAX_SIZE);
+  sizeInput.id = pickerId('launcher-size'); sizeLabel.htmlFor = sizeInput.id;
+  const sizeValue = el('span', 'mm-launcher-size-value'); sizeValue.setAttribute('aria-hidden', 'true');
+  const sizeHeading = el('div', 'mm-launcher-size-heading'); sizeHeading.append(sizeLabel, sizeValue);
+  const sizeStops = el('div', 'mm-launcher-size-stops'); sizeStops.setAttribute('aria-hidden', 'true');
+  sizeStops.append(...['50%', '100%', '150%'].map(stop => el('span', '', stop)));
+  const sizeFields = el('div', 'mm-launcher-size-fields'); sizeFields.append(sizeHeading, sizeInput, sizeStops);
+  const sizePreview = el('div', 'mm-launcher-size-preview'); sizePreview.setAttribute('aria-hidden', 'true');
+  const previewImage = el('img'); previewImage.alt = ''; previewImage.src = ICON; previewImage.draggable = false;
+  sizePreview.append(previewImage); sizeRow.append(sizeFields, sizePreview);
+  const modeRow = el('div', 'mm-launcher-mode-row');
+  const modeCopy = el('div', 'mm-launcher-mode-copy');
+  const modeHint = el('p', 'mm-hint', `贴边半藏，鼠标悬停时探出。鼠标和触屏都可向内拉，亮起后松手打开。原地长按 ${LAUNCHER_HOLD_MS / 1000} 秒后可拖动换位。`);
+  modeHint.id = pickerId('launcher-mode-hint'); modeCopy.append(el('strong', '', '潜航模式'), modeHint);
+  const modeSwitch = button('潜航模式', undefined, () => applyLauncherAppearance({tucked: !launcherAppearance.get().tucked}), 'mm-icon mm-launcher-mode-switch');
+  modeSwitch.setAttribute('role', 'switch'); modeSwitch.setAttribute('aria-describedby', modeHint.id);
+  modeSwitch.append(el('span', 'mm-launcher-mode-track'));
+  modeRow.append(modeCopy, modeSwitch);
+  const launcherNotice = el('p', 'mm-hint'); launcherNotice.setAttribute('role', 'status'); launcherNotice.hidden = true;
+  launcherCard.append(launcherCardHeading, sizeRow, modeRow, launcherNotice);
+  launcherBody.append(launcherCard);
+  const launcherActions = el('div', 'mm-dialog-actions');
+  const launcherBack = button('返回', undefined, () => dismissLauncherSettings(), 'mm-secondary');
+  launcherBack.removeAttribute('title');
+  launcherActions.append(launcherBack);
+  launcherDialog.append(launcherHeading, launcherBody, launcherActions);
+  launcherLayer.append(launcherDialog);
+  sizeInput.addEventListener('input', () => applyLauncherAppearance({size: sizeInput.valueAsNumber}));
+  function paintLauncherAppearance() {
+    const {size, tucked} = launcherAppearance.get();
+    sizeInput.value = String(size);
+    sizeInput.setAttribute('aria-valuetext', `${size}%`);
+    sizeValue.textContent = `${size}%`;
+    sizeInput.style.setProperty('--mm-size-fill', `${size - LAUNCHER_MIN_SIZE}%`);
+    sizePreview.style.setProperty('--mm-preview-diameter', `${size * .34}px`);
+    sizePreview.toggleAttribute('data-tucked', tucked);
+    modeSwitch.setAttribute('aria-checked', String(tucked));
+  }
+  function applyLauncherAppearance(next: Parameters<typeof launcherAppearance.set>[0]) {
+    const saved = launcherAppearance.set(next);
+    launcherNotice.hidden = saved;
+    launcherNotice.textContent = saved ? '' : '当前页面已应用。浏览器无法保存此设置。';
+    paintLauncherAppearance();
+  }
+  function openLauncherSettings() {
+    if (disposed || panel.hidden || panel.inert || !editorLayer.hidden || !confirmLayer.hidden || !launcherLayer.hidden) return;
+    closePresetChoices();
+    menu.hidden = true;
+    moreButton.setAttribute('aria-expanded', 'false');
+    paintLauncherAppearance();
+    launcherLayer.hidden = false;
+    frame.inert = true;
+    launcherTitle.focus({preventScroll:true});
+  }
+  function dismissLauncherSettings(restoreFocus = true) {
+    if (launcherLayer.hidden) return;
+    launcherLayer.hidden = true;
+    frame.inert = false;
+    if (restoreFocus) launcherSettingsButton.focus({preventScroll:true});
+  }
   frame.append(header, errorBox, categoryRow, scroll, footer);
-  panel.append(editorLayer, confirmLayer);
+  panel.append(editorLayer, confirmLayer, launcherLayer);
   const parameterPresentation = createParameterPresentation(host, editorLayer, parametersButton);
   let parameterMotionEpoch = 0;
   listen(doc, 'pointerdown', ((event: PointerEvent) => {
@@ -1276,7 +1359,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       return;
     }
     if (event.key === 'Tab') {
-      const surface = !confirmLayer.hidden ? confirmLayer : !editorLayer.hidden ? editorLayer : frame;
+      const surface = !launcherLayer.hidden ? launcherLayer : !confirmLayer.hidden ? confirmLayer : !editorLayer.hidden ? editorLayer : frame;
       const focusable = [
         ...surface.querySelectorAll<HTMLElement>(
           'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]',
@@ -1330,6 +1413,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
       active.scrollIntoView({ block: 'nearest' });
   }
   function setPresentation(mode: 'local' | 'native' | 'hub') {
+    dismissLauncherSettings(false);
     parameterPresentation.cancel();
     panel.dataset.presentation = mode;
     for (const key of ['left','top','right','bottom','width','height','max-height','transform','transform-origin','will-change']) panel.style.removeProperty(key);
@@ -1368,6 +1452,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     } else void run(reloadActual);
   }
   function requestBack():boolean {
+    if (!launcherLayer.hidden) { dismissLauncherSettings(); return true; }
     if(migrationView.requestBack())return true;
     if (drag) cancelDrag();
     else if (confirmClose) confirmClose();
@@ -1399,6 +1484,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (closeHandler) closeHandler(); else close();
   }
   function close() {
+    dismissLauncherSettings(false);
     migrationView.close();
     closePresetChoices();
     parameterPicker?.close();
@@ -1411,11 +1497,13 @@ export function createManagerView(host: Window, controller: ManagerController): 
     if (panel.dataset.presentation === 'local' && returnFocus?.isConnected) returnFocus.focus();
   }
   cleanup.push(protectNativeControls(host, panel));
+  cleanup.push(observeWindowLayer(host, panel));
   const unsubscribe = controller.subscribe(render);
   viewport();
   render();
   return {
     panel,
+    launcherAppearance,
     open,
     close,
     setCloseHandler(handler) { closeHandler = handler; },

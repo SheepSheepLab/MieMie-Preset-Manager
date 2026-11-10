@@ -106,7 +106,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
     if (disposed || launcher) return;
     restorePanel(); view.setPresentation?.('native');
     view.setCloseHandler(() => closeStandalone());
-    launcher = createPresetManagerNativeLauncher({ host, icon:ICON, onError:report, open:async () => {
+    launcher = createPresetManagerNativeLauncher({ host, icon:ICON, appearance:view.launcherAppearance, requestBack:()=>view.requestBack?.(), onError:report, open:async () => {
       const opening = launcher;
       if (!opening || disposed || connection) return false;
       restorePanel();
@@ -196,7 +196,7 @@ export function startDualMode(host: Window & Record<string, any>, frame: Window,
           api.registerNativeWindow?.({
             mount({open, signal}) {
               if (!valid() || signal.aborted) throw new Error('预设管理 Native session 已停用。');
-              const native = createPresetManagerNativeLauncher({host, icon:ICON, mode:'native',
+              const native = createPresetManagerNativeLauncher({host, icon:ICON, mode:'native', appearance:view.launcherAppearance, requestBack:()=>view.requestBack?.(),
                 open:() => valid() && !signal.aborted ? open() : false, onError:report});
               nativeWindow = native;
               return {getOrigin:native.getOrigin,dispose() {
