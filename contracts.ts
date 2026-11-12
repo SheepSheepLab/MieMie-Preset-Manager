@@ -13,8 +13,17 @@ export type RawPreset = { prompts: NativePrompt[]; prompt_order: OrderGroup[]; [
 export type Snapshot = { name: string; names: string[]; raw: RawPreset; activeGroupId: string | number; revision: string; version?: string };
 /** Saved source only; never a native application/generation receipt. */
 export type SourcePreset = { name: string; raw: RawPreset; activeGroupId: string | number; fingerprint: string };
+export class NativePresetDraftError extends Error {
+  constructor(public readonly presetName: string) {
+    super('原生界面有未保存修改。请重新打开预设管理或点击重新读取，以已保存的预设为准。');
+  }
+}
 export interface PresetAdapter {
   read(signal?: AbortSignal): Promise<Snapshot>;
+  /** Explicit user entry only: reapply the saved preset if native inputs have diverged. */
+  restoreSavedPreset?(expectedName: string): Promise<Snapshot>;
+  /** Stock host template for new presets, independent of installed presets. */
+  readDefaultPreset?(): Promise<RawPreset>;
   readPresetByName?(name: string): Promise<SourcePreset>;
   /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
   directory?(): Promise<{ names: string[]; supported: string[] }>;
@@ -44,6 +53,7 @@ export interface ManagerController {
   state: ManagerState;
   subscribe(fn: () => void): () => void;
   refresh(): Promise<void>;
+  prepareOpen(): Promise<void>;
   /** Explicit confirmed discard-and-reload; subscription refresh never discards edits. */
   reload(): Promise<void>;
   revision(): string;

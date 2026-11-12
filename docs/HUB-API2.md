@@ -1,7 +1,7 @@
-# Hub API2 development integration
+# Hub API2 integration
 
-Preset Manager **0.8.0** targets Hub 0.9.0 Extension API **2**. Obtain the exact
-package from the [official release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.8.0). Do not distribute a different build under an existing released version.
+Preset Manager **1.0.0** targets Hub 0.9.0 Extension API **2**. Obtain the exact
+package from the [official release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0). Do not distribute a different build under an existing released version.
 
 ## Runtime contract
 

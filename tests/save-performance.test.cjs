@@ -17,6 +17,19 @@ async function setup(baseline, t) {
 }
 for (const baseline of fixtures.baselines) {
   const label = `save performance [native ${baseline.id}; mocked host]`;
+  test(`${label} switch and delete consolidate directory reads without losing disk verification`, async t => {
+    const { f, c } = await setup(baseline, t);
+    await c.select('B');
+    assert.equal(c.state.error, ''); assert.equal(c.state.snapshot.name, 'B');
+    assert.equal(reads(f), 2);
+    f.controls.http.length = 0;
+    await c.deletePreset();
+    assert.equal(c.state.error, ''); assert.equal(c.state.snapshot.name, 'A');
+    assert.equal(reads(f), 3);
+    assert.deepEqual(c.state.snapshot.names, ['A']);
+    assert.equal(f.records.has('B'), false);
+    assert.deepEqual(c.state.snapshot.raw, f.records.get('A'));
+  });
   test(`${label} edited title keeps all three safety reads but skips covered notification re-read`, async t => {
     const { f, c } = await setup(baseline, t); const before = copy(f.records.get('A'));
     c.edit('custom'); c.draft({ name: 'Changed synthetic title' }); await c.saveEdit(); await c.saveChanges();

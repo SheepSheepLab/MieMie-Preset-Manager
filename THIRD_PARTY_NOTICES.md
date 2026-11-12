@@ -22,6 +22,10 @@ MieMie Preset Manager 的项目代码按 [GPL-3.0-or-later](LICENSE) 提供，�
 
 `tests/fixtures/hub-v1-contracts.json` 包含 SheepSheepLab/MieMie-Hub commit `36aaec46282e67bd01b87035165977a40d23acc9` 的 9 段未修改源码摘录（Runtime、provide、面板、Launcher 渲染和 Surface）。相应作者与贡献者的版权和上游 GNU GPL v3 许可保留，完整上游许可见 [tests/fixtures/MieMie-Hub-LICENSE.txt](tests/fixtures/MieMie-Hub-LICENSE.txt)。逐段记录文件、行号和完整来源文件 SHA-256；仅在本地测试中执行，不进入生产 bundle 或 Extension JSON，也不代表真实 Hub 实机验收。
 
+## 运行时依赖
+
+[pinyin-pro](https://github.com/zh-lx/pinyin-pro) 3.29.5 由 zh-lx 及其贡献者维护，按 MIT 许可随生产脚本打包，用于在本机将用户消息中的汉字转为拼音。[licenses/pinyin-pro-MIT.txt](licenses/pinyin-pro-MIT.txt) 保留 npm 包的完整版权和许可文本，构建产物同时附带该文本。
+
 ## 构建与测试工具
 
 开发依赖由 `package.json` 和 `package-lock.json` 记录。下表列出直接依赖；完整依赖树及各包附带的许可随包管理器安装，可在锁文件和安装包中核查。

@@ -1,6 +1,6 @@
 {
   "name": "miemie-preset-manager",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Native SillyTavern preset manager delivered as a Tavern Helper script",
   "scripts": {
@@ -29,6 +29,9 @@
     "test:migration-unified": "node tests/migration-unified-browser.cjs",
     "test:category-minimum": "node tests/category-minimum-browser.cjs",
     "test:standalone-position": "node tests/standalone-position-browser.cjs"
+  },
+  "dependencies": {
+    "pinyin-pro": "3.29.5"
   },
   "devDependencies": {
     "typescript": "6.0.3",

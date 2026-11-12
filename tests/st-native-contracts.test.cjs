@@ -16,6 +16,71 @@ test.describe('Version-pinned native contract snippets with mocked dependencies'
 for (const baseline of fixtures.baselines) {
   const label = `[native snippets ${baseline.id}; mocked host]`;
   const is18 = baseline.version.startsWith('1.18.');
+  test(`${label} new preset reads the shipped Default regardless of the selected or edited Default preset`, options, async t => {
+    const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host), controller = createController(adapter);
+    t.after(() => { controller.dispose(); f.cleanup(); });
+    const stock = require(is18 ? './fixtures/st-1.18.0-default.json' : './fixtures/st-1.19.0-default.json');
+    const custom = copy(f.records.get('A'));
+    const editedDefault = copy(custom);
+    editedDefault.prompts[0].name = 'Edited Main';
+    editedDefault.prompt_order[1].order.reverse();
+    await adapter.create(await adapter.read(), 'Default', editedDefault);
+    await controller.refresh();
+    await controller.newPreset('From edited Default');
+    assert.equal(controller.state.error, '');
+    await controller.select('A');
+    await controller.newPreset('From custom');
+    assert.equal(controller.state.error, '');
+    assert.deepEqual(f.records.get('From edited Default'), stock);
+    assert.deepEqual(f.records.get('From custom'), stock);
+    assert.deepEqual(f.records.get('Default'), editedDefault);
+    assert.deepEqual(f.records.get('A'), custom);
+    f.controls.defaultAvailable = false;
+    const saved = f.controls.http.filter(r => r.pathname === '/api/presets/save').length;
+    await controller.newPreset('Missing template');
+    assert.match(controller.state.error, /未提供原始 Default 模板/);
+    assert.equal(f.controls.http.filter(r => r.pathname === '/api/presets/save').length, saved);
+  });
+  test(`${label} opening and manual reload restore the disk preset without saving native edits`, options, async t => {
+    const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host), controller = createController(adapter);
+    t.after(() => { controller.dispose(); f.cleanup(); });
+    const saved = copy(f.records.get('A'));
+    const selections = f.controls.changes.length;
+    f.live.prompts[1].content = 'unsaved native edit';
+    await controller.refresh();
+    assert.match(controller.state.error, /原生界面有未保存修改/);
+    assert.equal(f.live.prompts[1].content, 'unsaved native edit');
+    assert.equal(f.controls.changes.length, selections);
+    await controller.prepareOpen();
+    assert.equal(controller.state.error, '');
+    assert.equal(f.live.prompts[1].content, saved.prompts[1].content);
+    assert.deepEqual(controller.state.snapshot.raw, saved);
+    assert.equal(f.controls.changes.length, selections + 1);
+    await controller.prepareOpen();
+    assert.equal(f.controls.changes.length, selections + 1, 'clean open does not reapply the preset');
+
+    controller.edit('custom'); controller.draft({ content: 'manager draft' });
+    f.live.prompts[1].content = 'later native edit';
+    await controller.prepareOpen();
+    assert.equal(controller.state.draft.patch.content, 'manager draft');
+    assert.equal(f.live.prompts[1].content, 'later native edit');
+    await controller.reload();
+    assert.equal(controller.state.error, '');
+    assert.equal(controller.state.draft, null);
+    assert.equal(f.live.prompts[1].content, saved.prompts[1].content);
+    assert.deepEqual(f.records.get('A'), saved);
+    assert.equal(f.controls.http.filter(r => r.pathname === '/api/presets/save').length, 0);
+  });
+  test(`${label} an explicit restore cannot target a different selected preset`, options, async t => {
+    const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host);
+    t.after(() => { adapter.dispose(); f.cleanup(); });
+    await adapter.select('B', await adapter.read());
+    const selections = f.controls.changes.length;
+    f.live.prompts[1].content = 'edit on B';
+    await assert.rejects(adapter.restoreSavedPreset('A'), /已切换到其他预设/);
+    assert.equal(f.live.prompts[1].content, 'edit on B');
+    assert.equal(f.controls.changes.length, selections);
+  });
   for (const [key, value] of [['injection_depth', 7], ['injection_order', 100], ['third_party_added', { preserve: 'synthetic external edit' }]]) {
     test(`${label} B1 refresh cannot rebase a draft over live-added ${key}`, options, async t => {
       const f = await nativeHost(baseline), adapter = await createSTAdapter(f.host), controller = createController(adapter);

@@ -57,7 +57,7 @@ async function nativeHost(baseline, { extra = {}, timeoutMs = 1000 } = {}) {
     OAI_PRESET_CHANGED_BEFORE: 'before', OAI_PRESET_CHANGED_AFTER: 'after', PRESET_CHANGED: 'changed',
     PRESET_DELETED: 'deleted', PRESET_RENAMED: 'renamed', SETTINGS_UPDATED: 'settings',
   };
-  const controls = { activeTimers: new Set(), http: [], changes: [] };
+  const controls = { activeTimers: new Set(), http: [], changes: [], defaultAvailable: true };
   const select = { kind: 'select', options: [
     { kind: 'option', value: '0', text: 'A', selected: true },
     { kind: 'option', value: '1', text: 'B', selected: false },
@@ -134,6 +134,12 @@ async function nativeHost(baseline, { extra = {}, timeoutMs = 1000 } = {}) {
     const body = JSON.parse(init.body);
     controls.http.push({ pathname, body: copy(body) });
     if (pathname === '/api/settings/get') return { ok: true, json: async () => ({ openai_setting_names: [...records.keys()], openai_settings: [...records.values()].map(value => JSON.stringify(value)) }) };
+    if (pathname === '/api/presets/restore') {
+      assert.deepEqual(body, { apiId: 'openai', name: 'Default' });
+      const file = baseline.version.startsWith('1.18.') ? 'st-1.18.0-default.json' : 'st-1.19.0-default.json';
+      return { ok: true, json: async () => ({ isDefault: controls.defaultAvailable,
+        preset: controls.defaultAvailable ? copy(require('../fixtures/' + file)) : {} }) };
+    }
     if (pathname === '/api/presets/save') {
       assert.equal(body.apiId, 'openai');
       records.set(body.name, copy(body.preset));

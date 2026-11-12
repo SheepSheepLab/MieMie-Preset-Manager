@@ -15,6 +15,7 @@ const manifest = require('./manifest.json');
 validateReleaseIdentity(require('./package.json'), manifest);
 const version = manifest.version;
 const licenseBanner = 'MieMie Preset Manager — Copyright (C) 2026 louisSSR\nSPDX-License-Identifier: GPL-3.0-or-later\nDistributed without warranty; see LICENSE.\nSource: https://github.com/SheepSheepLab/MieMie-Preset-Manager\n\nBundled webpack runtime license:\n' + fs.readFileSync(path.join(root, 'licenses', 'webpack-MIT.txt'), 'utf8');
+const pinyinLicense = fs.readFileSync(path.join(root, 'licenses', 'pinyin-pro-MIT.txt'), 'utf8');
 function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? (['.git', '.test-build', 'delivery', 'node_modules', 'evidence'].includes(e.name) ? [] : walk(path.join(dir, e.name))) : [path.join(dir, e.name)]); }
 function compileTests() {
   const files = walk(root).filter(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
@@ -36,7 +37,8 @@ function bundle(entry, filename) {
     output: { path: path.join(root, 'delivery'), filename, iife: true },
     resolve: { extensions: ['.ts', '.js'] },
     module: { rules: [{ test: /\.png$/, type: 'asset/inline' }, { test: /\.ts$/, exclude: /node_modules/, use: { loader: require.resolve('ts-loader'), options: { transpileOnly: true, configFile: path.join(root, 'tsconfig.json'), compilerOptions: { noEmit: false } } } }] },
-    plugins: [new webpack.BannerPlugin({ banner: licenseBanner })],
+    plugins: [new webpack.BannerPlugin({ banner: entry === 'index.ts' ?
+      licenseBanner + '\nBundled pinyin-pro license:\n' + pinyinLicense : licenseBanner })],
     optimization: { minimize: false }, performance: { hints: false },
   }, (error, stats) => { if (error || stats.hasErrors()) reject(error || Error(stats.toString({ all: false, errors: true }))); else {
       // A completed byte-identical build must also satisfy preview freshness checks.

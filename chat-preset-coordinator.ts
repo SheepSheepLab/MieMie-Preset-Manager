@@ -10,6 +10,7 @@ export interface PresetBindingService {
   readonly state: BindingState; readonly adapter: PresetAdapter;
   subscribe(fn: () => void): () => void;
   start(): Promise<void>; reconcile(): Promise<void>; setDefault(): Promise<void>;
+  acceptRead?(snapshot: Snapshot): void;
   /** Explicitly bind this chat to today's default; never establish dynamic inheritance. */
   followDefault(): Promise<void>;
   workChanged(): void; dispose(): void;
@@ -25,6 +26,7 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
   let directoryDirty = true, reloadGlobal = false, renamePending = false;
   let renameReceipt: HostEvent | null = null, confirmed: Snapshot | null = null;
   let nativeEpoch = 0, tail: Promise<unknown> = Promise.resolve();
+  let operationReceipt: { snapshot: Snapshot; chatKey: string } | undefined;
   let intent: { name: string; key: string; serial?: number; complete: boolean } | null = null;
   let permit: { chat: string; epoch: number; nativeEpoch: number; revision: string } | null = null;
   let priorDirty = false, priorBusy = false;
@@ -39,7 +41,7 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
     const current = host.currentChat();
     if (newLoad || current.identity.key !== state.chat.key) {
       if (current.identity.key !== state.chat.key) initialChoice = null;
-      state.epoch++; state.chat = current.identity; permit = null; intent = null; confirmed = null;
+      state.epoch++; state.chat = current.identity; permit = null; intent = null; confirmed = null; operationReceipt = undefined;
     }
     if (settings) {
       Object.assign(state, resolve(settings, current.identity, parseChat(current.binding)));
@@ -74,6 +76,19 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       await host.writeChat(target, expected, { schemaVersion: 2, presetBindingId: id, chatKey: target.key });
     }
     if (!validChat(target) || epoch !== state.epoch) throw Error('保存期间对话已改变，请重新读取当前对话。');
+  }
+  async function bindSelection(name: string, current: ReturnType<typeof captureChat>, fresh = false) {
+    if (current.identity.kind !== 'none') {
+      const id = await registerChoice(name, fresh);
+      await saveChoice(current.identity, current.binding, id);
+      return;
+    }
+    if (!settings || !validChat(current.identity)) throw Error('对话或全局绑定状态已改变，请重新读取。');
+    const epoch = state.epoch;
+    const next = structuredClone(settings);
+    next.defaultBindingId = register(next, name, fresh);
+    await persist(next);
+    if (epoch !== state.epoch || !validChat(current.identity)) throw Error('保存期间对话已改变，请重新读取当前对话。');
   }
   async function initialize() {
     settings = parseGlobal(await host.readGlobal()); alive();
@@ -129,7 +144,17 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       await host.verifyCopy?.(current.identity, current.binding);
       if (!validChat(current.identity) || epoch !== state.epoch) { pending = true; continue; }
       let actual: Snapshot;
-      try { actual = await adapter.read(); }
+      const receiptFromOperation = operationReceipt;
+      operationReceipt = undefined;
+      const alreadyBound = current.identity.kind === 'none' || state.mode === 'bound';
+      try {
+        // A completed manager operation already verified the applied disk state.
+        // Reuse it only to confirm that same binding and only while the native
+        // adapter can prove it covers every intervening notification.
+        actual = alreadyBound && !intent && receiptFromOperation?.chatKey === current.identity.key &&
+          receiptFromOperation.snapshot.name === state.targetName && adapter.coversNotifications?.(receiptFromOperation.snapshot)
+          ? receiptFromOperation.snapshot : await adapter.read();
+      }
       catch (error) {
         if (!validChat(current.identity) || epoch !== state.epoch || observed !== nativeEpoch) { pending = true; continue; }
         throw error;
@@ -264,51 +289,79 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       return true;
     } catch (error) { if (!signal?.aborted && !disposed) fail(error); return false; }
   }, () => { if (!state.error) state.error = '本次生成已取消，请重新读取预设状态后重试。'; notify(); return state.error; });
-  async function command<T>(work: () => Promise<T>): Promise<T> {
+  async function command<T>(work: () => Promise<T>, requireInitialized = true): Promise<T> {
     permit = null; intent = null; host.invalidateGeneration();
     const job = tail.then(async () => {
-      alive(); ownOperation = true; state.status = 'reconciling'; state.operation++; notify();
-      try { if (!initialized) throw Error('绑定尚未初始化。'); return await work(); }
+      alive(); operationReceipt = undefined; ownOperation = true; state.status = 'reconciling'; state.operation++; notify();
+      try { if (requireInitialized && !initialized) throw Error('绑定尚未初始化。'); return await work(); }
+      catch (error) { operationReceipt = undefined; throw error; }
       finally { ownOperation = false; }
     });
     tail = job.catch(fail);
     try { return await job; } finally { if (!disposed) request(); }
   }
+  const restoreSavedPreset = adapter.restoreSavedPreset;
+  function remember(snapshot: Snapshot, chatKey: string, epoch: number) {
+    if (state.epoch === epoch) operationReceipt = { snapshot, chatKey };
+    return snapshot;
+  }
   const wrapped: PresetAdapter = { ...adapter,
+    restoreSavedPreset: restoreSavedPreset && (expectedName => command(async () => {
+      await host.waitNativeIdle();
+      return restoreSavedPreset(expectedName);
+    }, false)),
     select: (name, expected) => command(async () => {
-      const current = captureChat(); const result = await adapter.select(name, expected);
-      const id = await registerChoice(result.name); await saveChoice(current.identity, current.binding, id); return result;
+      const current = captureChat(), epoch = state.epoch;
+      const result = await adapter.select(name, expected);
+      await bindSelection(result.name, current); return remember(result, current.identity.key, epoch);
     }),
     create: (expected, name, raw) => command(async () => {
-      const current = captureChat(); const result = await adapter.create(expected, name, raw);
-      const id = await registerChoice(result.name, true); await saveChoice(current.identity, current.binding, id); return result;
+      const current = captureChat(), epoch = state.epoch;
+      const result = await adapter.create(expected, name, raw);
+      await bindSelection(result.name, current, true); return remember(result, current.identity.key, epoch);
     }),
-    save: (expected, raw) => command(() => adapter.save(expected, raw)),
+    save: (expected, raw) => command(async () => {
+      const chatKey = host.currentChat().identity.key, epoch = state.epoch;
+      return remember(await adapter.save(expected, raw), chatKey, epoch);
+    }),
     rename: (expected, name) => command(async () => {
+      const current = captureChat(), epoch = state.epoch;
       const result = await adapter.rename(expected, name), listing = await directory();
       if (!settings || listing.names.includes(expected.name) || !listing.supported.includes(result.name)) throw Error('重命名结果未确认。');
-      const next = structuredClone(settings); renamed(next, expected.name, result.name); await persist(next); return result;
+      const next = structuredClone(settings); renamed(next, expected.name, result.name); await persist(next);
+      return remember(result, current.identity.key, epoch);
     }),
     remove: expected => command(async () => {
-      const result = await adapter.remove(expected); directoryDirty = true; await synchronizeDirectory(); return result;
+      const current = captureChat(), epoch = state.epoch;
+      const result = await adapter.remove(expected); directoryDirty = true; await synchronizeDirectory();
+      return remember(result, current.identity.key, epoch);
     }),
   };
   return {
     state, adapter: wrapped,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    acceptRead(snapshot) {
+      // The controller may need a newer readback after a native save event.
+      // Carry that result into reconciliation instead of fetching it twice.
+      if (operationReceipt?.chatKey === state.chat.key && operationReceipt.snapshot.name === snapshot.name)
+        operationReceipt.snapshot = snapshot;
+    },
     async start() { try { await initialize(); request(); await settle(); } catch (error) { fail(error); } },
     async reconcile() {
       try {
+        operationReceipt = undefined;
         if (!initialized) await initialize();
         reloadGlobal = true; directoryDirty = true; captureChat(); request(); await settle();
       } catch (error) { fail(error); }
     },
     setDefault: () => command(async () => {
       if (session().dirty) throw Error('请先处理未保存修改。');
-      const current = captureChat(), actual = await adapter.read();
+      const current = captureChat(), epoch = state.epoch, actual = await adapter.read();
       if (!validChat(current.identity)) throw Error('设置默认期间对话已切换。');
-      const id = await registerChoice(actual.name), next = structuredClone(settings!);
-      next.defaultBindingId = id; await persist(next);
+      const next = structuredClone(settings!);
+      next.defaultBindingId = register(next, actual.name);
+      remember(actual, current.identity.key, epoch);
+      await persist(next);
     }),
     followDefault: () => command(async () => {
       if (session().dirty) throw Error('请先处理未保存修改。');

@@ -1,6 +1,6 @@
 # MieMie Preset Manager · 咩咩预设管理
 
-> **0.9.0** 支持 Hub 0.9.0 的 Extension API2，机器包沿用 Package v1。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.9.0)，运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
+> **1.0.0** 支持 Hub 0.9.0 的 Extension API2，机器包沿用 Package v1。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)，运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
 
 浮球可在工具内调整大小并启用潜航模式。潜航后向屏幕内侧拉动可打开，原地长按约 0.9 秒可拖动。面板打开时位于浮球之上，窄屏会模糊背景并挡住下层点击。
 
@@ -14,7 +14,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前版本为 `0.9.0`。变更和正式附件见 [0.9.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.9.0)。
+- 当前版本为 `1.0.0`。变更和正式附件见 [1.0.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)。
 - 已发布历史版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
 - **从 0.6.0 升级：保留有效的 binding-v2 聊天绑定。** 全局默认改变不影响已有有效绑定。仅从 0.5.1 及更早旧绑定系统升级时，旧绑定关系不迁移；该历史规则不适用于 0.6.0 → 0.7.0。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
@@ -49,7 +49,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 安装当前版本
 
-交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前版本使用 [MieMie-Preset-Manager-Extension-0.9.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.9.0/MieMie-Preset-Manager-Extension-0.9.0.json)。历史 0.7.0 下载及说明如下。
+交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前版本使用 [MieMie-Preset-Manager-Extension-1.0.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v1.0.0/MieMie-Preset-Manager-Extension-1.0.0.json)。历史 0.7.0 下载及说明如下。
 
 [MieMie-Preset-Manager-Extension-0.7.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.7.0/MieMie-Preset-Manager-Extension-0.7.0.json)
 
@@ -66,7 +66,19 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 日常操作
 
-顶部显示实际当前预设。选择框使用与参数设置一致的页面内下拉菜单，不调用系统选择窗口；展开按当前选中行定位，保持原顺序，边界不足时自动调整高度与滚动。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供完整导出、复制当前预设、新建、重命名和删除。新建沿用当前生成／连接设置与内建条目，清除自定义条目，来源预设不变。
+顶部显示实际当前预设。选择框使用与参数设置一致的页面内下拉菜单，不调用系统选择窗口；展开按当前选中行定位，保持原顺序，边界不足时自动调整高度与滚动。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供完整导出、复制当前预设、新建、重命名和删除。新建使用酒馆随版本附带的原始 Default 模板，包含默认条目、正文、顺序、启用状态和生成参数。切换时是否同时应用模板里的 API 配置，由酒馆原生「将预设与 API 配置绑定」开关决定。
+
+「更多预设操作 → 预设工具」提供「发送消息转拼音」，默认关闭。开启后，酒馆聊天补全的常规回复会在发送前将最新一条可识别的用户消息转成无声调拼音。聊天记录保留原文，转换在本机完成。开关保存在当前浏览器。
+
+同一张工具卡也提供「上下文 Unicode 转义」。它逐条编码已组装的聊天补全文本，包括预设和历史消息。拼音和 Unicode 一次启用一种，Unicode 默认回复原文。选用「编码回复」时，收到完整的 JSON 字符串后先解码，再进入酒馆的正则、显示和保存流程。使用流式连接时，编码回复会在收完后一次显示。编码会增加上下文和回复的 token 用量。
+
+「工具调用回复」默认关闭。开启后，在支持工具调用的 OpenAI、Custom（OpenAI 兼容）、OpenRouter、Google AI Studio 或 Vertex AI 连接上，常规生成和重 Roll 会通过一个工具接收整条回复。脚本收齐后还原为普通回复，再交给对话状态工具及酒馆的显示和保存流程。现有预设可以直接使用。原生续写、同时生成多个候选、已有工具或指定结构化输出的请求沿用酒馆流程。普通文本回复可以照常显示，工具结果不完整且没有正文时会提示重试。
+
+「好感度引擎」支持咩咩预设的通用、EVA 与 NPC 好感度，默认关闭。AI 提交变化，脚本按预设规则结算并把完整名单写回回复的原有好感度区块。下一轮以当前对话中的最近有效名单为准。把带名单的原始回复复制到新对话开场白即可继承，名单随聊天文件删除。重生成使用该回合之前的名单，续写同一条回复时延续已有状态。启用时会等完整回复到齐再结算。
+
+「状态栏引擎」默认关闭。首次生成完整状态栏，后续将变化条目按标题合并进最近的完整状态栏。增量提示词默认是「仅输出本回合有变化的条目即可。」可在预设工具内编辑。预设工具面板从更多操作按钮展开，也会收回该处。
+
+主动打开管理器或点击「重新读取实际状态」时，以酒馆已保存的预设为准。原生界面有未保存修改时，管理器会重新应用已保存的内容，预设文件保持原样。管理器内的草稿仍有独立的保存与放弃流程。
 
 当前版本采用统一保存：Prompt 编辑窗口的“保存”只暂存本次编辑，取消丢弃本次编辑；条目排序、开关、复制、新增、解锁／挂接与删除先留在本地。分类右侧的软盘 SVG 保存图标（“保存修改”）在无改动时变暗，有改动时可用；点击后才统一同步酒馆并回读确认。“重新读取实际状态”在有未保存内容时确认放弃，读取成功后恢复实际数据；读取失败保留修改。关闭预设管理时也会提示未保存内容，选“是”丢弃，选“否”继续编辑。有未保存内容时须先保存或重新读取，再切换、导入、复制或导出预设。新增条目位于分类左侧。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。Copy 是 MPM 的便利功能，只允许普通自定义条目；物理 Delete 同样保守保护 Marker、内建／保留 identifier。Detach 则按固定原生资格 `system_prompt === false`，允许合法特殊条目仅移出当前顺序；定义、其他组和未知字段保留。三者独立，见 [Compatibility](docs/COMPATIBILITY.md)。
 
@@ -111,7 +123,7 @@ npm run test:browser
 
 **旧手动 0.2.0 迁移：** 当前 Hub 不识别缺少 repository 的旧身份行，不能安全自动升级此实例。先导出/备份旧脚本和重要预设，停用旧实例，在 Helper 中确认备份可恢复后手动移除旧脚本，再从 Hub 安装当前版本；不要同时启用两个实例，也不要依赖按名称猜身份。Hub 不会将旧脚本的 data 自动迁移给新实例；需要保留的设置应由用户依据备份核对。Preset Manager 的业务数据模型和预设保存位置没有改变。v0.2.0 Tag、Assets 和 Notes 保持历史原样。旧自定义 component manifest 已从当前构建中退休；它不是标准 Package v1。
 
-`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前 0.9.0 见 [正式发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.9.0)；历史发行说明见 [0.7.0](docs/RELEASE-0.7.0.md)；[0.6.0](docs/RELEASE-0.6.0.md)、[0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
+`preset-manager.js`、`preview.js`、`preview.html` 由构建生成；预览使用人工演示数据和内存适配器，不能作为真实酒馆运行证据。当前 1.0.0 见 [正式发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)；历史发行说明见 [0.7.0](docs/RELEASE-0.7.0.md)；[0.6.0](docs/RELEASE-0.6.0.md)、[0.5.0](docs/RELEASE-0.5.0.md)；[0.2.3](docs/RELEASE-0.2.3.md)、[0.2.2](docs/RELEASE-0.2.2.md)、[0.2.1](docs/RELEASE-0.2.1.md) 保留历史范围。
 
 | 文件 | 职责 |
 | --- | --- |
@@ -145,4 +157,4 @@ SheepSheep 是 Founder / Project Initiator；SheepSheepLab 是官方 GitHub 开�
 
 ## API2 新版候选审核
 
-最低 Runtime 要求、Standalone 与 Package v1 边界见 [0.9.0 正式发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v0.9.0)。开发候选的既有结果见 [API2 Pre-Main](docs/TESTING.md#api2-pre-main2026-10-20)，正式在线安装与更新另行验收。
+最低 Runtime 要求、Standalone 与 Package v1 边界见 [1.0.0 正式发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)。开发候选的既有结果见 [API2 Pre-Main](docs/TESTING.md#api2-pre-main2026-10-20)，正式在线安装与更新另行验收。

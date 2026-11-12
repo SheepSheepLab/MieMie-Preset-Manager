@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "format": "tavern-helper-script",
   "productId": "miemie.preset-manager",
-  "version": "0.9.0",
-  "tag": "v0.9.0",
+  "version": "1.0.0",
+  "tag": "v1.0.0",
   "scriptId": "98c9a9af-7fd3-41a6-81bc-cd86ebf5e0b1",
   "manifest": {
     "schemaVersion": 1,
     "apiVersion": 2,
     "id": "miemie.preset-manager",
     "name": "咩咩预设管理",
-    "version": "0.9.0",
+    "version": "1.0.0",
     "author": "SheepSheep",
     "description": "直接管理当前酒馆预设及提示词条目。",
     "entry": "preset-manager.js",
@@ -30,9 +30,9 @@
     }
   },
   "asset": {
-    "name": "MieMie-Preset-Manager-Extension-0.9.0.json",
-    "size": 3332313,
-    "sha256": "ce2c328b39fa20da9c3c46dadd3a2c5af56f0fa2aa4e9a1e5595336774e2c061"
+    "name": "MieMie-Preset-Manager-Extension-1.0.0.json",
+    "size": 4045299,
+    "sha256": "724708d3851f836dfb77bb30b324356dbe56528a1eda12792f8868bb848fcf50"
   },
-  "contentSha256": "877d702b66d37ea7fa4c905d1f20f931cdd51c38251c73a8f0904fb89647dd5a"
+  "contentSha256": "0e26cb644e141cf01c44e00806a065f42a44694fdc6c09b75c85ed81c6ea04de"
 }

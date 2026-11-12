@@ -26,6 +26,10 @@ const snapshot = (): Snapshot => ({ name: selected, names: [...presets.keys()], 
 const guard = (expected: Snapshot) => { if (snapshot().revision !== expected.revision) throw Error('预览状态已改变，请重读。'); };
 const adapter: PresetAdapter = {
   async read() { return snapshot(); },
+  async readDefaultPreset() {
+    return structuredClone({ prompts: [sample.prompts[0], sample.prompts.at(-1)!],
+      prompt_order: [{ character_id: 100001, order: ['main', 'chatHistory'].map(identifier => ({ identifier, enabled: true })) }] });
+  },
   async readPresetByName(name) {
     const raw = presets.get(name); if (!raw) throw Error('来源预设不存在。');
     return { name, raw: structuredClone(raw), activeGroupId: 100001, fingerprint: JSON.stringify(raw) };

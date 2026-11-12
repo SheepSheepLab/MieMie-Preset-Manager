@@ -171,11 +171,69 @@ async function checkLayout(page, viewport) {
         await item.scrollIntoViewIfNeeded();
         names.push((await hitVisible(item, viewport)).name);
       }
-      assert.deepEqual(names, ['预设条目迁移', '导出完整预设', '复制当前预设', '新建预设', '重命名预设', '删除当前预设'], 'Every preset menu action must remain reachable');
+      assert.deepEqual(names, ['预设条目迁移', '预设工具', '导出完整预设', '复制当前预设', '新建预设', '重命名预设', '删除当前预设'], 'Every preset menu action must remain reachable');
       measurements.push({ viewport, menuItemsReachable: names });
       if (viewport.width === 320) await screenshot(page, 'responsive-menu-320x400.png');
-      await page.keyboard.press('Escape');
+      const entry = menu.getByRole('button', { name: '预设工具', exact: true });
+      if (viewport.width === 320) {
+        const opening = await entry.evaluate(button => {
+          button.click();
+          const layer = document.querySelector('.mm-preset-tools-layer');
+          const shell = layer.querySelector('.mm-tools-motion-shell');
+          const frame = shell?.getAnimations()[0]?.effect;
+          const heading = layer.querySelector('.mm-dialog-head').getAnimations()[0]?.effect;
+          return { phase: layer.dataset.motion, duration: frame?.getTiming().duration,
+            expands: frame?.getKeyframes()[0].transform !== frame?.getKeyframes()[1].transform,
+            headingDelay: heading?.getTiming().delay };
+        });
+        assert.deepEqual(opening, { phase: 'opening', duration: 360, expands: true, headingDelay: 180 });
+      } else await entry.click();
+      const tools = page.getByRole('dialog', { name: '预设工具', exact: true });
+      await tools.waitFor();
+      await page.locator('.mm-preset-tools-layer[data-motion=opening]').waitFor({ state: 'detached' });
+      await hitVisible(tools.getByRole('button', { name: '返回', exact: true }), viewport);
+      assert.equal(await tools.getByRole('switch', { name: '发送消息转拼音', exact: true }).isDisabled(), true);
+      const sameCard = await tools.locator('section.mm-launcher-card').evaluateAll(cards => cards.some(card =>
+        card.querySelector('[aria-label="发送消息转拼音"]') && card.querySelector('[aria-label="上下文 Unicode 转义"]') &&
+        card.querySelector('[aria-label="工具调用回复"]')));
+      assert.equal(sameCard, true);
+      assert.equal(await tools.getByRole('switch', { name: '工具调用回复', exact: true }).getAttribute('aria-checked'), 'false');
+      assert.equal(await tools.locator('section.mm-launcher-card').evaluateAll(cards => cards.some(card =>
+        card.querySelector('[aria-label="好感度引擎"]') && card.querySelector('[aria-label="状态栏引擎"]') &&
+        !card.querySelector('[aria-label="发送消息转拼音"]'))), true);
+      assert.equal(await tools.getByRole('switch', { name: '状态栏引擎', exact: true }).getAttribute('aria-checked'), 'false');
+      assert.equal(await tools.getByRole('radio', { name: '原文回复', exact: true }).count(), 0);
+      assert.equal(await tools.getByRole('heading', { name: '消息处理', exact: true }).count(), 1);
+      assert.equal(await tools.getByRole('heading', { name: '对话状态', exact: true }).count(), 1);
+      await tools.getByText('仅输出本回合有变化的条目即可。', { exact: true }).scrollIntoViewIfNeeded();
+      assert.equal(await tools.getByRole('button', { name: '编辑状态栏提示词' }).isDisabled(), true);
+      assert(await tools.evaluate(el => el.scrollWidth <= el.clientWidth + 1 &&
+        el.querySelector('.mm-dialog-body').scrollWidth <= el.querySelector('.mm-dialog-body').clientWidth + 1));
+      if (viewport.width === 320) {
+        const motion = await tools.getByRole('button', { name: '返回', exact: true }).evaluate(button => {
+          button.click();
+          const layer = button.closest('.mm-preset-tools-layer');
+          return { visible: !layer.hidden, phase: layer.dataset.motion,
+            animated: layer.querySelector('.mm-tools-motion-shell')?.getAnimations().length === 1,
+            blocked: layer.parentElement.querySelector('.mm-frame').inert };
+        });
+        assert.deepEqual(motion, { visible: true, phase: 'closing', animated: true, blocked: true });
+        await page.keyboard.press('Escape');
+        await page.locator('.mm-preset-tools-layer').waitFor({ state: 'hidden' });
+        assert(await page.getByRole('button', { name: '更多预设操作', exact: true }).evaluate(node => node === document.activeElement));
+      } else await page.keyboard.press('Escape');
+      await tools.waitFor({ state: 'hidden' });
       await menu.waitFor({ state: 'hidden' });
+      if (viewport.width === 320) {
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.getByRole('button', { name: '更多预设操作', exact: true }).click();
+        await entry.click();
+        await tools.waitFor();
+        assert.equal(await tools.locator('.mm-tools-motion-shell').count(), 0);
+        await tools.getByRole('button', { name: '返回', exact: true }).click();
+        assert(await page.locator('.mm-preset-tools-layer').evaluate(layer => layer.hidden && !layer.dataset.motion));
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+      }
     }
     receipts.push('844×320及320×400低高度下全部更多操作均可滚动触达且未被遮挡');
 

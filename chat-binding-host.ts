@@ -35,7 +35,11 @@ interface Context extends Partial<RegexDisplayContext> {
   eventTypes: Record<string, string>;
   eventSource: { makeFirst?(event: string, fn: Listener): void; makeLast?(event: string, fn: Listener): void; on(event: string, fn: Listener): void; removeListener(event: string, fn: Listener): void };
 }
-interface STWindow extends Window { toastr?: { warning?: (...args: unknown[]) => unknown; info: (...args: unknown[]) => unknown }; SillyTavern?: { getContext(): Context } }
+interface STWindow extends Window {
+  toastr?: { warning?: (...args: unknown[]) => unknown; info: (...args: unknown[]) => unknown };
+  SillyTavern?: { getContext(): Context };
+  TavernHelper?: { builtin?: { saveSettings?: () => Promise<void> } };
+}
 export function createBindingHost(windowHost: Window): BindingHost {
   const host = windowHost as STWindow;
   const context = () => { const ctx = host.SillyTavern?.getContext(); if (!ctx) throw Error('酒馆上下文不可用。'); return ctx; };
@@ -142,7 +146,14 @@ export function createBindingHost(windowHost: Window): BindingHost {
       throw Error('全局绑定设置已被其他来源修改，未覆盖新状态。');
     const saved = eventWait('SETTINGS_UPDATED');
     ctx.extensionSettings[NS] = structuredClone(next);
-    try { ctx.saveSettingsDebounced(); await saved.promise; }
+    try {
+      const saveNow = host.TavernHelper?.builtin?.saveSettings;
+      // An explicit binding write already coalesces its changes and awaits native confirmation.
+      if (typeof saveNow === 'function') {
+        await bounded(() => saveNow(), [quietLifetime.signal], 10000, '全局绑定保存');
+      } else ctx.saveSettingsDebounced();
+      await saved.promise;
+    }
     catch { /* Lost acknowledgement: read back once, never repeat the write. */ }
     finally { saved.cancel(); }
     if (!same(await readGlobal(), next) || !same(context().extensionSettings[NS], next))

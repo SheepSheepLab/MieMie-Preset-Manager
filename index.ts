@@ -9,6 +9,7 @@ import { startDualMode } from './dual-mode';
 import type { ManagerController, ManagerView, PresetAdapter } from './contracts';
 import { createBindingHost } from './chat-binding-host';
 import { createPresetBinding, type PresetBindingService } from './chat-preset-coordinator';
+import { createPresetTools, type PresetTools } from './preset-tools';
 
 declare const $: (callback: () => void) => void;
 /** Tavern Helper script iframe: all product DOM belongs to the host document. */
@@ -17,10 +18,11 @@ $(() => {
   if (host.__MieMiePresetManagerSource && !host.__MieMiePresetManagerSource.disposed) return;
   let controller: ManagerController | undefined, view: ManagerView | undefined, adapter: PresetAdapter | undefined;
   let binding: PresetBindingService | undefined, offWork: (() => void) | undefined;
+  let tools: PresetTools | undefined;
   let dual: ReturnType<typeof startDualMode> | undefined, stopped = false;
   const stop = () => {
     if (stopped) return;
-    stopped = true; offWork?.(); binding?.dispose();
+    stopped = true; offWork?.(); binding?.dispose(); tools?.dispose();
     if (controller) controller.dispose(); else adapter?.dispose?.();
     void Promise.resolve(dual?.dispose()).finally(() => view?.dispose());
     window.removeEventListener('pagehide', stop);
@@ -33,7 +35,8 @@ $(() => {
       binding = createPresetBinding(adapter, createBindingHost(host), () => controller?.state ?? { dirty: false, busy: false });
       controller = createController(binding.adapter, binding);
       offWork = controller.subscribe(() => binding?.workChanged());
-      view = createManagerView(host, controller);
+      tools = createPresetTools(host);
+      view = createManagerView(host, controller, tools);
       dual = startDualMode(host, window, view);
       await binding.start();
       await controller.refresh();

@@ -190,12 +190,3 @@ export function movePrompt(raw: RawPreset, groupId: string | number, id: string,
   slots.forEach((slot, i) => { g.order[slot] = items[i]; });
   return next;
 }
-
-/** New preset keeps the active connection/generation settings, and resets custom prompts only. */
-export function emptyPreset(source: RawPreset): RawPreset {
-  const next = clone(source);
-  const retained = new Set(next.prompts.filter(p => PROTECTED_IDS.has(p.identifier)).map(p => p.identifier));
-  next.prompts = next.prompts.filter(p => retained.has(p.identifier));
-  next.prompt_order.forEach(g => { g.order = g.order.filter(e => retained.has(e.identifier)); });
-  return next;
-}

@@ -16,10 +16,12 @@ import { createMigrationView } from './migration-ui';
 import { createLauncherAppearance, LAUNCHER_HOLD_MS, LAUNCHER_MAX_SIZE, LAUNCHER_MIN_SIZE } from './launcher-appearance';
 
 import { EDITOR_ROLES, EDITOR_TRIGGERS as TRIGGERS } from './prompt-editor-fields';
+import type { PresetTools } from './preset-tools';
+import { DEFAULT_STATUS_PROMPT } from './status';
 const INTERACTIVE = 'button,input,select,textarea,a,summary,[role="switch"],[contenteditable="true"]';
 let pickerSequence = 0;
 
-export function createManagerView(host: Window, controller: ManagerController): ManagerView {
+export function createManagerView(host: Window, controller: ManagerController, tools?: PresetTools): ManagerView {
   const doc = host.document;
   const launcherAppearance = createLauncherAppearance(host);
   let disposed = false;
@@ -175,6 +177,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const presetShadows = pickerScrollShadows(presetChoices);
   cleanup.push(() => presetShadows.dispose());
   function closePresetChoices(focus = false) {
+    if (presetChoices.hidden && !focus) return;
     presetEscape.deactivate();
     presetChoices.hidden = true; presetShadows.hide(); presetSelect.setAttribute('aria-expanded', 'false');
     if (focus && !presetSelect.disabled) presetSelect.focus({ preventScroll: true });
@@ -182,9 +185,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const presetEscape = createPickerEscapeGuard(doc, presetSelect, () => !presetChoices.hidden, () => closePresetChoices(true));
   cleanup.push(() => presetEscape.deactivate());
   function showPresetValue(name: string) {
+    const label = name || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
+    if (presetSelect.dataset.value === name && presetValue.textContent === label) return;
     presetSelect.dataset.value = name;
-    presetValue.textContent = name || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
-    presetSelect.title = presetValue.textContent;
+    presetValue.textContent = label;
+    presetSelect.title = label;
     for (const node of presetChoices.querySelectorAll<HTMLButtonElement>('[role=option]'))
       node.setAttribute('aria-selected', String(node.dataset.value === name));
   }
@@ -287,9 +292,14 @@ export function createManagerView(host: Window, controller: ManagerController): 
   const moreWrap = el('div', 'mm-more-wrap');
   const menu = el('div', 'mm-menu');
   menu.hidden = true;
-  menu.append(button('预设条目迁移', 'migration', () => {
-    cancelDrag(); closePresetMenu(); void migrationView.open();
-  }, ''));
+  const toolsButton = button('预设工具', 'tools', openPresetTools, '');
+  toolsButton.setAttribute('aria-haspopup', 'dialog');
+  menu.append(
+    button('预设条目迁移', 'migration', () => {
+      cancelDrag(); closePresetMenu(); void migrationView.open();
+    }, ''),
+    toolsButton,
+  );
   const moreButton = button('更多预设操作', 'more', () => {
     menu.hidden = !menu.hidden;
     moreButton.setAttribute('aria-expanded', String(!menu.hidden));
@@ -457,8 +467,276 @@ export function createManagerView(host: Window, controller: ManagerController): 
     frame.inert = false;
     if (restoreFocus) launcherSettingsButton.focus({preventScroll:true});
   }
+  const toolsLayer = el('div', 'mm-modal-layer mm-launcher-settings-layer mm-preset-tools-layer');
+  toolsLayer.hidden = true;
+  toolsLayer.tabIndex = -1;
+  const toolsDialog = el('section', 'mm-dialog mm-launcher-settings mm-tools-dialog');
+  toolsDialog.id = pickerId('preset-tools');
+  toolsDialog.setAttribute('role', 'dialog');
+  toolsDialog.setAttribute('aria-modal', 'true');
+  const toolsTitle = el('h3', '', '预设工具');
+  toolsTitle.id = pickerId('tools-title');
+  toolsTitle.tabIndex = -1;
+  toolsDialog.setAttribute('aria-labelledby', toolsTitle.id);
+  toolsButton.setAttribute('aria-controls', toolsDialog.id);
+  const toolsHeading = el('div', 'mm-dialog-head');
+  const toolsIcon = el('span', 'mm-tools-icon');
+  toolsIcon.append(createIcon(doc, 'tools'));
+  toolsHeading.append(toolsIcon, toolsTitle);
+  const toolsBody = el('div', 'mm-dialog-body');
+
+  function toolFeature(name: string, description: string, available: boolean, toggle: () => void) {
+    const feature = el('div', 'mm-tool-feature');
+    const row = el('div', 'mm-launcher-mode-row');
+    const copy = el('div', 'mm-launcher-mode-copy');
+    const hint = el('p', 'mm-hint', description);
+    hint.id = pickerId('tool-hint');
+    copy.append(el('h5', '', name), hint);
+    const control = button(name, undefined, toggle, 'mm-icon mm-launcher-mode-switch');
+    control.removeAttribute('title');
+    control.setAttribute('role', 'switch');
+    control.setAttribute('aria-describedby', hint.id);
+    control.disabled = !available;
+    control.append(el('span', 'mm-launcher-mode-track'));
+    row.append(copy, control);
+    feature.append(row);
+    return { feature, control };
+  }
+  function toolGroup(title: string, ...items: HTMLElement[]) {
+    const group = el('section', 'mm-launcher-card mm-tools-group');
+    const label = el('h4', '', title);
+    label.id = pickerId('tools-group');
+    group.setAttribute('aria-labelledby', label.id);
+    group.append(label, ...items);
+    return group;
+  }
+  function toolExample(label: string, original: string, resultLabel: string, result: string) {
+    const example = el('div', 'mm-tool-example');
+    example.append(el('span', 'mm-tool-example-label', label), el('span', '', original),
+      el('span', 'mm-tool-example-label', resultLabel), el('code', 'mm-tool-example-result', result));
+    return example;
+  }
+
+  const pinyin = toolFeature('发送消息转拼音', '聊天保留原文，AI 收到无声调拼音。',
+    Boolean(tools?.available), () => {
+      if (tools?.available) updateMessageTools(tools.setEnabled(!tools.enabled()));
+    });
+  pinyin.feature.append(toolExample('聊天显示', '你好，今天见。', 'AI 收到', 'ni hao，jin tian jian。'));
+
+  const unicode = toolFeature('上下文 Unicode 转义', '将请求正文转义，可与拼音二选一。',
+    Boolean(tools?.unicodeAvailable), () => {
+      if (!tools?.unicodeAvailable) return;
+      updateMessageTools(tools.setSettings({ input: tools.settings().input === 'unicode' ? 'off' : 'unicode' }));
+    });
+  unicode.feature.append(toolExample('原文片段', '你好', 'AI 收到', '\\u4f60\\u597d'));
+  const replyOptions = el('fieldset', 'mm-unicode-reply');
+  replyOptions.append(el('legend', '', 'AI 回复格式'));
+  const replyChoices = el('div', 'mm-unicode-reply-choices');
+  const radioName = pickerId('unicode-reply');
+  const replyButtons = (['plain', 'encoded'] as const).map(reply => {
+    const label = el('label', 'mm-unicode-reply-option');
+    const input = el('input');
+    input.type = 'radio';
+    input.name = radioName;
+    input.value = reply;
+    input.addEventListener('change', () => {
+      if (input.checked && tools?.unicodeAvailable) updateMessageTools(tools.setSettings({ reply }));
+    });
+    label.append(input, el('span', '', reply === 'plain' ? '原文回复' : '编码回复'));
+    replyChoices.append(label);
+    return input;
+  });
+  const replyHint = el('p', 'mm-hint', '编码可能占用更多上下文。选择编码回复后，脚本会收完并解码，再显示正文。');
+  replyOptions.append(replyChoices, replyHint);
+  unicode.feature.append(replyOptions);
+
+  const toolReply = toolFeature('工具调用回复', '用一个工具接收完整回复，收齐后显示原文。适用于支持工具调用的 OpenAI、OpenRouter、Custom 和 Gemini 连接。',
+    Boolean(tools?.unicodeAvailable), () => {
+      if (tools?.unicodeAvailable) updateMessageTools(tools.setSettings({ toolReply: !tools.settings().toolReply }));
+    });
+
+  const affinity = toolFeature('好感度引擎', '沿用预设规则结算，保留通用、EVA 和 NPC 好感度名单。',
+    Boolean(tools?.unicodeAvailable), () => {
+      if (tools?.unicodeAvailable) updateMessageTools(tools.setSettings({ affinity: !tools.settings().affinity }));
+    });
+  const status = toolFeature('状态栏引擎', '首次生成全表，后续按标题更新。',
+    Boolean(tools?.unicodeAvailable), () => {
+      if (tools?.unicodeAvailable) updateMessageTools(tools.setSettings({ status: !tools.settings().status }));
+    });
+
+  const promptCard = el('div', 'mm-status-prompt');
+  const promptHeader = el('div', 'mm-status-prompt-head');
+  const promptTitle = el('strong', '', '状态栏增量提示词');
+  promptTitle.id = pickerId('status-prompt-title');
+  const promptPreview = el('p', 'mm-status-prompt-preview');
+  const promptEditor = el('div', 'mm-status-prompt-editor');
+  promptEditor.id = pickerId('status-prompt-editor');
+  promptEditor.hidden = true;
+  const promptInput = el('textarea', 'mm-status-prompt-input');
+  promptInput.rows = 3;
+  const promptHelp = el('p', 'mm-hint', '有上一份完整状态栏时，这段文字会加在 <status> 上方。清空后保存会恢复默认。');
+  promptHelp.id = pickerId('status-prompt-help');
+  promptInput.setAttribute('aria-labelledby', promptTitle.id);
+  promptInput.setAttribute('aria-describedby', promptHelp.id);
+  const promptValue = () => tools?.settings().statusPrompt ?? DEFAULT_STATUS_PROMPT;
+  const promptEdit = button('编辑', 'edit', () => {
+    if (!tools) return;
+    promptInput.value = promptValue();
+    promptEdit.setAttribute('aria-expanded', 'true');
+    promptEdit.hidden = true;
+    promptPreview.hidden = true;
+    promptEditor.hidden = false;
+    updatePromptDraft();
+    promptInput.focus();
+  }, 'mm-status-prompt-edit');
+  promptEdit.setAttribute('aria-label', '编辑状态栏提示词');
+  promptEdit.setAttribute('aria-controls', promptEditor.id);
+  promptEdit.setAttribute('aria-expanded', 'false');
+  promptEdit.disabled = !tools;
+  const promptReset = button('恢复默认', 'refresh', () => {
+    promptInput.value = DEFAULT_STATUS_PROMPT;
+    updatePromptDraft();
+    promptInput.focus();
+  }, 'mm-status-prompt-reset');
+  const promptCancel = button('取消', undefined, () => closeStatusPrompt(), 'mm-secondary');
+  const promptSave = button('保存', undefined, () => {
+    if (!tools) return;
+    updateMessageTools(tools.setSettings({ statusPrompt: promptInput.value }));
+    closeStatusPrompt();
+  }, 'mm-primary');
+  function updatePromptDraft() {
+    const text = promptInput.value.trim();
+    promptReset.disabled = text === DEFAULT_STATUS_PROMPT;
+    promptSave.disabled = (text || DEFAULT_STATUS_PROMPT) === promptValue();
+  }
+  promptInput.addEventListener('input', updatePromptDraft);
+  function closeStatusPrompt(restoreFocus = true) {
+    if (promptEditor.hidden) return;
+    promptEditor.hidden = true;
+    promptEdit.hidden = false;
+    promptEdit.setAttribute('aria-expanded', 'false');
+    promptPreview.hidden = false;
+    if (restoreFocus) promptEdit.focus({ preventScroll: true });
+  }
+  const promptActions = el('div', 'mm-status-prompt-actions');
+  const promptCommit = el('div', 'mm-status-prompt-commit');
+  promptCommit.append(promptCancel, promptSave);
+  promptActions.append(promptReset, promptCommit);
+  promptHeader.append(promptTitle, promptEdit);
+  promptEditor.append(promptInput, promptHelp, promptActions);
+  promptCard.append(promptHeader, promptPreview, promptEditor);
+  status.feature.append(promptCard);
+
+  const messageToolsCard = toolGroup('消息处理', pinyin.feature, unicode.feature, toolReply.feature);
+  const conversationCard = toolGroup('对话状态', affinity.feature, status.feature);
+  const transferHint = el('p', 'mm-hint mm-tools-transfer', '用酒馆的复制按钮复制最后一条完整回复，粘贴到新对话的开场白即可接续。');
+  const toolsNotice = el('p', 'mm-hint mm-tools-notice');
+  toolsNotice.setAttribute('role', 'status');
+  toolsBody.append(messageToolsCard, conversationCard, transferHint, toolsNotice);
+  function updateMessageTools(saved = true) {
+    const settings = tools?.settings();
+    const unicodeEnabled = Boolean(tools?.unicodeAvailable && settings?.input === 'unicode');
+    pinyin.control.setAttribute('aria-checked', String(Boolean(tools?.enabled())));
+    unicode.control.setAttribute('aria-checked', String(unicodeEnabled));
+    toolReply.control.setAttribute('aria-checked', String(Boolean(tools?.unicodeAvailable && settings?.toolReply)));
+    affinity.control.setAttribute('aria-checked', String(Boolean(tools?.unicodeAvailable && settings?.affinity)));
+    status.control.setAttribute('aria-checked', String(Boolean(tools?.unicodeAvailable && settings?.status)));
+    replyOptions.hidden = !unicodeEnabled;
+    replyOptions.disabled = !unicodeEnabled;
+    for (const input of replyButtons) input.checked = input.value === (settings?.reply ?? 'plain');
+    promptPreview.textContent = promptValue();
+    toolsNotice.textContent = !saved ? '本次已生效，浏览器无法保存此设置。' :
+      !tools?.available && !tools?.unicodeAvailable ? '当前宿主暂未提供这些功能所需的聊天补全能力。' : '';
+    toolsNotice.hidden = !toolsNotice.textContent;
+  }
+  function backFromPresetTools() {
+    if (!promptEditor.hidden) closeStatusPrompt();
+    else dismissPresetTools();
+  }
+  const toolsActions = el('div', 'mm-dialog-actions');
+  const toolsBack = button('返回', 'back', backFromPresetTools, 'mm-secondary');
+  toolsBack.removeAttribute('title');
+  toolsActions.append(toolsBack);
+  toolsDialog.append(toolsHeading, toolsBody, toolsActions);
+  toolsLayer.append(toolsDialog);
+  let toolsMotion: { opening: boolean; shell: HTMLElement; finish(restoreFocus?: boolean): void } | undefined;
+  const toolsMotionPreference = host.matchMedia('(prefers-reduced-motion: reduce)');
+  listen(toolsMotionPreference, 'change', () => { if (toolsMotionPreference.matches) toolsMotion?.finish(); });
+  cleanup.push(() => dismissPresetTools(false));
+  function openPresetTools() {
+    if (disposed || panel.hidden || panel.inert || !editorLayer.hidden || !confirmLayer.hidden || !launcherLayer.hidden || !toolsLayer.hidden) return;
+    cancelDrag();
+    closePresetChoices();
+    closePresetMenu();
+    updateMessageTools();
+    toolsLayer.hidden = false;
+    toolsBody.scrollTop = 0;
+    frame.inert = true;
+    toolsTitle.focus({ preventScroll: true });
+    playToolsMotion(true);
+  }
+  function dismissPresetTools(restoreFocus = true) {
+    if (toolsLayer.hidden) return;
+    if (toolsMotion && !toolsMotion.opening) { if (!restoreFocus) toolsMotion.finish(false); return; }
+    closeStatusPrompt(false);
+    const finish = (focus = restoreFocus) => {
+      toolsLayer.hidden = true;
+      toolsDialog.inert = false;
+      frame.inert = false;
+      if (focus && !disposed && !panel.hidden && !panel.inert) moreButton.focus({ preventScroll: true });
+    };
+    if (!restoreFocus) { toolsMotion?.finish(false); finish(); return; }
+    playToolsMotion(false, finish);
+  }
+  function playToolsMotion(opening: boolean, done: (focus?: boolean) => void = () => {}) {
+    const content = [toolsHeading, toolsBody, toolsActions];
+    const previous = toolsMotion;
+    let start: Keyframe | undefined;
+    let startOpacity: string[] | undefined;
+    if (!opening && previous?.opening) {
+      const style = host.getComputedStyle(previous.shell);
+      start = { transform: style.transform, opacity: style.opacity };
+      startOpacity = content.map(node => host.getComputedStyle(node).opacity);
+    }
+    previous?.finish(false);
+    if (toolsMotionPreference.matches || typeof toolsDialog.animate !== 'function') { done(); return; }
+    const bounds = toolsDialog.getBoundingClientRect(), anchor = moreButton.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) { done(); return; }
+    const width = Math.min(anchor.width, bounds.width), height = Math.min(anchor.height, bounds.height);
+    const x = Math.max(0, Math.min(bounds.width - width, anchor.left - bounds.left));
+    const y = Math.max(0, Math.min(bounds.height - height, anchor.top - bounds.top));
+    const entry = `translate3d(${x}px,${y}px,0) scale(${width / bounds.width},${height / bounds.height})`;
+    const expanded = { transform: 'translate3d(0,0,0) scale(1,1)', opacity: 1 };
+    const shell = el('span', 'mm-tools-motion-shell');
+    shell.setAttribute('aria-hidden', 'true');
+    toolsDialog.append(shell);
+    toolsLayer.dataset.motion = opening ? 'opening' : 'closing';
+    if (!opening) {
+      toolsLayer.focus({ preventScroll: true });
+      toolsDialog.inert = true;
+    }
+    const shellMotion = shell.animate(opening ? [{ transform: entry, opacity: .5 }, expanded] :
+      [start ?? expanded, { transform: entry, opacity: 0 }], {
+      duration: opening ? 360 : 240,
+      easing: opening ? 'cubic-bezier(.16,1,.3,1)' : 'cubic-bezier(.4,0,.6,1)', fill: 'both',
+    });
+    const animations = [shellMotion, ...content.map((node, index) => node.animate(
+      opening ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: startOpacity?.[index] ?? 1 }, { opacity: 0 }],
+      { duration: opening ? 140 : 90, delay: opening ? 180 : 0, easing: 'ease-out', fill: 'both' },
+    ))];
+    const complete = (focus = true) => {
+      if (toolsMotion?.finish !== complete) return;
+      toolsMotion = undefined;
+      for (const animation of animations) animation.cancel();
+      shell.remove();
+      delete toolsLayer.dataset.motion;
+      done(focus);
+    };
+    toolsMotion = { opening, shell, finish: complete };
+    void shellMotion.finished.then(() => complete(), () => complete());
+  }
   frame.append(header, errorBox, categoryRow, scroll, footer);
-  panel.append(editorLayer, confirmLayer, launcherLayer);
+  panel.append(editorLayer, confirmLayer, launcherLayer, toolsLayer);
   const parameterPresentation = createParameterPresentation(host, editorLayer, parametersButton);
   let parameterMotionEpoch = 0;
   listen(doc, 'pointerdown', ((event: PointerEvent) => {
@@ -587,7 +865,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     input.maxLength = 200;
     label.append(el('span', '', '预设名称'), input);
     if (title === '新建预设')
-      label.append(el('p', 'mm-hint', '沿用当前生成、连接设置和内建条目，清除自定义提示词。当前预设保持不变。'));
+      label.append(el('p', 'mm-hint', '使用酒馆原始 Default 模板。API 连接按酒馆的绑定开关处理。'));
     dialog(title, label, '保存', async () => {
       const value = input.value.trim();
       if (!value) throw new Error('请输入预设名称。');
@@ -981,10 +1259,11 @@ export function createManagerView(host: Window, controller: ManagerController): 
     return node;
   }
   function renderStatus() {
-    errorBox.textContent = localError || controller.state.error;
-    errorBox.hidden = !errorBox.textContent;
+    const error = localError || controller.state.error;
+    if (errorBox.textContent !== error) errorBox.textContent = error;
+    errorBox.hidden = !error;
     const editorError = editorLayer.querySelector<HTMLElement>('[data-editor-error]');
-    if (editorError) editorError.textContent = localError || controller.state.error;
+    if (editorError && editorError.textContent !== error) editorError.textContent = error;
   }
   function updateSessionControls() {
     const state = controller.state;
@@ -1013,7 +1292,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const binding = controller.binding?.state;
     if (!binding) return;
     const labels = { 'no-chat': '无对话', initializing: '正在建立绑定', bound: '此对话', missing: '此对话 · 绑定缺失' };
-    presetLabel.textContent = `当前使用预设 · ${labels[binding.mode]}`;
+    const label = `当前使用预设 · ${labels[binding.mode]}`;
+    if (presetLabel.textContent !== label) presetLabel.textContent = label;
     const applied = binding.appliedName;
     showPresetValue(applied ?? '');
     const isDefault = Boolean(applied && applied === binding.defaultName);
@@ -1023,8 +1303,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
     defaultButton.disabled = !applied || binding.status !== 'ready' || controller.state.busy || controller.state.dirty || fileBusy;
   }
   let lastRender: { snapshot: unknown; pending: unknown; draft: unknown; parameters: unknown; revision: number; category: string; busy: boolean; file: boolean } | null = null;
+  let renderedRows: { name?: string; revision?: string; pending: unknown; category: string } | undefined;
   function render() {
-    if (disposed) return;
+    if (disposed || panel.hidden) return;
     const state = controller.state;
     const key = { snapshot: state.snapshot, pending: state.pendingRaw, draft: state.draft, parameters: state.parametersDraft, revision: state.localRevision, category: state.category, busy: state.busy, file: fileBusy };
     if (lastRender && Object.keys(key).every(k => key[k as keyof typeof key] === lastRender![k as keyof typeof key])) {
@@ -1033,7 +1314,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     lastRender = key;
     if (drag && (drag.revision !== controller.revision() || drag.category !== state.category || state.busy))
       cancelDrag();
-    const namesKey = JSON.stringify([state.snapshot?.name, state.snapshot?.names]);
+    const namesKey = JSON.stringify(state.snapshot?.names ?? []);
     if (presetSelect.dataset.names !== namesKey) {
       closePresetChoices(); presetChoices.replaceChildren();
       for (const name of state.snapshot?.names ?? []) {
@@ -1048,9 +1329,28 @@ export function createManagerView(host: Window, controller: ManagerController): 
         choice.append(createIcon(doc, 'check')); presetChoices.append(choice);
       }
       presetSelect.dataset.names = namesKey;
+      delete presetSelect.dataset.value;
     }
     // Show only the confirmed state; selection still goes through Controller/Binding.
-    showPresetValue(state.snapshot?.name ?? '');
+    if (!controller.binding) showPresetValue(state.snapshot?.name ?? '');
+    const rowKey = { name: state.snapshot?.name, revision: state.snapshot?.revision, pending: state.pendingRaw, category: state.category };
+    if (!renderedRows || renderedRows.name !== rowKey.name || renderedRows.revision !== rowKey.revision ||
+        renderedRows.pending !== rowKey.pending || renderedRows.category !== rowKey.category) {
+      renderRows();
+      renderedRows = rowKey;
+    }
+    renderEditor();
+    renderStatus();
+    for (const node of panel.querySelectorAll<
+      HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >('[data-write]'))
+      node.disabled = state.busy || fileBusy || !state.snapshot || node.dataset.permitted === 'false' || (node.dataset.clean === 'true' && (state.dirty || state.conflict));
+    updateSessionControls();
+    frame.setAttribute('aria-busy', String(state.busy || fileBusy));
+  }
+
+  function renderRows() {
+    const state = controller.state;
     const categories = [...new Set(['全部', ...controller.categories()])];
     const tabsKey = JSON.stringify([state.category, categories]);
     if (tabs.dataset.key !== tabsKey) {
@@ -1090,17 +1390,15 @@ export function createManagerView(host: Window, controller: ManagerController): 
       attachedList.append(el('p', 'mm-empty', state.snapshot ? '这个分类中没有已挂接条目' : '读取预设后，提示词条目会显示在这里'));
     if (previousFocus?.isConnected && doc.activeElement !== previousFocus) previousFocus.focus({ preventScroll: true });
     else if (focusedCard && previousFocus === focusedCard) cardCache.get(focusedCard.dataset.id!)?.node.focus({ preventScroll: true });
-    renderEditor();
-    renderStatus();
-    for (const node of panel.querySelectorAll<
-      HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >('[data-write]'))
-      node.disabled = state.busy || fileBusy || !state.snapshot || node.dataset.permitted === 'false' || (node.dataset.clean === 'true' && (state.dirty || state.conflict));
-    updateSessionControls();
-    frame.setAttribute('aria-busy', String(state.busy || fileBusy));
   }
 
   function mountCards(list: HTMLElement, nodes: HTMLElement[], preserveOrder = false) {
+    if (!list.firstElementChild && nodes.length) {
+      const fragment = doc.createDocumentFragment();
+      for (const node of nodes) fragment.append(node);
+      list.append(fragment);
+      return;
+    }
     const wanted = new Set(nodes);
     for (const node of [...list.children]) if (!wanted.has(node as HTMLElement)) node.remove();
     nodes.forEach((node, index) => {
@@ -1330,6 +1628,9 @@ export function createManagerView(host: Window, controller: ManagerController): 
   listen(panel, 'keydown', ((event: KeyboardEvent) => {
     // Safari can end composition before emitting its IME keydown (229).
     if (event.isComposing || event.keyCode === 229) return;
+    if (toolsMotion && !toolsMotion.opening && (event.key === 'Tab' || event.key === 'Escape')) {
+      event.preventDefault(); event.stopPropagation(); return;
+    }
     if (editorLayer.dataset.parameterMotion && (event.key === 'Tab' ||
         (event.key === 'Escape' && editorLayer.dataset.parameterMotion === 'closing'))) {
       event.preventDefault(); event.stopPropagation(); return;
@@ -1359,7 +1660,8 @@ export function createManagerView(host: Window, controller: ManagerController): 
       return;
     }
     if (event.key === 'Tab') {
-      const surface = !launcherLayer.hidden ? launcherLayer : !confirmLayer.hidden ? confirmLayer : !editorLayer.hidden ? editorLayer : frame;
+      const surface = !toolsLayer.hidden ? toolsLayer :
+        !launcherLayer.hidden ? launcherLayer : !confirmLayer.hidden ? confirmLayer : !editorLayer.hidden ? editorLayer : frame;
       const focusable = [
         ...surface.querySelectorAll<HTMLElement>(
           'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]',
@@ -1393,7 +1695,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     const width = visible?.width ?? host.innerWidth, height = visible?.height ?? host.innerHeight;
     const size = `${width}:${height}`;
     const resized = viewportSize !== size; viewportSize = size;
-    if (resized) { cancelDrag(); parameterPresentation.cancel(); }
+    if (resized) { cancelDrag(); parameterPresentation.cancel(); toolsMotion?.finish(); }
     if (panel.dataset.presentation !== 'native') {
       const css = host.getComputedStyle(panel);
       const safe = (side: string) => Math.max(10, Number.parseFloat(css.getPropertyValue(`--mm-safe-${side}`)) || 0);
@@ -1414,6 +1716,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }
   function setPresentation(mode: 'local' | 'native' | 'hub') {
     dismissLauncherSettings(false);
+    dismissPresetTools(false);
     parameterPresentation.cancel();
     panel.dataset.presentation = mode;
     for (const key of ['left','top','right','bottom','width','height','max-height','transform','transform-origin','will-change']) panel.style.removeProperty(key);
@@ -1425,8 +1728,14 @@ export function createManagerView(host: Window, controller: ManagerController): 
   listen(host, 'orientationchange', viewport);
   listen(panel, 'miemie:presentation-geometry', viewport);
   if (host.visualViewport) {
-    listen(host.visualViewport, 'resize', viewport);
-    listen(host.visualViewport, 'scroll', viewport);
+    let geometryFrame: number | undefined;
+    const scheduleViewport = () => {
+      if (geometryFrame !== undefined) return;
+      geometryFrame = host.requestAnimationFrame(() => { geometryFrame = undefined; viewport(); });
+    };
+    listen(host.visualViewport, 'resize', scheduleViewport);
+    listen(host.visualViewport, 'scroll', scheduleViewport);
+    cleanup.push(() => { if (geometryFrame !== undefined) host.cancelAnimationFrame(geometryFrame); });
   }
   function open() {
     if (disposed) return;
@@ -1435,6 +1744,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
     panel.hidden = false;
     panel.inert = false;
     viewport();
+    void controller.prepareOpen();
     render();
     const first = !editorLayer.hidden ? editorLayer.querySelector<HTMLElement>('input') : presetSelect;
     (first ?? frame).focus();
@@ -1453,6 +1763,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }
   function requestBack():boolean {
     if (!launcherLayer.hidden) { dismissLauncherSettings(); return true; }
+    if (!toolsLayer.hidden) { backFromPresetTools(); return true; }
     if(migrationView.requestBack())return true;
     if (drag) cancelDrag();
     else if (confirmClose) confirmClose();
@@ -1485,6 +1796,7 @@ export function createManagerView(host: Window, controller: ManagerController): 
   }
   function close() {
     dismissLauncherSettings(false);
+    dismissPresetTools(false);
     migrationView.close();
     closePresetChoices();
     parameterPicker?.close();

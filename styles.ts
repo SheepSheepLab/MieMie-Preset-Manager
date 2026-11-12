@@ -121,6 +121,54 @@ export const managerStyles = `
 .miemie-pm .mm-launcher-size-preview[data-tucked] img{right:0}
 .miemie-pm .mm-launcher-mode-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:10px;align-items:center}
 .miemie-pm .mm-launcher-mode-copy{display:grid;gap:4px;min-width:0}
+.miemie-pm .mm-preset-tools-layer{padding:12px}
+.miemie-pm .mm-tools-dialog{width:min(510px,100%);background:linear-gradient(155deg,var(--mm-chrome),var(--mm-bg) 62%);animation:none}
+.miemie-pm .mm-preset-tools-layer[data-motion] .mm-tools-dialog{isolation:isolate;overflow:visible;background:transparent;border-color:transparent;box-shadow:none}
+.miemie-pm .mm-tools-motion-shell{position:absolute;inset:-1px;z-index:-1;pointer-events:none;transform-origin:0 0;border:1px solid var(--mm-line);border-radius:16px;background:linear-gradient(155deg,var(--mm-chrome),var(--mm-bg) 62%);box-shadow:0 16px 70px #0009;will-change:transform,opacity}
+.miemie-pm .mm-tools-dialog .mm-dialog-head{padding:13px 17px;gap:11px;border-bottom-color:#5b487f82}
+.miemie-pm .mm-tools-icon{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;border:1px solid #795aa86e;color:#e3cef9;background:linear-gradient(145deg,#382751,#231a39)}
+.miemie-pm .mm-tools-icon svg{width:18px;height:18px}
+.miemie-pm .mm-tools-dialog .mm-dialog-body{padding:14px 16px;gap:11px;scroll-padding-block:12px;scrollbar-width:thin}
+.miemie-pm .mm-tools-group{gap:0;padding:0;border-color:#5b487fbd;background:linear-gradient(150deg,var(--mm-panel),#1a152d 78%)}
+.miemie-pm .mm-tools-group h4{margin:0;padding:11px 14px 1px;color:#d9c5f3;font-size:12px;font-weight:650;line-height:1.4}
+.miemie-pm .mm-tool-feature{display:grid;gap:9px;min-width:0;margin-inline:14px;padding-block:10px 12px}
+.miemie-pm .mm-tool-feature+.mm-tool-feature{border-top:1px solid #5b487f87}
+.miemie-pm .mm-tool-feature h5{margin:0;color:var(--mm-text);font-size:14px;font-weight:650;line-height:1.45}
+.miemie-pm .mm-tool-feature .mm-launcher-mode-copy{gap:2px}
+.miemie-pm .mm-tool-feature .mm-hint{line-height:1.45}
+.miemie-pm .mm-tool-example{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:5px 11px;min-width:0;padding:8px 10px;border-radius:9px;border:1px solid #5b487f4f;background:#100c1b75;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.miemie-pm .mm-tool-example-label{color:var(--mm-muted);font-size:11px}
+.miemie-pm .mm-tool-example-result{margin:0;padding:0;border:0;box-shadow:none;color:#e0c4fb;background:none;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+.miemie-pm .mm-unicode-reply{min-width:0;margin:0;padding:0;border:0;animation:mm-tools-reveal .17s ease-out}
+.miemie-pm .mm-unicode-reply legend{margin-bottom:5px;padding:0;font-size:12px;color:var(--mm-muted)}
+.miemie-pm .mm-unicode-reply-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-width:0;gap:3px;padding:3px;border:1px solid #5b487f9c;border-radius:10px;background:#110d21}
+.miemie-pm .mm-unicode-reply-option{position:relative;display:block;min-width:0}
+.miemie-pm .mm-unicode-reply-option input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.miemie-pm .mm-unicode-reply-option span{display:grid;place-items:center;min-height:44px;padding:4px;border:1px solid transparent;border-radius:7px;font-size:12px;color:var(--mm-muted);transition:background .15s,color .15s}
+.miemie-pm .mm-unicode-reply-option input:checked+span{border-color:#795aa892;background:var(--mm-tonal);color:var(--mm-text)}
+.miemie-pm .mm-unicode-reply-option input:focus-visible+span{outline:2px solid var(--mm-accent);outline-offset:2px}
+.miemie-pm .mm-unicode-reply .mm-hint{margin-top:6px}
+.miemie-pm .mm-status-prompt{min-width:0;display:grid;gap:2px;padding:4px 10px 9px;border-radius:10px;border:1px solid #5b487f7f;background:#100c1b75}
+.miemie-pm .mm-status-prompt-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.miemie-pm .mm-status-prompt-head strong{font-size:12px;font-weight:650;color:#e3d1f8}
+.miemie-pm .mm-status-prompt-edit,.miemie-pm .mm-status-prompt-reset{padding:7px;color:#dfbcff;font-size:12px;gap:5px}
+.miemie-pm .mm-status-prompt-edit svg,.miemie-pm .mm-status-prompt-reset svg{width:14px;height:14px}
+.miemie-pm .mm-status-prompt-preview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mm-muted);font-size:12px;line-height:1.5}
+.miemie-pm .mm-status-prompt-editor{display:grid;gap:7px;min-width:0;animation:mm-tools-reveal .17s ease-out}
+.miemie-pm .mm-tools-dialog .mm-status-prompt-input{min-height:84px;padding:8px 9px;background:#211937;border-color:#6a538c;font-size:16px;line-height:1.45}
+.miemie-pm .mm-status-prompt-input:focus-visible{outline-offset:1px}
+.miemie-pm .mm-status-prompt-actions,.miemie-pm .mm-status-prompt-commit{display:flex;align-items:center;gap:5px}
+.miemie-pm .mm-status-prompt-actions{flex-wrap:wrap;justify-content:space-between}
+.miemie-pm .mm-status-prompt-commit{margin-inline-start:auto}
+.miemie-pm .mm-status-prompt-commit .mm-button{padding-inline:10px;font-size:12px}
+.miemie-pm .mm-tools-transfer,.miemie-pm .mm-tools-notice{padding-inline:2px;font-size:11px;line-height:1.5}
+.miemie-pm .mm-tools-dialog .mm-dialog-actions{padding:10px 16px;border-top-color:#5b487f82;background:var(--mm-chrome)}
+.miemie-pm .mm-tools-dialog .mm-dialog-actions svg{width:15px;height:15px}
+.miemie-pm[data-compact=true] .mm-tools-dialog .mm-tools-group{padding:0}
+.miemie-pm[data-compact=true] .mm-tools-group h4{padding-inline:11px}
+.miemie-pm[data-compact=true] .mm-tool-feature{margin-inline:11px}
+@keyframes mm-tools-reveal{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.miemie-pm .mm-status-prompt-editor,.miemie-pm .mm-unicode-reply{animation:none}.miemie-pm .mm-unicode-reply-option span{transition:none}}
 .miemie-pm .mm-button.mm-launcher-mode-switch{width:52px;padding:0;border-radius:14px}
 .miemie-pm .mm-launcher-mode-track{display:block;width:43px;height:25px;padding:3px;border:1px solid #796395;border-radius:20px;background:#35274d;transition:background .16s,border-color .16s}
 .miemie-pm .mm-launcher-mode-track:after{content:"";display:block;width:17px;height:17px;border-radius:50%;background:#ccbedc;transition:translate .16s,background .16s}

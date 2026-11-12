@@ -3,7 +3,7 @@
 // See LICENSE for terms; distributed without warranty.
 
 import { bounded } from './async-scope';
-import type { PresetAdapter, RawPreset, Snapshot } from './contracts';
+import { NativePresetDraftError, type PresetAdapter, type RawPreset, type Snapshot } from './contracts';
 import { validatePreset } from './model';
 
 type Data = Record<string, unknown>;
@@ -84,7 +84,17 @@ function stable(value: unknown): string {
   if (object(value)) return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + stable(value[k])).join(',') + '}';
   return JSON.stringify(value) ?? 'undefined';
 }
-function equal(a: unknown, b: unknown): boolean { return stable(a) === stable(b); }
+function equal(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a)) return Array.isArray(b) && a.length === b.length && a.every((value, index) => equal(value, b[index]));
+  if (object(a)) {
+    if (!object(b)) return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every(key => Object.hasOwn(b, key) && equal(a[key], b[key]));
+  }
+  return typeof a === 'number' && !Number.isFinite(a) && (b === null || typeof b === 'number' && !Number.isFinite(b))
+    || typeof b === 'number' && !Number.isFinite(b) && a === null;
+}
 function hash(value: unknown): string {
   const text = stable(value);
   let a = 0x811c9dc5, b = 0x9e3779b9;
@@ -94,7 +104,7 @@ function hash(value: unknown): string {
   }
   return (a >>> 0).toString(16) + (b >>> 0).toString(16);
 }
-function rawPreset(value: unknown): RawPreset {
+function rawPreset(value: unknown, copy = true): RawPreset {
   if (!object(value) || !Array.isArray(value.prompts) || !Array.isArray(value.prompt_order)) {
     throw new Error('预设缺少原生 prompts 或 prompt_order，已停止操作，源数据未修改。');
   }
@@ -122,7 +132,7 @@ function rawPreset(value: unknown): RawPreset {
   if (value.main_prompt || value.nsfw_prompt || value.jailbreak_prompt) {
     throw new Error('这是会触发原生旧格式迁移的预设；请先在副本上完成迁移，再交给管理器处理。');
   }
-  return clone(value) as RawPreset;
+  return (copy ? clone(value) : value) as RawPreset;
 }
 
 /** Errors keep an in-memory recovery copy; nothing is logged or sent to the Hub. */
@@ -162,6 +172,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
   // Private receipt metadata, never exported with native presets. Arbitrary/cloned
   // snapshots cannot suppress a read; only this adapter's own verified read can.
   const readReceipts = new WeakMap<Snapshot, { notifications: number; epoch: number; live: string; name: string; revision: string }>();
+  let fingerprint: { name: string; serialized: string; live: string; hash: string } | undefined;
   let tail: Promise<unknown> = Promise.resolve();
   const callbacks = new Set<() => void>();
   const subscriptions: Array<[string, Listener]> = [];
@@ -181,7 +192,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     return operation;
   };
 
-  async function disk(confirmPendingWrite = false, caller?: AbortSignal): Promise<Map<string, unknown>> {
+  async function disk(confirmPendingWrite = false, caller?: AbortSignal) {
     if (!confirmPendingWrite) alive();
     const url = new URL('api/settings/get', host.location.href);
     const data: unknown = await bounded(async signal => {
@@ -194,11 +205,14 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     const result = new Map<string, unknown>();
     data.openai_setting_names.forEach((name, index) => {
       if (typeof name !== 'string') throw new Error('酒馆返回了无效预设名称。');
-      const item = (data.openai_settings as unknown[])[index];
-      try { result.set(name, typeof item === 'string' ? JSON.parse(item) : item); }
-      catch { result.set(name, null); }
+      result.set(name, (data.openai_settings as unknown[])[index]);
     });
     return result;
+  }
+  function diskPreset(presets: Map<string, unknown>, name: string): unknown {
+    const value = presets.get(name);
+    try { return typeof value === 'string' ? JSON.parse(value) : value; }
+    catch { return null; }
   }
 
   function liveValues(): Data {
@@ -208,9 +222,9 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     for (const key of liveKeys) result[key] = live[aliases[key] ?? key];
     return result;
   }
-  function checkLive(raw: RawPreset): void {
+  function checkLive(raw: RawPreset, name: string): void {
     const live = ctx.chatCompletionSettings;
-    const conflict = () => { throw new Error('检测到原生界面未保存修改，请先处理这些修改后重新读取。管理器没有替你保存或丢弃修改。'); };
+    const conflict = () => { throw new NativePresetDraftError(name); };
     const helper = ctx.extensionSettings?.tavern_helper;
     const optimize = object(helper) && object(helper.optimize) && helper.optimize.maximize_preset_context_length === true;
     const helperProjection = optimize && live.max_context_unlocked === true && live.openai_max_context === 2000000;
@@ -225,16 +239,21 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (!equal(raw.extensions ?? {}, live.extensions ?? {})) conflict();
     if (!Array.isArray(live.prompts) || !Array.isArray(live.prompt_order)) conflict();
     const prompts = live.prompts as Data[];
-    if (prompts.some(p => !object(p) || typeof p.identifier !== 'string')
-      || new Set(prompts.map(p => p.identifier)).size !== prompts.length) conflict();
+    const promptsById = new Map<string, Data>();
+    for (const prompt of prompts) {
+      const id = prompt?.identifier;
+      if (!object(prompt) || typeof id !== 'string' || promptsById.has(id)) conflict();
+      else promptsById.set(id, prompt);
+    }
+    const savedIds = new Set(raw.prompts.map(prompt => prompt.identifier));
     for (const prompt of raw.prompts) {
-      const actual = prompts.find(p => p.identifier === prompt.identifier);
+      const actual = promptsById.get(prompt.identifier);
       // Service settings are plain objects, not Prompt constructor projections.
       // Even a default-looking new attribute may be an unsaved native/third-party
       // edit. Compare both directions; never rebase a revision over that delta.
       if (!actual || !equal(prompt, actual)) conflict();
     }
-    if (prompts.some(p => !raw.prompts.some(r => r.identifier === p.identifier)
+    if (prompts.some(p => !savedIds.has(String(p.identifier))
       && (!Object.hasOwn(builtinDefaults, String(p.identifier)) || hash(p) !== builtinDefaults[String(p.identifier)]))) conflict();
     const groups = live.prompt_order as Data[];
     if (groups.length !== raw.prompt_order.length || groups.some(g => !object(g))
@@ -245,40 +264,68 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
         { ...actual, character_id: String(actual.character_id) })) conflict();
     }
   }
-  async function read(signal?: AbortSignal): Promise<Snapshot> {
+  function readStamp() {
     alive();
-    const started = epoch;
-    const notifications = notificationEpoch;
     const name = current();
     if (!name) throw new Error('酒馆尚未选中 Chat Completion 预设。');
-    const presets = await disk(false, signal);
+    return { epoch, notifications: notificationEpoch, name };
+  }
+  function snapshotFromDisk(presets: Map<string, unknown>, stamp: ReturnType<typeof readStamp>, raw?: RawPreset): Snapshot {
     alive();
+    const { epoch: started, notifications, name } = stamp;
     if (started !== epoch || name !== current()) throw new Error('读取期间酒馆切换了预设，请重新读取。');
-    const raw = rawPreset(presets.get(name));
-    if (!raw.prompt_order.some(group => String(group.character_id) === String(activeGroupId))) {
-      throw new Error('当前预设缺少酒馆使用的 100001 顺序分组，管理器不会自动创建或改写它。');
-    }
-    checkLive(raw);
+    raw ??= rawPreset(diskPreset(presets, name), false);
+    checkLive(raw, name);
     const live = stable(liveValues());
-    const result: Snapshot = { name, names: [...presets.keys()], raw, activeGroupId, version, revision: `${epoch}:${hash([name, raw, live])}` };
-    // Capture notifications at read START: an event during HTTP/readback is not
-    // assumed to be covered, even if its live projection happens to look unchanged.
+    const serialized = presets.get(name);
+    const previous = fingerprint;
+    // Only reuse the hash after a fresh disk read returned identical bytes and
+    // the complete live state matched again. Never cache the saved raw preset.
+    const signature = typeof serialized === 'string' && previous?.name === name &&
+      previous.serialized === serialized && previous.live === live ? previous.hash : hash([name, raw, live]);
+    fingerprint = typeof serialized === 'string' ? { name, serialized, live, hash: signature } : undefined;
+    const result: Snapshot = { name, names: [...presets.keys()], raw, activeGroupId, version, revision: `${epoch}:${signature}` };
+    // A notification during the request is not covered by this receipt.
     readReceipts.set(result, { notifications, epoch: started, live, name, revision: result.revision });
     return result;
   }
-  async function expectedState(expected: Snapshot): Promise<void> {
-    const actual = await read();
+  async function read(signal?: AbortSignal, restoreName?: string): Promise<Snapshot> {
+    const stamp = readStamp(), { name } = stamp;
+    if (restoreName !== undefined && name !== restoreName) throw new Error('酒馆已切换到其他预设，请重新读取。');
+    const presets = await disk(false, signal);
+    alive();
+    if (stamp.epoch !== epoch || name !== current()) throw new Error('读取期间酒馆切换了预设，请重新读取。');
+    const raw = rawPreset(diskPreset(presets, name), false);
+    try { return snapshotFromDisk(presets, stamp, raw); }
+    catch (error) {
+      if (restoreName === undefined || !(error instanceof NativePresetDraftError)) throw error;
+      validatePreset(raw);
+      await loadSaved(name, raw);
+      const appliedEpoch = epoch;
+      const restored = await read(signal);
+      if (epoch !== appliedEpoch || restored.name !== name || !equal(restored.raw, raw)) {
+        throw new Error('恢复期间酒馆预设已被修改或切换，请重新读取。');
+      }
+      return restored;
+    }
+  }
+  async function expectedState(expected: Snapshot) {
+    const stamp = readStamp();
+    const presets = await disk();
+    const actual = snapshotFromDisk(presets, stamp);
     if (actual.name !== expected.name || actual.revision !== expected.revision) {
       throw new PresetOperationError('预设已在其他地方改变，请重新读取后再操作。', expected);
     }
+    return { actual, presets };
   }
-  function unchanged(expected: Snapshot, started: number, liveBefore: string): boolean {
-    return !disposed && epoch === started && current() === expected.name && stable(liveValues()) === liveBefore
-      && expected.revision === `${started}:${hash([expected.name, expected.raw, liveBefore])}`;
+  function unchanged(expected: Snapshot, actual: Snapshot): boolean {
+    const receipt = readReceipts.get(actual)!;
+    return !disposed && epoch === receipt.epoch && current() === receipt.name && expected.name === receipt.name &&
+      expected.revision === receipt.revision && stable(liveValues()) === receipt.live && equal(actual.raw, expected.raw);
   }
   async function verifySaved(name: string, raw: RawPreset, backup: Snapshot): Promise<void> {
     let saved: unknown;
-    try { saved = (await disk(true)).get(name); }
+    try { saved = diskPreset(await disk(true), name); }
     catch { throw new PresetOperationError(`酒馆已接受「${name}」的保存，但无法回读确认完整性；已停止应用，请重新读取。`, backup, name); }
     if (!equal(saved, raw)) throw new PresetOperationError(`无法确认「${name}」完整保存；已停止后续操作，请重新读取。`, backup, name);
   }
@@ -286,7 +333,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     try { await bounded(() => manager.savePreset(name, clone(raw), { skipUpdate: true }), [lifetime.signal], 10000, '预设保存'); }
     catch {
       // A dropped response does not prove the server failed to commit the file.
-      try { if (equal((await disk(true)).get(name), raw)) return; }
+      try { if (equal(diskPreset(await disk(true), name), raw)) return; }
       catch { throw new PresetOperationError(`「${name}」保存请求中断，磁盘结果尚不确定；请重新读取，操作前副本仍保留。`, backup); }
       throw new PresetOperationError(`「${name}」保存失败，未将修改应用到当前界面；请重新读取。`, backup);
     }
@@ -344,27 +391,25 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (names.some(n => n.localeCompare(name, undefined, { sensitivity: 'base' }) === 0)) throw new Error('已存在同名预设，请换一个名称。');
   }
   async function saveNew(expected: Snapshot, name: string, value: RawPreset): Promise<Snapshot> {
-    await expectedState(expected);
-    const started = epoch;
-    const liveBefore = stable(liveValues());
-    checkName(name, [...(await disk()).keys()]);
     const raw = rawPreset(value);
-    if (!unchanged(expected, started, liveBefore)) throw new PresetOperationError('保存前当前预设已改变，请重新读取。', expected);
+    const { actual: fresh } = await expectedState(expected);
+    checkName(name, fresh.names);
+    if (!unchanged(expected, fresh)) throw new PresetOperationError('保存前当前预设已改变，请重新读取。', expected);
     await persist(name, raw, expected);
-    if (!unchanged(expected, started, liveBefore)) {
+    if (!unchanged(expected, fresh)) {
       throw new PresetOperationError(`「${name}」已保存，但原生状态已改变或管理器已停用；保留当前选择和未保存修改，未自动应用。请重新读取，必要时刷新酒馆以显示新预设。`, expected, name);
     }
     try { await loadSaved(name, raw); return await read(); }
     catch { throw new PresetOperationError(`「${name}」已保存，但未能确认应用完成；请重新读取实际状态。`, expected, name); }
   }
 
-  async function deleteNative(name: string, backup: Snapshot): Promise<void> {
+  async function deleteNative(name: string, backup: Snapshot) {
     alive();
     const started = epoch;
     const selectedBefore = current();
     const liveBefore = stable(liveValues());
     const beforeDelete = await disk();
-    if (!equal(beforeDelete.get(name), backup.raw)) {
+    if (!equal(diskPreset(beforeDelete, name), backup.raw)) {
       throw new PresetOperationError('待删除预设已被其他操作更新，已保留其新内容，请重新读取。', backup);
     }
     if (disposed || epoch !== started || current() !== selectedBefore || stable(liveValues()) !== liveBefore) {
@@ -373,12 +418,13 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     let ok = false;
     try { ok = await bounded(() => manager.deletePreset(name), [lifetime.signal], 10000, '预设删除'); } catch { /* Re-read before deciding whether rollback is required. */ }
     let remaining: Map<string, unknown>;
+    const stamp = readStamp();
     try { remaining = await disk(true); }
     catch { throw new PresetOperationError('删除请求结果无法确认，请重新读取。操作前副本仍保留在内存中。', backup); }
-    if (!remaining.has(name)) return;
+    if (!remaining.has(name)) return { remaining, stamp };
     // Native delete mutates the list before the request. Restore only while the user has not switched away.
     if (!disposed && epoch === started && current() === selectedBefore && stable(liveValues()) === liveBefore) {
-      try { await loadSaved(name, rawPreset(remaining.get(name))); }
+      try { await loadSaved(name, rawPreset(diskPreset(remaining, name), false)); }
       catch { throw new PresetOperationError('删除未完成，原预设仍在磁盘；列表恢复未完成，请重新读取或刷新酒馆。', backup); }
     }
     throw new PresetOperationError(ok ? '酒馆仍返回原预设，删除未通过回读确认。' : '删除失败，原预设仍保留；请重新读取。', backup);
@@ -386,12 +432,29 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
 
   return {
     read,
+    restoreSavedPreset: expectedName => serialize(() => read(undefined, expectedName)),
+    async readDefaultPreset() {
+      alive();
+      const url = new URL('api/presets/restore', host.location.href);
+      // This endpoint reads the shipped file; the native restore UI saves separately.
+      const result: unknown = await bounded(async signal => {
+        const response = await host.fetch(url.href, { method: 'POST', headers: ctx.getRequestHeaders(),
+          body: JSON.stringify({ apiId: 'openai', name: 'Default' }), signal });
+        if (!response.ok) throw Error('无法读取酒馆原始 Default 模板，请检查连接后重试。');
+        return response.json();
+      }, [lifetime.signal]);
+      alive();
+      if (!object(result) || result.isDefault !== true) throw Error('酒馆未提供原始 Default 模板，未创建预设。');
+      const raw = rawPreset(result.preset);
+      validatePreset(raw);
+      return raw;
+    },
     async readPresetByName(name) {
       alive();
       const presets = await disk();
       alive();
       if (!presets.has(name)) throw Error('来源预设已删除或重命名，请重新选择来源。');
-      const raw = rawPreset(presets.get(name));
+      const raw = rawPreset(diskPreset(presets, name), false);
       validatePreset(raw);
       return { name, raw, activeGroupId, fingerprint: hash([name, raw]) };
     },
@@ -401,7 +464,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       const listed = manager.getAllPresets();
       if (listed.length !== new Set(listed).size) throw Error('原生预设列表重复，已停止选择默认替代项。');
       const names = [...presets.keys()];
-      const supported = listed.filter(name => presets.has(name)).filter(name => { try { rawPreset(presets.get(name)); return true; } catch { return false; } });
+      const supported = listed.filter(name => presets.has(name)).filter(name => { try { rawPreset(diskPreset(presets, name), false); return true; } catch { return false; } });
       if (!supported.length && names.some(name => !listed.includes(name)))
         throw Error('保存目录出现原生列表尚未加载的预设；请刷新酒馆，未误判为空目录。');
       return { names, supported };
@@ -413,52 +476,47 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       try { return receipt.live === stable(liveValues()); } catch { return false; }
     },
     select: (name, expected) => serialize(async () => {
-      await expectedState(expected);
-      const started = epoch;
-      const liveBefore = stable(liveValues());
-      const presets = await disk();
-      const raw = rawPreset(presets.get(name));
-      if (!unchanged(expected, started, liveBefore)) throw new PresetOperationError('选择期间当前预设已改变，请重新读取。', expected);
-      if (name === expected.name) return read();
+      const { actual, presets } = await expectedState(expected);
+      if (!unchanged(expected, actual)) throw new PresetOperationError('选择期间当前预设已改变，请重新读取。', expected);
+      if (name === expected.name) return actual;
+      const raw = rawPreset(diskPreset(presets, name), false);
       await loadSaved(name, raw);
       return read();
     }),
     save: (expected, next) => serialize(async () => {
-      await expectedState(expected);
+      const { actual } = await expectedState(expected);
       const raw = rawPreset(next);
-      const started = epoch;
-      const liveBefore = stable(liveValues());
-      if (!unchanged(expected, started, liveBefore)) throw new PresetOperationError('保存前原生状态已改变，请重新读取。', expected);
+      if (!unchanged(expected, actual)) throw new PresetOperationError('保存前原生状态已改变，请重新读取。', expected);
       await persist(expected.name, raw, expected);
-      // Updating the saved cache is safe even if another preset is now current; application is not.
-      cacheSaved(expected.name, raw);
-      if (!unchanged(expected, started, liveBefore)) throw new PresetOperationError(`修改已保存到「${expected.name}」，但原生状态已改变；保留当前选择和未保存修改，没有自动应用。请重新读取。`, expected, expected.name);
+      if (!unchanged(expected, actual)) {
+        // Keep the saved cache current even when the native selection has moved.
+        cacheSaved(expected.name, raw);
+        throw new PresetOperationError(`修改已保存到「${expected.name}」，但原生状态已改变；保留当前选择和未保存修改，没有自动应用。请重新读取。`, expected, expected.name);
+      }
       try { await loadSaved(expected.name, raw); return await read(); }
       catch { throw new PresetOperationError(`修改已保存到「${expected.name}」，但应用状态未确认；请重新读取。`, expected, expected.name); }
     }),
     create: (expected, name, raw) => serialize(() => saveNew(expected, name, raw)),
     rename: (expected, name) => serialize(async () => {
       const created = await saveNew(expected, name, expected.raw);
-      try { await deleteNative(expected.name, expected); }
+      let deletion;
+      try { deletion = await deleteNative(expected.name, expected); }
       catch { throw new PresetOperationError(`「${name}」已保存，但旧预设「${expected.name}」未确认删除；可能保留两份。请重新读取。`, expected, name); }
       if (current() !== created.name) throw new PresetOperationError(`已重命名为「${name}」，期间当前预设发生切换，请重新读取。`, expected, name);
-      return read();
+      return snapshotFromDisk(deletion.remaining, deletion.stamp);
     }),
     remove: expected => serialize(async () => {
-      await expectedState(expected);
-      const started = epoch;
-      const liveBefore = stable(liveValues());
-      const presets = await disk();
+      const { actual, presets } = await expectedState(expected);
       const names = [...presets.keys()].filter(name => name !== expected.name);
       if (!names.length) throw new Error('至少需要保留一个预设，请先创建或导入另一个。');
       // Explicitly select a surviving preset before native deletion, avoiding native fallback selection races.
       const replacement = names[0];
-      const raw = rawPreset(presets.get(replacement));
-      if (!unchanged(expected, started, liveBefore)) throw new PresetOperationError('删除前当前预设已改变，请重新读取。', expected);
+      const raw = rawPreset(diskPreset(presets, replacement), false);
+      if (!unchanged(expected, actual)) throw new PresetOperationError('删除前当前预设已改变，请重新读取。', expected);
       await loadSaved(replacement, raw);
-      await deleteNative(expected.name, expected);
+      const deletion = await deleteNative(expected.name, expected);
       if (current() !== replacement) throw new PresetOperationError(`「${expected.name}」已删除，但当前预设发生切换，请重新读取。`, expected);
-      return read();
+      return snapshotFromDisk(deletion.remaining, deletion.stamp);
     }),
     subscribe(callback) { callbacks.add(callback); return () => { callbacks.delete(callback); }; },
     dispose() {

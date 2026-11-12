@@ -3,11 +3,12 @@
 // See LICENSE for terms; distributed without warranty.
 
 export type IconName =
-  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save' | 'default' | 'settings' | 'chevron' | 'check' | 'migration' | 'transfer' | 'insert-top' | 'insert-bottom' | 'transfer-all' | 'transfer-text' | 'view';
+  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save' | 'default' | 'settings' | 'chevron' | 'check' | 'migration' | 'tools' | 'transfer' | 'insert-top' | 'insert-bottom' | 'transfer-all' | 'transfer-text' | 'view';
 
 const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   view: ['M3 3h12l6 6v12H3zM15 3v6h6M7 12h10M7 16h8'],
   migration: ['M8 4H3v16h5M16 4h5v16h-5', 'M7 12h10m-4-4 4 4-4 4'],
+  tools: ['M3 8h18v12H3zM8 8V4h8v4M3 13h18M10 13v2h4v-2'],
   'transfer-all': ['M3 3h10v18H3zM6 7h4M6 11h4M6 15h3', 'M14 12h7m-3-3 3 3-3 3'],
   'transfer-text': ['M3 6h10M3 10h10M3 14h7M3 18h7', 'M14 12h7m-3-3 3 3-3 3'],
   transfer: ['M4 7v10M20 7v10M7 12h10m-4-4 4 4-4 4'],

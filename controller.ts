@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See LICENSE for terms; distributed without warranty.
 
-import type { ManagerController, ManagerState, PresetAdapter, PromptPatch, RawPreset, Snapshot } from './contracts';
+import { NativePresetDraftError, type ManagerController, type ManagerState, type PresetAdapter, type PromptPatch, type RawPreset, type Snapshot } from './contracts';
 import * as model from './model';
 import { patchParameters, missingParameterDefaults } from './preset-parameters';
 import type { PresetBindingService } from './chat-preset-coordinator';
@@ -51,6 +51,7 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
     if (state.snapshot?.name !== next.name) { state.category = '全部'; state.draft = null; state.parametersDraft = null; }
     state.snapshot = next;
+    binding?.acceptRead?.(next);
   }
   function observe(next: Snapshot) {
     model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
@@ -151,20 +152,34 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     // Cancellation never writes an old backup over current host data.
     if (needsRead) void refresh();
   }
-  async function reload() {
-    if (disposed || state.busy) return;
+  async function reload(discardManagerEdits: boolean) {
+    if (disposed || state.busy || (!discardManagerEdits && (state.dirty || !adapter.restoreSavedPreset))) return false;
     state.busy = true; refreshEpoch++; notify();
     let confirmed: Snapshot | undefined;
+    let restored = false;
     try {
-      const next = await adapter.read();
-      if (disposed) return;
+      let next: Snapshot;
+      try { next = await adapter.read(); }
+      catch (error) {
+        if (disposed || !(error instanceof NativePresetDraftError) || !adapter.restoreSavedPreset) throw error;
+        next = await adapter.restoreSavedPreset(error.presetName);
+        restored = true;
+      }
+      if (disposed) return false;
       model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
-      migration.close(true); state.migrationDraft = null;
-      state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false; state.conflict = false; observed = null;
-      state.localRevision++; accept(next); confirmed = next; state.error = '';
-      state.notice = '已重新读取酒馆实际状态，未保存修改已丢弃。';
-    } catch (error) { if (!disposed) state.error = `重新读取失败，未保存修改仍保留：${message(error)}`; }
+      if (discardManagerEdits) {
+        migration.close(true); state.migrationDraft = null;
+        state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false;
+        state.localRevision++;
+      }
+      state.conflict = false; observed = null; accept(next); confirmed = next; state.error = '';
+      if (restored) state.notice = '已载入保存的预设，原生界面的未保存修改已放弃。';
+      else if (discardManagerEdits) state.notice = '已重新读取酒馆实际状态，未保存修改已丢弃。';
+    } catch (error) {
+      if (!disposed) state.error = `${state.dirty ? '重新读取失败，管理器内的未保存修改仍保留' : '重新读取失败'}：${message(error)}`;
+    }
     finally { await finishBusy(confirmed); }
+    return restored && !state.error;
   }
   async function saveChanges() {
     if (disposed || state.busy || !state.dirty) return;
@@ -205,7 +220,11 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     notify, dirty: updateDirty, stage, finishBusy,
   });
   const controller: ManagerController = {
-    state, binding, migration, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, refresh, reload, saveChanges, cancelChanges,
+    state, binding, migration, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, refresh, saveChanges, cancelChanges,
+    async prepareOpen() {
+      if (await reload(false) && !disposed && binding) { await binding.reconcile(); await refresh(); }
+    },
+    async reload() { await reload(true); },
     revision() { return `${state.snapshot?.revision ?? ''}:${state.localRevision}`; },
     rows() {
       if (!state.snapshot) return [];
@@ -241,7 +260,10 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
       return { name: `${state.recovery.name} 操作前备份`, text: JSON.stringify(state.recovery.raw, null, 2) };
     },
     copyPreset() { return run(s => adapter.create(s, model.uniqueName(s.name, s.names, true), model.clone(s.raw)), '已完整复制并切换，原预设保留。'); },
-    newPreset(name) { return run(s => adapter.create(s, model.uniqueName(name, s.names), model.emptyPreset(s.raw)), '已新建并切换，沿用原生内建项及生成设置。'); },
+    newPreset(name) { return run(async s => {
+      if (!adapter.readDefaultPreset) throw Error('酒馆未提供原始 Default 模板，未创建预设。');
+      return adapter.create(s, model.uniqueName(name, s.names), await adapter.readDefaultPreset());
+    }, '已按酒馆原始 Default 模板新建并切换。'); },
     renamePreset(name) { return run(s => adapter.rename(s, name.trim()), '预设已重命名。'); },
     deletePreset() { return run(s => adapter.remove(s), '预设已删除，并读取当前预设。'); },
     edit(id) {
