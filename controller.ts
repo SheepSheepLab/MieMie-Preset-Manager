@@ -3,6 +3,7 @@
 // See LICENSE for terms; distributed without warranty.
 
 import { NativePresetDraftError, type ManagerController, type ManagerState, type PresetAdapter, type PromptPatch, type RawPreset, type Snapshot } from './contracts';
+import { newPresetId } from './preset-id';
 import * as model from './model';
 import { patchParameters, missingParameterDefaults } from './preset-parameters';
 import type { PresetBindingService } from './chat-preset-coordinator';
@@ -153,7 +154,7 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     if (needsRead) void refresh();
   }
   async function reload(discardManagerEdits: boolean) {
-    if (disposed || state.busy || (!discardManagerEdits && (state.dirty || !adapter.restoreSavedPreset))) return false;
+    if (disposed || state.busy || (!discardManagerEdits && (state.dirty || !adapter.restoreSavedPreset))) return;
     state.busy = true; refreshEpoch++; notify();
     let confirmed: Snapshot | undefined;
     let restored = false;
@@ -165,7 +166,7 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
         next = await adapter.restoreSavedPreset(error.presetName);
         restored = true;
       }
-      if (disposed) return false;
+      if (disposed) return;
       model.validatePreset(next.raw); model.group(next.raw, next.activeGroupId);
       if (discardManagerEdits) {
         migration.close(true); state.migrationDraft = null;
@@ -179,7 +180,7 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
       if (!disposed) state.error = `${state.dirty ? '重新读取失败，管理器内的未保存修改仍保留' : '重新读取失败'}：${message(error)}`;
     }
     finally { await finishBusy(confirmed); }
-    return restored && !state.error;
+    return confirmed && !state.error ? { restored } : undefined;
   }
   async function saveChanges() {
     if (disposed || state.busy || !state.dirty) return;
@@ -193,10 +194,12 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     let confirmed: Snapshot | undefined;
     try {
       state.recovery = { name: before.name, raw: model.clone(before.raw) };
-      const saved = sameRaw(next, before.raw) ? await adapter.read() : await adapter.save(before, next);
+      const changed = !sameRaw(next, before.raw);
+      const saved = changed ? await adapter.save(before, next) : await adapter.read();
       if (disposed) return;
       model.validatePreset(saved.raw); model.group(saved.raw, saved.activeGroupId);
-      if (saved.name !== before.name || String(saved.activeGroupId) !== String(before.activeGroupId) || !sameRaw(saved.raw, next))
+      const expectedRaw = changed ? adapter.prepareSave?.(before.name, next) ?? next : next;
+      if (saved.name !== before.name || String(saved.activeGroupId) !== String(before.activeGroupId) || !sameRaw(saved.raw, expectedRaw))
         throw Error('保存确认期间酒馆预设被外部修改或切换，未保存内容已保留，请核对实际状态。');
       state.pendingRaw = null; state.draft = null; state.parametersDraft = null; state.dirty = false; state.conflict = false; observed = null;
       state.localRevision++; accept(saved); confirmed = saved; state.notice = '全部修改已保存并确认。';
@@ -222,7 +225,11 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
   const controller: ManagerController = {
     state, binding, migration, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, refresh, saveChanges, cancelChanges,
     async prepareOpen() {
-      if (await reload(false) && !disposed && binding) { await binding.reconcile(); await refresh(); }
+      const result = await reload(false);
+      if (result && !disposed && binding && (result.restored || binding.state.status !== 'ready')) {
+        await binding.reconcile();
+        await refresh();
+      }
     },
     async reload() { await reload(true); },
     revision() { return `${state.snapshot?.revision ?? ''}:${state.localRevision}`; },
@@ -300,8 +307,8 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
       try { let next = editedRaw(); next = patchParameters(next, missingParameterDefaults(next)); state.parametersDraft = null; stage(next); }
       catch (error) { state.error = message(error); notify(); }
     },
-    addPrompt() { return patch((raw, s) => model.addPrompt(raw, s.activeGroupId, crypto.randomUUID())); },
-    copyPrompt(id) { return patch((raw, s) => model.copyPrompt(raw, s.activeGroupId, id, crypto.randomUUID())); },
+    addPrompt() { return patch((raw, s) => model.addPrompt(raw, s.activeGroupId, newPresetId())); },
+    copyPrompt(id) { return patch((raw, s) => model.copyPrompt(raw, s.activeGroupId, id, newPresetId())); },
     toggle(id) { return patch((raw, s) => model.togglePrompt(raw, s.activeGroupId, id)); },
     detach(id) { return patch((raw, s) => model.detachPrompt(raw, s.activeGroupId, id)); },
     attach(id) { return patch((raw, s) => model.attachPrompt(raw, s.activeGroupId, id)); },

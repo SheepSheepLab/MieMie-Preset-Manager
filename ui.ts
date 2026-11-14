@@ -184,8 +184,8 @@ export function createManagerView(host: Window, controller: ManagerController, t
   }
   const presetEscape = createPickerEscapeGuard(doc, presetSelect, () => !presetChoices.hidden, () => closePresetChoices(true));
   cleanup.push(() => presetEscape.deactivate());
-  function showPresetValue(name: string) {
-    const label = name || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
+  function showPresetValue(name: string, fallback?: string) {
+    const label = name || fallback || (controller.state.snapshot ? '正在确认实际预设…' : '尚未读取预设');
     if (presetSelect.dataset.value === name && presetValue.textContent === label) return;
     presetSelect.dataset.value = name;
     presetValue.textContent = label;
@@ -1295,7 +1295,8 @@ export function createManagerView(host: Window, controller: ManagerController, t
     const label = `当前使用预设 · ${labels[binding.mode]}`;
     if (presetLabel.textContent !== label) presetLabel.textContent = label;
     const applied = binding.appliedName;
-    showPresetValue(applied ?? '');
+    if (binding.status === 'error') showPresetValue('', '预设确认失败，请重新读取');
+    else showPresetValue(applied ?? '');
     const isDefault = Boolean(applied && applied === binding.defaultName);
     defaultButton.setAttribute('aria-pressed', String(isDefault));
     defaultButton.title = isDefault ? '当前为默认预设' : '将当前预设设为默认';

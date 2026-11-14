@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // See LICENSE for terms; distributed without warranty.
 
-import { bounded } from './async-scope';
+import { bounded, FULL_READ_TIMEOUT } from './async-scope';
 import { NativePresetDraftError, type PresetAdapter, type RawPreset, type Snapshot } from './contracts';
 import { validatePreset } from './model';
 
@@ -29,10 +29,16 @@ interface NativeContext {
   eventSource: { on(event: string, listener: Listener): void; removeListener(event: string, listener: Listener): void };
 }
 type Host = Window & {
+  __TAURITAVERN_HOST__?: unknown;
+  __TAURI_INTERNALS__?: { invoke?: unknown };
   SillyTavern?: { getContext(): NativeContext };
   TavernHelper?: {
     getTavernVersion?(): string;
-    builtin?: { promptManager?: { configuration?: { promptOrder?: { strategy?: string; dummyId?: number } } } };
+    builtin?: { promptManager?: {
+      configuration?: { promptOrder?: { strategy?: string; dummyId?: number } };
+      ensureAgentPromptOrderReferences?: unknown;
+      normalizeAgentPromptMarkerDefinitions?: unknown;
+    } };
   };
 };
 
@@ -45,13 +51,37 @@ const builtinDefaults: Record<string, string> = {
   worldInfoBefore: '174dd9f476fe2670', worldInfoAfter: '13a1d32e5f1fa322', charDescription: 'dd9dda05c5bd19d9',
   charPersonality: '95c60dc9f35de96d', scenario: '3c392cef2288dc63', personaDescription: '2ee9f4779ea40c33',
 };
+// TauriTavern 2.4 adds reserved Agent markers and order entries on load.
+const ttAgentMarkers = [
+  { identifier: 'agentSystemPrompt', name: 'Agent System Prompt', role: 'system', before: 'main' },
+  { identifier: 'agentTask', name: 'Agent Task', role: 'user', before: 'chatHistory' },
+  { identifier: 'agentResults', name: 'Agent Results', role: 'system' },
+] as const;
+function ttAgentPrompt(marker: typeof ttAgentMarkers[number], saved?: Data): Data {
+  const role = saved ? String(saved.role || '').trim().toLowerCase() : marker.role;
+  const result: Data = { ...saved, identifier: marker.identifier, name: marker.name,
+    role: ['system', 'user', 'assistant'].includes(role) ? role : 'system',
+    content: '', system_prompt: true, marker: true };
+  for (const key of ['forbid_overrides', 'injection_position', 'injection_depth', 'injection_order',
+    'injection_trigger', 'attach_role', 'attach_index', 'attach_side']) delete result[key];
+  return result;
+}
+function ttAgentOrder(order: RawPreset['prompt_order'][number]['order']) {
+  const result = [...order];
+  for (const marker of ttAgentMarkers) {
+    if (result.some(entry => entry.identifier === marker.identifier)) continue;
+    const index = 'before' in marker ? result.findIndex(entry => entry.identifier === marker.before) : -1;
+    result.splice(index < 0 ? result.length : index, 0, { identifier: marker.identifier, enabled: true });
+  }
+  return result;
+}
 const aliases: Record<string, string> = {
   temperature: 'temp_openai', frequency_penalty: 'freq_pen_openai', presence_penalty: 'pres_pen_openai',
   top_p: 'top_p_openai', top_k: 'top_k_openai', top_a: 'top_a_openai', min_p: 'min_p_openai',
   repetition_penalty: 'repetition_penalty_openai',
 };
-// Pinned 1.18.0/1.19.0 openai.js settingsToUpdate; see docs/COMPATIBILITY.md.
-// This is the union of supported fields. Unknown and newer fields always stay in raw.
+// Native openai.js settingsToUpdate; see docs/COMPATIBILITY.md.
+// Unknown and newer fields always stay in raw.
 const connectionKeys = new Set(`chat_completion_source group_models sort_models openai_model claude_model
 openrouter_model openrouter_use_fallback openrouter_providers openrouter_quantizations openrouter_allow_fallbacks
 openrouter_middleout ai21_model mistralai_model cohere_model perplexity_model groq_model chutes_model siliconflow_model
@@ -67,6 +97,22 @@ new_chat_prompt new_group_chat_prompt new_example_chat_prompt continue_nudge_pro
 personality_format group_nudge_prompt stream_openai assistant_prefill assistant_impersonation use_sysprompt squash_system_messages
 media_inlining inline_image_quality continue_prefill continue_postfix function_calling tool_call_recurse_limit show_thoughts
 reasoning_effort verbosity enable_web_search seed n request_images request_image_aspect_ratio request_image_resolution`.split(/\s+/));
+// First host version that applies these fields to the live preset. A saved
+// preset can still carry them unchanged on earlier hosts.
+const firstLiveMinor: Record<string, number> = {
+  chutes_model: 15, use_sysprompt: 15, media_inlining: 15, verbosity: 15,
+  request_image_aspect_ratio: 15, request_image_resolution: 15,
+  openrouter_quantizations: 16,
+  tool_reasoning_mode: 17, siliconflow_endpoint: 17,
+  group_models: 18, sort_models: 18, minimax_model: 18, minimax_endpoint: 18,
+  nanogpt_provider: 18, nanogpt_payg_override: 18, workers_ai_model: 18,
+  workers_ai_account_id: 18, tool_call_recurse_limit: 18,
+  pollinations_endpoint: 19,
+};
+const mediaSettings114 = ['wrap_in_quotes', 'claude_use_sysprompt', 'use_makersuite_sysprompt',
+  'image_inlining', 'video_inlining', 'audio_inlining'];
+const modelSettingsBefore118 = ['openrouter_group_models', 'openrouter_sort_models',
+  'electronhub_group_models', 'electronhub_sort_models'];
 // 1.19's native migrateChatCompletionSettings changes these values in the live
 // projection only. The manager keeps the original raw model names on disk/export.
 const modelMigrations119: Record<string, string> = {
@@ -143,18 +189,27 @@ export class PresetOperationError extends Error {
 /** Uses the host's existing modules only; importing core modules inside a script iframe would duplicate state. */
 export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter> {
   const host = windowHost as Host;
+  const tauriTavern = !!host.__TAURITAVERN_HOST__ && typeof host.__TAURI_INTERNALS__?.invoke === 'function';
+  const promptManager = host.TavernHelper?.builtin?.promptManager;
+  const addsAgentMarkers = tauriTavern && typeof promptManager?.ensureAgentPromptOrderReferences === 'function'
+    && typeof promptManager.normalizeAgentPromptMarkerDefinitions === 'function';
+  // TT's preset repository writes the filename as the JSON name on every save.
+  const prepareSave = tauriTavern ? (name: string, raw: RawPreset): RawPreset => ({ ...raw, name }) : undefined;
   const context = host.SillyTavern?.getContext();
   const version = host.TavernHelper?.getTavernVersion?.();
-  const minor = typeof version === 'string' ? /^1\.(18|19)\.\d+$/.exec(version)?.[1] : undefined;
+  const minor = typeof version === 'string' ? /^1\.(14|15|16|17|18|19)\.\d+$/.exec(version)?.[1] : undefined;
   if (!context || !version || !minor) {
-    throw new Error('当前宿主未通过兼容检查。此版本适配 SillyTavern 1.18.x / 1.19.x，并需要酒馆助手提供原生版本接口。');
+    throw new Error('当前宿主未通过兼容检查。此版本适配 SillyTavern 1.14.x–1.19.x，并需要酒馆助手提供原生版本接口。');
   }
-  // 1.18 has no application target for this 1.19 connection field. Comparing it
-  // against undefined would reject a lossless cross-version import as an unsaved edit.
-  const liveKeys = [...valueKeys, ...connectionKeys].filter(key => minor === '19' || key !== 'pollinations_endpoint');
+  const hostMinor = Number(minor);
+  const liveConnectionKeys = new Set(connectionKeys);
+  if (hostMinor < 18) for (const key of modelSettingsBefore118) liveConnectionKeys.add(key);
+  if (hostMinor >= 15 && hostMinor < 18) liveConnectionKeys.add('chutes_sort_models');
+  const liveKeys = [...valueKeys, ...liveConnectionKeys].filter(key => hostMinor >= (firstLiveMinor[key] ?? 14));
+  if (hostMinor === 14) liveKeys.push(...mediaSettings114);
   const ctx: NativeContext = context;
   const manager = ctx.getPresetManager?.('openai');
-  const orderConfig = host.TavernHelper?.builtin?.promptManager?.configuration?.promptOrder;
+  const orderConfig = promptManager?.configuration?.promptOrder;
   const required = ['getSelectedPresetName', 'findPreset', 'getCompletionPresetByName', 'getPresetList',
     'savePreset', 'selectPreset', 'updateList', 'deletePreset'] as const;
   if (!manager || required.some(k => typeof manager[k] !== 'function') || typeof ctx.getRequestHeaders !== 'function'
@@ -199,7 +254,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       const response = await host.fetch(url.href, { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}', signal });
       if (!response.ok) throw new Error('无法回读酒馆保存的数据，请检查连接后重试。');
       return response.json();
-    }, [confirmPendingWrite ? undefined : lifetime.signal, caller]);
+    }, [confirmPendingWrite ? undefined : lifetime.signal, caller], FULL_READ_TIMEOUT, '酒馆预设目录读取');
     if (!object(data) || !Array.isArray(data.openai_setting_names) || !Array.isArray(data.openai_settings)
       || data.openai_setting_names.length !== data.openai_settings.length) throw new Error('酒馆回读格式不兼容，已停止操作。');
     const result = new Map<string, unknown>();
@@ -230,7 +285,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     const helperProjection = optimize && live.max_context_unlocked === true && live.openai_max_context === 2000000;
     for (const key of liveKeys) {
       if (helperProjection && (key === 'max_context_unlocked' || key === 'openai_max_context')) continue;
-      if (connectionKeys.has(key) && !live.bind_preset_to_connection) continue;
+      if (liveConnectionKeys.has(key) && !live.bind_preset_to_connection) continue;
       const value = raw[key];
       const appliedValue = minor === '19' && ['google_model', 'vertexai_model'].includes(key)
         && typeof value === 'string' && Object.hasOwn(modelMigrations119, value) ? modelMigrations119[value] : value;
@@ -248,19 +303,26 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     const savedIds = new Set(raw.prompts.map(prompt => prompt.identifier));
     for (const prompt of raw.prompts) {
       const actual = promptsById.get(prompt.identifier);
+      const ttMarker = addsAgentMarkers && ttAgentMarkers.find(marker => marker.identifier === prompt.identifier);
       // Service settings are plain objects, not Prompt constructor projections.
       // Even a default-looking new attribute may be an unsaved native/third-party
       // edit. Compare both directions; never rebase a revision over that delta.
-      if (!actual || !equal(prompt, actual)) conflict();
+      if (!actual || !equal(ttMarker ? ttAgentPrompt(ttMarker, prompt) : prompt, actual)) conflict();
     }
-    if (prompts.some(p => !savedIds.has(String(p.identifier))
-      && (!Object.hasOwn(builtinDefaults, String(p.identifier)) || hash(p) !== builtinDefaults[String(p.identifier)]))) conflict();
+    for (const prompt of prompts) {
+      const id = String(prompt.identifier);
+      if (savedIds.has(id)) continue;
+      const ttMarker = addsAgentMarkers && ttAgentMarkers.find(marker => marker.identifier === id);
+      if (ttMarker ? !equal(ttAgentPrompt(ttMarker), prompt)
+        : !Object.hasOwn(builtinDefaults, id) || hash(prompt) !== builtinDefaults[id]) conflict();
+    }
     const groups = live.prompt_order as Data[];
     if (groups.length !== raw.prompt_order.length || groups.some(g => !object(g))
       || new Set(groups.map(g => String(g.character_id))).size !== groups.length) conflict();
     for (const group of raw.prompt_order) {
       const actual = groups.find(g => String(g.character_id) === String(group.character_id));
-      if (!actual || !equal({ ...group, character_id: String(group.character_id) },
+      const order = addsAgentMarkers ? ttAgentOrder(group.order) : group.order;
+      if (!actual || !equal({ ...group, order, character_id: String(group.character_id) },
         { ...actual, character_id: String(actual.character_id) })) conflict();
     }
   }
@@ -391,7 +453,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (names.some(n => n.localeCompare(name, undefined, { sensitivity: 'base' }) === 0)) throw new Error('已存在同名预设，请换一个名称。');
   }
   async function saveNew(expected: Snapshot, name: string, value: RawPreset): Promise<Snapshot> {
-    const raw = rawPreset(value);
+    const raw = rawPreset(prepareSave?.(name, value) ?? value);
     const { actual: fresh } = await expectedState(expected);
     checkName(name, fresh.names);
     if (!unchanged(expected, fresh)) throw new PresetOperationError('保存前当前预设已改变，请重新读取。', expected);
@@ -432,6 +494,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
 
   return {
     read,
+    prepareSave,
     restoreSavedPreset: expectedName => serialize(() => read(undefined, expectedName)),
     async readDefaultPreset() {
       alive();
@@ -485,7 +548,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     }),
     save: (expected, next) => serialize(async () => {
       const { actual } = await expectedState(expected);
-      const raw = rawPreset(next);
+      const raw = rawPreset(prepareSave?.(expected.name, next) ?? next);
       if (!unchanged(expected, actual)) throw new PresetOperationError('保存前原生状态已改变，请重新读取。', expected);
       await persist(expected.name, raw, expected);
       if (!unchanged(expected, actual)) {

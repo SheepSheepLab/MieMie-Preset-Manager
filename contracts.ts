@@ -28,6 +28,8 @@ export interface PresetAdapter {
   /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
   directory?(): Promise<{ names: string[]; supported: string[] }>;
   select(name: string, expected: Snapshot): Promise<Snapshot>;
+  /** Shape an explicitly saved preset for the host's on-disk naming convention. */
+  prepareSave?(name: string, raw: RawPreset): RawPreset;
   save(expected: Snapshot, next: RawPreset): Promise<Snapshot>;
   create(expected: Snapshot, name: string, raw: RawPreset): Promise<Snapshot>;
   rename(expected: Snapshot, name: string): Promise<Snapshot>;

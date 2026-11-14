@@ -156,6 +156,76 @@ for(const version of ['1.18.0','1.19.0']){const label='RESTORED SAFETY '+version
     await f.binding.reconcile();assert.equal(f.binding.state.status,'error');assert.deepEqual(f.diskGlobal()[NS],before);
     assert.equal(f.binding.state.defaultName,'A');
   });
+  test(label+'opening after a temporary startup read failure retries binding and allows the first send',async t=>{
+    const f=await setup(t,version,f=>{f.faults.globalRead=true;});
+    assert.equal(f.binding.state.status,'error');
+    f.faults.globalRead=false;
+    await f.controller.prepareOpen();
+    assert.equal(f.controller.state.snapshot.name,'A');
+    assert.equal(f.binding.state.status,'ready');
+    assert.equal(f.diskGlobal()[NS].revision,1);
+    await f.generate();
+    assert.equal(f.controls.sent.length,1);
+  });
+  test(label+'first send confirms the current chat when its binding has not been processed',async t=>{
+    const f=await setup(t,version);
+    await f.controller.select('B');
+    await f.settle();
+    f.setChat('single','two');
+    await f.generate();
+    assert.equal(f.binding.state.chat.filename,'two');
+    assert.equal(f.binding.state.appliedName,'A');
+    assert.equal(f.controls.sent.length,1);
+  });
+  test(label+'generation uses one full directory read and honors a slow response through the final check',async t=>{
+    const f=await setup(t,version);
+    const {deferred}=require('./helpers/st-native-host.cjs');
+    const body=deferred(), entered=deferred(), fetch=f.host.fetch;
+    let reads=0;
+    f.host.fetch=async(url,init)=>{
+      const response=await fetch(url,init);
+      if(new URL(url).pathname!=='/api/settings/get')return response;
+      reads++;
+      return {...response,json:async()=>{entered.resolve();await body.promise;return response.json();}};
+    };
+    t.mock.timers.enable({apis:['setTimeout']});
+    const generating=f.generate();
+    void generating.catch(()=>{});
+    await entered.promise;
+    t.mock.timers.tick(11000);
+    assert.equal(f.controls.sent.length,0);
+    body.resolve();
+    await generating;
+    assert.equal(reads,1);
+    assert.equal(f.controls.sent.length,1);
+  });
+  test(label+'a timed-out final directory read preserves the reason and the next send retries',async t=>{
+    const f=await setup(t,version);
+    const {deferred}=require('./helpers/st-native-host.cjs');
+    const entered=deferred(), fetch=f.host.fetch;
+    let warning='';
+    f.host.toastr={warning:message=>{warning=message;}};
+    f.host.fetch=async(url,init)=>{
+      if(new URL(url).pathname==='/api/settings/get'){
+        entered.resolve(init.signal);
+        return new Promise(()=>{});
+      }
+      return fetch(url,init);
+    };
+    t.mock.timers.enable({apis:['setTimeout']});
+    const generating=f.generate();
+    void generating.catch(()=>{});
+    const signal=await entered.promise;
+    t.mock.timers.tick(20000);
+    await assert.rejects(generating);
+    assert.equal(signal.aborted,true);
+    assert.match(warning,/酒馆预设目录读取超时/);
+    assert.equal(f.controls.sent.length,0);
+    t.mock.timers.reset();
+    f.host.fetch=fetch;
+    await f.generate();
+    assert.equal(f.controls.sent.length,1);
+  });
   test(label+'truly empty directory persists None without claiming live settings were cleared',async t=>{
     const f=await setup(t,version,f=>f.records.clear());assert.equal(f.binding.state.status,'error');
     assert.equal(f.diskGlobal()[NS].defaultBindingId,null);assert(f.binding.state.error.length>0);

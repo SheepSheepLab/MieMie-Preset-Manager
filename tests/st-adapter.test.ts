@@ -97,10 +97,11 @@ function fake(version = '1.19.0') {
     eventTypes: events,
     eventSource: { on, removeListener: (event: string, fn: (...args: unknown[]) => void) => listeners.get(event)?.delete(fn) },
   };
+  const promptManager = { configuration: { promptOrder: { strategy: 'global', dummyId: 100001 } } };
   const host = {
     location: { href: 'http://localhost:8000/' },
     SillyTavern: { getContext: () => ctx },
-    TavernHelper: { getTavernVersion: () => version, builtin: { promptManager: { configuration: { promptOrder: { strategy: 'global', dummyId: 100001 } } } } },
+    TavernHelper: { getTavernVersion: () => version, builtin: { promptManager } },
     fetch: async (url: string, init: RequestInit) => {
       assert.equal(url, 'http://localhost:8000/api/settings/get');
       assert.equal(init.method, 'POST');
@@ -109,8 +110,100 @@ function fake(version = '1.19.0') {
     },
     setTimeout, clearTimeout,
   } as unknown as Window;
-  return { host, records, names, presets, live, controls, manager, listeners, ctx };
+  return { host, records, names, presets, live, controls, manager, listeners, ctx, promptManager };
 }
+
+for (const version of ['1.14.0', '1.15.0', '1.16.0', '1.17.0']) {
+  test(version + ' preserves a newer preset setting absent from the live host', async () => {
+    const f = fake(version);
+    f.records.get('A')!.pollinations_endpoint = 'https://example.invalid/v1';
+    const adapter = await createSTAdapter(f.host);
+    try {
+      const snapshot = await adapter.read();
+      assert.equal(snapshot.raw.pollinations_endpoint, 'https://example.invalid/v1');
+      f.live.temp_openai = 1.4;
+      await assert.rejects(adapter.read(), /未保存/);
+      assert.equal(f.controls.saveCalls, 0);
+    } finally {
+      adapter.dispose!();
+    }
+  });
+}
+
+test('TT Agent markers and native order additions preserve raw data and reject other live edits', async t => {
+  const f = fake();
+  const adapterHost = Object.assign(f.host, {
+    __TAURITAVERN_HOST__: {}, __TAURI_INTERNALS__: { invoke() {} },
+  });
+  const older = await createSTAdapter(adapterHost);
+  assert.deepEqual((await older.read()).raw, f.records.get('A'));
+  older.dispose?.();
+  Object.assign(f.promptManager, {
+    ensureAgentPromptOrderReferences() {},
+    normalizeAgentPromptMarkerDefinitions() {},
+  });
+  const adapter = await createSTAdapter(adapterHost);
+  t.after(() => adapter.dispose?.());
+  const original = copy(f.records.get('A')!);
+  const live = f.live as unknown as RawPreset;
+  const markers = [
+    ['agentSystemPrompt', 'Agent System Prompt', 'system'],
+    ['agentTask', 'Agent Task', 'user'],
+    ['agentResults', 'Agent Results', 'system'],
+  ] as const;
+  for (const [identifier, name, role] of markers) {
+    live.prompts.push({ identifier, name, role, content: '', system_prompt: true, marker: true });
+  }
+  for (const group of live.prompt_order) {
+    const [system, task, results] = markers.map(([identifier]) => ({ identifier, enabled: true }));
+    if (group.character_id === 100001) group.order.unshift(system);
+    else group.order.push(system);
+    group.order.push(task, results);
+  }
+  assert.deepEqual((await adapter.read()).raw, original);
+  const regular = await createSTAdapter({ ...f.host, __TAURITAVERN_HOST__: undefined } as Window);
+  t.after(() => regular.dispose?.());
+  await assert.rejects(regular.read(), /未保存修改/);
+  live.prompts[1].content = 'native unsaved content';
+  await assert.rejects(adapter.read(), /未保存修改/);
+  live.prompts[1].content = original.prompts[1].content;
+  live.prompt_order[1].order.at(-1)!.enabled = false;
+  await assert.rejects(adapter.read(), /未保存修改/);
+  assert.deepEqual(f.records.get('A'), original);
+  assert.equal(f.controls.saveCalls, 0);
+});
+
+test('TT writes the preset filename as its internal name while verifying all other data', async t => {
+  const f = fake();
+  const order = (characterId: number) => [
+    ...(characterId === 100001 ? ['agentSystemPrompt', 'main', 'custom'] : ['custom', 'agentSystemPrompt']),
+    'agentTask', 'agentResults',
+  ];
+  const setup = (raw: RawPreset) => {
+    raw.prompts.push(
+      { identifier: 'agentSystemPrompt', name: 'Agent System Prompt', role: 'system', content: '', system_prompt: true, marker: true },
+      { identifier: 'agentTask', name: 'Agent Task', role: 'user', content: '', system_prompt: true, marker: true },
+      { identifier: 'agentResults', name: 'Agent Results', role: 'system', content: '', system_prompt: true, marker: true },
+    );
+    for (const group of raw.prompt_order) group.order = order(Number(group.character_id)).map(identifier => ({ identifier, enabled: true }));
+  };
+  setup(f.records.get('A')!);
+  setup(f.live as unknown as RawPreset);
+  const adapter = await createSTAdapter(Object.assign(f.host, {
+    __TAURITAVERN_HOST__: {}, __TAURI_INTERNALS__: { invoke() {} },
+  }));
+  t.after(() => adapter.dispose?.());
+  const source = await adapter.read();
+  const raw = copy(source.raw);
+  raw.name = 'Default';
+  const output = await adapter.create(source, 'New TT preset', raw);
+  assert.deepEqual(output.raw, { ...raw, name: 'New TT preset' });
+  assert.deepEqual(f.records.get('A'), source.raw);
+  const next = copy(output.raw);
+  next.prompts[1].content = 'explicitly saved prompt';
+  assert.deepEqual((await adapter.save(output, next)).raw, next);
+  assert.equal(f.controls.saveCalls, 2);
+});
 
 for (const version of ['1.18.0', '1.19.0']) {
 test(version + ' migration source read is disk-only, detached, never select/apply/save or target receipt', async () => {
@@ -331,8 +424,11 @@ test(version + ' legacy migration and unsupported hosts fail before writes', asy
   await assert.rejects(adapter.create(snapshot, 'Legacy', legacy), /旧格式迁移/);
   assert.equal(f.controls.saveCalls, 0);
   adapter.dispose!();
-  (f.host as unknown as { TavernHelper: { getTavernVersion(): string } }).TavernHelper.getTavernVersion = () => '1.17.0';
-  await assert.rejects(createSTAdapter(f.host), /1.19/);
+  const helper = (f.host as unknown as { TavernHelper: { getTavernVersion(): string } }).TavernHelper;
+  for (const unsupported of ['1.13.5', '1.20.0']) {
+    helper.getTavernVersion = () => unsupported;
+    await assert.rejects(createSTAdapter(f.host), /1\.14\.x–1\.19\.x/);
+  }
 });
 
 }

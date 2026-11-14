@@ -22,6 +22,7 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
     targetName: null, defaultName: null, appliedName: null, error: '', epoch: 0, operation: 0 };
   const lifetime = new AbortController(), listeners = new Set<() => void>();
   let settings: GlobalBindingSettings | null = null, initialized = false, disposed = false;
+  let initializing: Promise<void> | undefined;
   let pending = false, scheduled = false, ownOperation = false, writingGlobal = false;
   let directoryDirty = true, reloadGlobal = false, renamePending = false;
   let renameReceipt: HostEvent | null = null, confirmed: Snapshot | null = null;
@@ -102,7 +103,12 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       try { await host.writeGlobal(undefined, next); alive(); settings = next; }
       finally { writingGlobal = false; }
     }
-    initialized = true; directoryDirty = true; captureChat();
+    directoryDirty = true; captureChat(); initialized = true;
+  }
+  async function ensureInitialized() {
+    if (initialized) return;
+    initializing ??= initialize().finally(() => { initializing = undefined; });
+    await initializing;
   }
   async function synchronizeDirectory() {
     if (!settings || renamePending) throw Error('原生重命名尚未完成，请完成后重新读取。');
@@ -271,14 +277,18 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       if (session().dirty || session().busy) throw Error('管理器有未保存修改或正在保存，请完成后发送。');
       const chat = host.currentChat().identity.key;
       if (stage === 'commands') {
+        await ensureInitialized();
         captureChat();
-        if (state.status !== 'ready' || host.nativeBusy()) { request(); await settle(signal); }
+        if (state.status !== 'ready' || !confirmed || host.nativeBusy()) { request(); await settle(signal); }
+        if (state.status === 'error') throw Error(state.error);
       }
       signal?.throwIfAborted();
       if (state.status !== 'ready' || !confirmed || host.nativeBusy() || chat !== host.currentChat().identity.key
         || chat !== state.chat.key || host.selectedName() !== state.targetName) throw Error('聊天或预设尚未确认，请重新读取后发送。');
       const epoch = state.epoch, native = nativeEpoch;
-      const receipt = await adapter.read(signal);
+      // The final gate always reads disk. Before preparing prompts, reuse a
+      // verified receipt only while the adapter proves the full live state matches.
+      const receipt = stage === 'commands' && adapter.coversNotifications?.(confirmed) ? confirmed : await adapter.read(signal);
       if (session().dirty || session().busy || epoch !== state.epoch || native !== nativeEpoch || host.nativeBusy()
         || chat !== host.currentChat().identity.key || receipt.name !== state.targetName) throw Error('生成期间聊天或预设发生变化，请确认后重试。');
       if (stage === 'commands') {
@@ -346,11 +356,11 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       if (operationReceipt?.chatKey === state.chat.key && operationReceipt.snapshot.name === snapshot.name)
         operationReceipt.snapshot = snapshot;
     },
-    async start() { try { await initialize(); request(); await settle(); } catch (error) { fail(error); } },
+    async start() { try { await ensureInitialized(); request(); await settle(); } catch (error) { fail(error); } },
     async reconcile() {
       try {
         operationReceipt = undefined;
-        if (!initialized) await initialize();
+        await ensureInitialized();
         reloadGlobal = true; directoryDirty = true; captureChat(); request(); await settle();
       } catch (error) { fail(error); }
     },

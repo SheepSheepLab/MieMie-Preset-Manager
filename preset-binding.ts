@@ -1,5 +1,7 @@
 // Copyright (C) 2026 SheepSheepLab
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { newPresetId } from './preset-id';
+
 export const BINDING_NAMESPACE = 'miemie.preset-manager.binding-v2';
 export interface BindingRecord { nativeName: string; tombstone?: true }
 export interface GlobalBindingSettings {
@@ -53,7 +55,7 @@ export function parseChat(value: unknown): ChatBinding | null {
     throw Error('当前对话的预设绑定无效，未覆盖原 metadata。');
   return { schemaVersion: 2, presetBindingId: value.presetBindingId, chatKey: value.chatKey };
 }
-export function register(settings: GlobalBindingSettings, name: string, fresh = false, uuid = () => crypto.randomUUID()): string {
+export function register(settings: GlobalBindingSettings, name: string, fresh = false, uuid = newPresetId): string {
   if (!fresh) for (const [id, item] of Object.entries(settings.bindings))
     if (!item.tombstone && item.nativeName === name) return id;
   if (fresh) for (const item of Object.values(settings.bindings)) if (item.nativeName === name) item.tombstone = true;

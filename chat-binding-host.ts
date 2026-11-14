@@ -1,6 +1,6 @@
 // Copyright (C) 2026 SheepSheepLab
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { bounded } from './async-scope';
+import { bounded, FULL_READ_TIMEOUT } from './async-scope';
 import { automaticRegexDisplay, type RegexDisplayContext } from './automatic-regex-display';
 import { BINDING_NAMESPACE as NS, object, same, nativeChatFilename, parseChat, type ChatIdentity } from './preset-binding';
 export type HostEvent = { kind: 'chat' | 'before' | 'preset' | 'directory' | 'settings' | 'chat-renamed';
@@ -28,6 +28,7 @@ type Listener = (...args: unknown[]) => unknown;
 interface Context extends Partial<RegexDisplayContext> {
   characterId?: number; groupId?: string | number | null; chatId?: string;
   characters: Array<{ avatar: string; name: string }>;
+  groups?: Array<{ id: string | number; chats?: string[] }>;
   chatMetadata: Record<string, unknown>; extensionSettings: Record<string, unknown>;
   getPresetManager(api: string): { getSelectedPresetName(): string };
   getRequestHeaders(): HeadersInit;
@@ -38,14 +39,15 @@ interface Context extends Partial<RegexDisplayContext> {
 interface STWindow extends Window {
   toastr?: { warning?: (...args: unknown[]) => unknown; info: (...args: unknown[]) => unknown };
   SillyTavern?: { getContext(): Context };
-  TavernHelper?: { builtin?: { saveSettings?: () => Promise<void> } };
+  TavernHelper?: { getTavernVersion?(): string; builtin?: { saveSettings?: () => Promise<void> } };
 }
 export function createBindingHost(windowHost: Window): BindingHost {
   const host = windowHost as STWindow;
   const context = () => { const ctx = host.SillyTavern?.getContext(); if (!ctx) throw Error('酒馆上下文不可用。'); return ctx; };
   const initial = context(), source = initial.eventSource, types = initial.eventTypes;
+  const usesGroupFileMetadata = !host.TavernHelper?.getTavernVersion?.().startsWith('1.14.');
   for (const key of ['CHAT_CHANGED', 'PRESET_CHANGED', 'OAI_PRESET_CHANGED_BEFORE', 'SETTINGS_UPDATED',
-    'CHAT_RENAMED', 'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'CHAT_COMPLETION_SETTINGS_READY', 'GENERATION_ENDED'])
+    'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'CHAT_COMPLETION_SETTINGS_READY', 'GENERATION_ENDED'])
     if (!types[key]) throw Error(`缺少安全绑定所需的原生事件：${key}`);
   for (const fn of ['saveMetadata', 'saveSettingsDebounced', 'stopGeneration'] as const)
     if (typeof initial[fn] !== 'function') throw Error('缺少安全绑定所需的原生持久化或生成能力。');
@@ -76,17 +78,17 @@ export function createBindingHost(windowHost: Window): BindingHost {
       key: JSON.stringify(['single', character.avatar, filename]) };
   }
   const currentChat = () => { const ctx = context(); return { identity: identity(ctx), binding: structuredClone(ctx.chatMetadata[NS]) }; };
-  async function post(path: string, body: unknown, load?: AbortSignal): Promise<unknown> {
+  async function post(path: string, body: unknown, label: string, load?: AbortSignal): Promise<unknown> {
     alive();
     return bounded(async signal => {
       const response = await host.fetch(new URL(path, host.location.href).href,
         { method: 'POST', headers: context().getRequestHeaders(), body: JSON.stringify(body), cache: 'no-cache', signal });
       if (!response.ok) throw Error('无法回读酒馆绑定数据，请检查连接后重试。');
       const result: unknown = await response.json(); alive(); return result;
-    }, [quietLifetime.signal, load]);
+    }, [quietLifetime.signal, load], FULL_READ_TIMEOUT, label);
   }
   async function readGlobal() {
-    const result = await post('api/settings/get', {});
+    const result = await post('api/settings/get', {}, '全局预设绑定读取');
     if (!object(result) || typeof result.settings !== 'string') throw Error('酒馆 settings 回读格式不兼容。');
     const settings: unknown = JSON.parse(result.settings);
     if (!object(settings) || !object(settings.extension_settings)) throw Error('酒馆 extension settings 回读格式不兼容。');
@@ -94,14 +96,28 @@ export function createBindingHost(windowHost: Window): BindingHost {
   }
   async function readChatFile(target: ChatIdentity, load?: AbortSignal): Promise<unknown[]> {
     if (target.kind === 'none') throw Error('没有当前对话，不能保存聊天绑定。');
-    const result = target.kind === 'group' ? await post('api/chats/group/get', { id: target.filename }, load) :
-      await post('api/chats/get', { ch_name: target.characterName, file_name: target.filename, avatar_url: target.avatar }, load);
-    if (!Array.isArray(result) || (result.length && (!object(result[0]) || !object(result[0].chat_metadata))))
+    const label = '聊天预设绑定读取';
+    const result = target.kind === 'group' ? await post('api/chats/group/get', { id: target.filename }, label, load) :
+      await post('api/chats/get', { ch_name: target.characterName, file_name: target.filename, avatar_url: target.avatar }, label, load);
+    const fileHasMetadata = usesGroupFileMetadata || target.kind !== 'group';
+    if (!Array.isArray(result) || (fileHasMetadata && result.length &&
+        (!object(result[0]) || !object(result[0].chat_metadata))))
       throw Error('无法确认目标对话的 metadata，未继续写入。');
     return result;
   }
   const fileBinding = (file: unknown[]) => file.length ? structuredClone((file[0] as { chat_metadata: Record<string, unknown> }).chat_metadata[NS]) : undefined;
-  const readChat = async (target: ChatIdentity, load = chatLifetime.signal) => fileBinding(await readChatFile(target, load));
+  const readChat = async (target: ChatIdentity, load = chatLifetime.signal) => {
+    if (usesGroupFileMetadata || target.kind !== 'group') return fileBinding(await readChatFile(target, load));
+    // ST 1.14 stores group chat metadata in the group settings, outside JSONL.
+    const groups = await post('api/groups/all', {}, '群聊预设绑定读取', load);
+    const group = Array.isArray(groups) ? groups.find(g => object(g) && String(g.id) === target.groupId) : undefined;
+    if (!object(group) || !Array.isArray(group.chats) || !group.chats.map(String).includes(target.filename))
+      throw Error('无法确认目标群聊的 metadata，未继续写入。');
+    const metadata = String(group.chat_id) === target.filename ? group.chat_metadata
+      : object(group.past_metadata) ? group.past_metadata[target.filename] : undefined;
+    if (metadata !== undefined && !object(metadata)) throw Error('目标群聊的 metadata 格式不兼容，未继续写入。');
+    return object(metadata) ? structuredClone(metadata[NS]) : undefined;
+  };
   function previousIdentity(target: ChatIdentity, key: string): ChatIdentity {
     const parts: unknown = JSON.parse(key);
     if (target.kind === 'none' || !Array.isArray(parts) || parts.length !== 3 || parts[0] !== target.kind ||
@@ -122,8 +138,20 @@ export function createBindingHost(windowHost: Window): BindingHost {
   async function verifyRename(from: ChatIdentity, to: ChatIdentity) {
     if (from.kind === 'none' || to.kind === 'none' || from.key === to.key) throw Error('无效的聊天重命名回执。');
     previousIdentity(to, from.key);
-    if ((await readChatFile(from)).length) throw Error('原聊天仍存在，未将复制当作重命名。');
-    const binding = parseChat(fileBinding(await readChatFile(to)));
+    if (!types.CHAT_RENAMED && from.kind === 'single') {
+      // The old single-chat endpoint returns {} for both absence and read errors.
+      // The native directory listing positively confirms which files exist.
+      const files = await post('api/characters/chats', { avatar_url: from.avatar, simple: true }, '聊天目录读取');
+      if (!Array.isArray(files) || files.some(file => !object(file) || typeof file.file_id !== 'string') ||
+          files.some(file => file.file_id === from.filename) || !files.some(file => file.file_id === to.filename))
+        throw Error('无法确认聊天文件已完成重命名，未继承绑定。');
+    } else if ((await readChatFile(from)).length) {
+      throw Error('原聊天仍存在，未将复制当作重命名。');
+    }
+    // The 1.14 group record is updated by ST after the rename HTTP response.
+    // During that callback the original group metadata still holds the binding.
+    const binding = parseChat(!usesGroupFileMetadata && from.kind === 'group'
+      ? await readChat(from) : fileBinding(await readChatFile(to)));
     if (binding) previousIdentity(to, binding.chatKey);
     return binding;
   }
@@ -187,7 +215,7 @@ export function createBindingHost(windowHost: Window): BindingHost {
   source.makeFirst?.(types.CHAT_CHANGED, chatBegin);
   listen('CHAT_CHANGED', chatEnd);
   source.makeLast?.(types.CHAT_CHANGED, chatEnd);
-  listen('CHAT_RENAMED', async payload => {
+  const chatRenamed: Listener = async payload => {
     if (!object(payload) || typeof payload.oldFileName !== 'string' || typeof payload.newFileName !== 'string') return;
     const oldName = nativeChatFilename(payload.oldFileName), newName = nativeChatFilename(payload.newFileName);
     if (!oldName || !newName) return;
@@ -198,7 +226,36 @@ export function createBindingHost(windowHost: Window): BindingHost {
         key: JSON.stringify(['single', character.avatar, filename]) } : null;
     const from = make(oldName), to = make(newName);
     if (from && to && from.key !== to.key) await Promise.all([...callbacks].map(fn => fn({ kind: 'chat-renamed', from, to })));
-  });
+  };
+  let restoreRenameFetch: (() => void) | undefined;
+  if (types.CHAT_RENAMED) listen('CHAT_RENAMED', chatRenamed);
+  else {
+    // ST 1.14–1.17 reload after a successful rename without emitting CHAT_RENAMED.
+    // Capture the server receipt before that reload, then use the same disk checks.
+    const next = host.fetch;
+    const renameUrl = new URL('api/chats/rename', host.location.href).href;
+    const wrapped: typeof fetch = async (input, init) => {
+      const response = await next.call(host, input, init);
+      if (disposed || !response.ok || typeof input !== 'string' ||
+          new URL(input, host.location.href).href !== renameUrl ||
+          init?.method !== 'POST' || typeof init.body !== 'string') return response;
+      try {
+        const request: unknown = JSON.parse(init.body);
+        const result: unknown = await response.clone().json();
+        if (!object(request) || !object(result) || result.ok !== true || typeof request.is_group !== 'boolean' ||
+            typeof request.original_file !== 'string' || typeof result.sanitizedFileName !== 'string') return response;
+        const oldName = nativeChatFilename(request.original_file);
+        const groups = request.is_group === true ? context().groups?.filter(group => group.chats?.includes(oldName)) : undefined;
+        if (request.is_group === true && groups?.length !== 1 ||
+            request.is_group === false && typeof request.avatar_url !== 'string') return response;
+        await chatRenamed({ avatarId: request.avatar_url, groupId: groups?.[0].id,
+          oldFileName: request.original_file, newFileName: result.sanitizedFileName + '.jsonl' });
+      } catch { /* A failed receipt must not alter the native rename response. */ }
+      return response;
+    };
+    host.fetch = wrapped;
+    restoreRenameFetch = () => { if (host.fetch === wrapped) host.fetch = next; };
+  }
   const presetBegin: Listener = payload => {
     invalidateGeneration();
     const name = object(payload) && typeof payload.presetName === 'string' ? payload.presetName : '?';
@@ -292,7 +349,7 @@ export function createBindingHost(windowHost: Window): BindingHost {
       return automaticRegexDisplay(host, () => context() as RegexDisplayContext, name, allowed, action, quietLifetime.signal);
     },
     invalidateGeneration,
-    dispose() { if (disposed) return; invalidateGeneration(); disposed = true; quietLifetime.abort(); chatLifetime.abort(); generation.abort(); waits.forEach(fn => fn());
+    dispose() { if (disposed) return; invalidateGeneration(); disposed = true; restoreRenameFetch?.(); quietLifetime.abort(); chatLifetime.abort(); generation.abort(); waits.forEach(fn => fn());
       subscriptions.forEach(([event, fn]) => source.removeListener(event, fn)); subscriptions.length = 0; callbacks.clear(); native.clear(); },
   };
 }

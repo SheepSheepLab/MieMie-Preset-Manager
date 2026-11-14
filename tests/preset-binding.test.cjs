@@ -1,10 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 const test=require('node:test'),assert=require('node:assert/strict');
 const c=require('../.test-build/preset-binding.js');
+const {newPresetId}=require('../.test-build/preset-id.js');
 const chat={kind:'single',key:'avatar/one',avatar:'role.png',filename:'one',characterName:'Role'};
 function setup(){const s={schemaVersion:2,revision:1,defaultBindingId:null,bindings:{}};const a=c.register(s,'A'),b=c.register(s,'B');s.defaultBindingId=a;return{s,a,b};}
 const bound=id=>({schemaVersion:2,presetBindingId:id,chatKey:chat.key});
 test('v2 isolated namespace leaves v1 out of business storage',()=>assert.equal(c.BINDING_NAMESPACE,'miemie.preset-manager.binding-v2'));
+test('binding IDs use secure random bytes when HTTP has no randomUUID',()=>{
+  const settings={schemaVersion:2,revision:1,defaultBindingId:null,bindings:{}};
+  let randomByte=255;
+  const httpCrypto={getRandomValues:bytes=>bytes.fill(randomByte--)};
+  const createId=()=>newPresetId(httpCrypto);
+  assert.equal(c.register(settings,'A',false,createId),'ffffffff-ffff-4fff-bfff-ffffffffffff');
+  assert.equal(c.register(settings,'B',false,createId),'fefefefe-fefe-4efe-befe-fefefefefefe');
+  assert.equal(c.register(settings,'A',false,createId),'ffffffff-ffff-4fff-bfff-ffffffffffff');
+});
 test('new chat is initializing, existing binding stays independent of default',()=>{const{s,a,b}=setup();assert.equal(c.resolve(s,chat,null).mode,'initializing');s.defaultBindingId=b;assert.equal(c.resolve(s,chat,bound(a)).targetName,'A');});
 test('copied metadata belongs to the old file; new identity initializes current default',()=>{const{s,a,b}=setup();s.defaultBindingId=b;assert.equal(c.resolve(s,{...chat,key:'avatar/two'},bound(a)).targetName,'B');});
 test('rename preserves stable ID; known deletion never resurrects on same-name create',()=>{const{s,b}=setup();c.renamed(s,'B','B2');assert.equal(c.resolve(s,chat,bound(b)).targetName,'B2');c.syncDirectory(s,['A']);assert(s.bindings[b].tombstone);assert.notEqual(c.register(s,'B2'),b);});

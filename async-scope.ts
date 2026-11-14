@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Native endpoints can return the entire preset directory or chat file.
+export const FULL_READ_TIMEOUT = 20000;
+
 /** A deadline bounds both headers and body parsing, even for non-cooperative hosts.
  * It cancels our transport; racing a native write only stops waiting, never proves
  * that write failed. Callers must read back before reporting a save outcome. */

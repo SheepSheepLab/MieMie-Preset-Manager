@@ -22,7 +22,7 @@ $(() => {
   let dual: ReturnType<typeof startDualMode> | undefined, stopped = false;
   const stop = () => {
     if (stopped) return;
-    stopped = true; offWork?.(); binding?.dispose(); tools?.dispose();
+    stopped = true; offWork?.(); tools?.dispose(); binding?.dispose();
     if (controller) controller.dispose(); else adapter?.dispose?.();
     void Promise.resolve(dual?.dispose()).finally(() => view?.dispose());
     window.removeEventListener('pagehide', stop);

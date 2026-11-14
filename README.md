@@ -1,6 +1,6 @@
 # MieMie Preset Manager · 咩咩预设管理
 
-> **1.0.0** 支持 Hub 0.9.0 的 Extension API2，机器包沿用 Package v1。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)，运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
+> **1.1.0** 支持 Hub 0.9.0 的 Extension API2，机器包沿用 Package v1。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.1.0)，运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
 
 浮球可在工具内调整大小并启用潜航模式。潜航后向屏幕内侧拉动可打开，原地长按约 0.9 秒可拖动。面板打开时位于浮球之上，窄屏会模糊背景并挡住下层点击。
 
@@ -14,12 +14,12 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前版本为 `1.0.0`。变更和正式附件见 [1.0.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.0.0)。
+- 当前版本为 `1.1.0`。变更和正式附件见 [1.1.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.1.0)。
 - 已发布历史版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
 - **从 0.6.0 升级：保留有效的 binding-v2 聊天绑定。** 全局默认改变不影响已有有效绑定。仅从 0.5.1 及更早旧绑定系统升级时，旧绑定关系不迁移；该历史规则不适用于 0.6.0 → 0.7.0。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；本分支 MieMie Hub Runtime API：`2`，正式 0.7.0 的 API1 记录保持历史范围。
-- 适配范围：ST `1.18.x` / `1.19.x`，有启动时能力检查。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
+- 适配范围：原版 ST `1.14` 至 `1.19`，有启动时能力检查。本版按各系列官方标签与酒馆助手 4.11.3 验收。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
 
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
@@ -49,7 +49,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 安装当前版本
 
-交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前版本使用 [MieMie-Preset-Manager-Extension-1.0.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v1.0.0/MieMie-Preset-Manager-Extension-1.0.0.json)。历史 0.7.0 下载及说明如下。
+交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前版本使用 [MieMie-Preset-Manager-Extension-1.1.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v1.1.0/MieMie-Preset-Manager-Extension-1.1.0.json)。历史 0.7.0 下载及说明如下。
 
 [MieMie-Preset-Manager-Extension-0.7.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.7.0/MieMie-Preset-Manager-Extension-0.7.0.json)
 

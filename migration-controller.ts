@@ -3,6 +3,7 @@
 import type { ManagerState, NativePrompt, PresetAdapter, PromptPatch, RawPreset, Row, Snapshot, SourcePreset } from './contracts';
 import type { PresetBindingService } from './chat-preset-coordinator';
 import { clone, rowsFor } from './model';
+import { newPresetId } from './preset-id';
 import { applyEditorDelta, applyMigrationPlans, contentEditable, editorDelta, fullOverride, fullOverrideReason, insertionCategories, insertionSource, insertPrompt, matchingPrompts, sourcePrompt, type MigrationPlan, type MigrationPosition } from './migration-model';
 export interface BatchItem { sourceId:string; status:'ready'|'pending'|'confirmed'|'skipped'|'blocked'; reason:string; matches:string[]; plan:MigrationPlan|null; left:NativePrompt|null; right:NativePrompt|null }
 export interface MigrationState {
@@ -143,15 +144,15 @@ export function createMigrationController(adapter:PresetAdapter,binding:PresetBi
           // Validate left edits too; never mutate or write the source.
           const leftBase=sourcePrompt(fresh,state.selected!);applyEditorDelta(fresh.raw,leftBase.identifier,editorDelta(leftBase,state.leftPrompt!));
           plan={sourceId:state.selected!,kind:'replace',targetId:state.targetId!,delta,mode:state.mode};
-        }else {if(!state.position)throw Error('请选择插入位置。');plan={sourceId:state.selected!,kind:'insert',position:clone(state.position)};insertPrompt(hooks.raw(),state.groupId,fresh,state.selected!,crypto.randomUUID(),state.position);}
+        }else {if(!state.position)throw Error('请选择插入位置。');plan={sourceId:state.selected!,kind:'insert',position:clone(state.position)};insertPrompt(hooks.raw(),state.groupId,fresh,state.selected!,newPresetId(),state.position);}
         if(state.batch){const next=item()!;next.plan=plan;next.status='confirmed';next.left=clone(state.leftPrompt);next.right=clone(state.rightPrompt);state.step='batch';clearItem();trackDraft();}
-        else {const next=plan.kind==='replace'?applyEditorDelta(hooks.raw(),plan.targetId,plan.delta):insertPrompt(hooks.raw(),state.groupId,fresh,plan.sourceId,crypto.randomUUID(),plan.position);
+        else {const next=plan.kind==='replace'?applyEditorDelta(hooks.raw(),plan.targetId,plan.delta):insertPrompt(hooks.raw(),state.groupId,fresh,plan.sourceId,newPresetId(),plan.position);
           cancelDraft();state.step='list';clearItem();if(next!==hooks.raw()){hooks.stage(next);state.revision=hooks.revision();}}
       });
     },
     async confirmBatch(){if(state.step!=='batch'||!state.batch)return false;
       return checked(fresh=>{const summary=api.batchSummary();if(summary.pending)throw Error(`还有 ${summary.pending} 项需要核对或跳过。`);const plans=state.batch!.filter(i=>(i.status==='confirmed'||i.status==='ready')&&i.plan).map(i=>i.plan!);if(!plans.length)throw Error('本批次没有已确认的迁移方案。');
-        const next=applyMigrationPlans(hooks.raw(),state.groupId,fresh,plans,()=>crypto.randomUUID());
+        const next=applyMigrationPlans(hooks.raw(),state.groupId,fresh,plans,newPresetId);
         state.batch=null;state.batchPosition=null;state.step='list';clearItem();cancelDraft();if(next!==hooks.raw()){hooks.stage(next);state.revision=hooks.revision();}
       });
     },
