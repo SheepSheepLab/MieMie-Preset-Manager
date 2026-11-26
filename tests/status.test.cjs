@@ -42,7 +42,8 @@ test('First status and switched worldbook formats retain the original full promp
 test('The status engine copies whole changed values into matching titles, preserving order and untouched entries', () => {
   const original = messages();
   const exchange = prepareStatus(original, [assistant(prior)], undefined, assert.fail);
-  assert.equal(exchange.messages[0].content, original[0].content.replace('<status>', rule + '\n<status>'));
+  assert.equal(exchange.messages[0].content,
+    '<status_format>\n' + template + '\n\n按现有世界书规则输出。\n' + wrap(rule) + '\n</status_format>\n其他规则。');
   const delta = [
     '身体状况：85%｜轻伤（右臂）',
     '┣ 掌握忍术: 【影分身术（入门）】',
@@ -52,6 +53,23 @@ test('The status engine copies whole changed values into matching titles, preser
   const expected = prior.replace('100%｜健康', '85%｜轻伤（右臂）')
     .replace('10/100', '30/100').replace('【分身术】', '【影分身术（入门）】');
   assert.equal(exchange.finish(assistant(delta).mes), assistant(expected).mes);
+});
+
+test('An introductory heading is optional in the baseline and field comments remain outside the reply example', () => {
+  const heading = '状态栏条目：';
+  const fields = template.replace('等级规则', '等级规则提到 <status> 和 </status>');
+  const original = messages(heading + '\n' + fields);
+  original[0].content = ('之前的指令。\n' + original[0].content).replace(/\n/g, '\r\n');
+  const custom = '只输出变化。\n每项单独一行。';
+  for (const baseline of [prior, heading + '\n' + prior]) {
+    const exchange = prepareStatus(original, [assistant(baseline)], undefined, assert.fail, false, custom);
+    assert.equal(exchange.messages[0].content,
+      ('之前的指令。\n<status_format>\n' + fields + '\n\n按现有世界书规则输出。\n' +
+      wrap(custom) + '\n</status_format>\n其他规则。').replace(/\n/g, '\r\n'));
+    assert.equal(exchange.finish(assistant(heading + '\n当前位置: 【森林】').mes),
+      assistant(baseline.replace('【木叶村·街道】', '【森林】')).mes);
+  }
+  assert(original[0].content.includes(wrap(heading + '\n' + fields).replace(/\n/g, '\r\n')));
 });
 
 test('No changes, ambiguous updates and missing blocks keep the latest full status', () => {
@@ -83,7 +101,7 @@ test('The opt-in status and affinity engines compose with encoded replies throug
     'GENERATION_ENDED', 'CHAT_CHANGED', 'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY'].map(key => [key, key]));
   const eventSource = new EventEmitter();
   const chat = [assistant(prior)];
-  const context = { chatId: 'test', mainApi: 'openai', chat, eventSource, eventTypes };
+  const context = { chatId: 'test', mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' }, chat, eventSource, eventTypes };
   const stored = new Map();
   const custom = '只列出变化。\n每项单独一行。';
   let activeRule = custom;
@@ -96,7 +114,8 @@ test('The opt-in status and affinity engines compose with encoded replies throug
     fetch: async (_url, init) => {
       const req = JSON.parse(init.body);
       const template = decodeUnicode(req.messages[1].content);
-      assert(template.includes(activeRule + '\n<status>'));
+      assert(template.includes(wrap(activeRule)));
+      assert(template.indexOf('🪪等级') < template.indexOf('<status>'));
       if (activeRule === custom) assert(!template.includes(rule));
       assert(!template.includes('💞好感: 0'));
       assert.equal(decodeUnicode(req.messages[2].content), chat[0].mes);
@@ -133,7 +152,7 @@ test('The opt-in status and affinity engines compose with encoded replies throug
   reopened.setSettings({ statusPrompt: ' \n ' });
   activeRule = rule;
   assert.equal(await send(), result);
-  assert.deepEqual([...stored.values()].map(JSON.parse), [{ input: 'unicode', reply: 'encoded', status: true, affinity: true }]);
+  assert.deepEqual([...stored.values()].map(JSON.parse), [{ '测试预设': { input: 'unicode', reply: 'encoded', status: true, affinity: true, tagIsolation: true } }]);
   useToolReply = true;
   reopened.setSettings({ toolReply: true });
   assert.equal(await send(), result);

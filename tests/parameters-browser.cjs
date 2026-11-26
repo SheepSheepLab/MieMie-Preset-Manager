@@ -20,9 +20,12 @@ try {for(const width of [1280,390]){
  const get=()=>page.evaluate(()=>structuredClone(window.__MieMieBindingDemo.controller.state.snapshot.raw));
  const before=await get(),entry=page.getByRole('button',{name:'预设参数设置',exact:true});
  const openParameters=async()=>{await entry.click();await page.waitForFunction(()=>{const layer=document.querySelector('.mm-parameters-dialog')?.parentElement;return layer&&!layer.dataset.parameterMotion;});};
- assert.equal(await entry.count(),1);assert.equal(await entry.locator('svg').count(),1);
- assert(await entry.evaluate(e=>e.parentElement.classList.contains('mm-scroll')&&!e.closest('.mm-list')&&!e.hasAttribute('data-id')&&!e.draggable&&e.getBoundingClientRect().height<document.querySelector('.mm-card').getBoundingClientRect().height));checks.push(`${width}: flat SVG entry at scroll top, outside prompt ordering`);
- assert(await entry.evaluate(e=>getComputedStyle(e).justifyContent==='center'&&getComputedStyle(e).textAlign==='center'));checks.push(`${width}: gear and title are centered as a single clickable group`);
+ assert.equal(await entry.count(),1);assert.equal(await entry.locator('.mm-settings-entry-icon svg').count(),1);
+ assert(await entry.evaluate(e=>e.parentElement.parentElement.classList.contains('mm-scroll')&&!e.closest('.mm-list')&&!e.hasAttribute('data-id')&&!e.draggable&&e.getBoundingClientRect().height<document.querySelector('.mm-card').getBoundingClientRect().height));checks.push(`${width}: paired settings entry at scroll top, outside prompt ordering`);
+ const toolsEntry=page.getByRole('button',{name:'预设工具',exact:true});
+ const [parametersRect,toolsRect]=await Promise.all([entry.boundingBox(),toolsEntry.boundingBox()]);
+ assert.equal(parametersRect.y,toolsRect.y);assert(Math.abs(parametersRect.width-toolsRect.width)<1);assert(parametersRect.x+parametersRect.width<toolsRect.x);
+ checks.push(`${width}: parameter settings and tools stay aligned in one row`);
  const y=await entry.evaluate(e=>e.getBoundingClientRect().top);await page.locator('.mm-scroll').evaluate(e=>{e.scrollTop=150;});assert((await entry.evaluate(e=>e.getBoundingClientRect().top))<y-100);await page.locator('.mm-scroll').evaluate(e=>{e.scrollTop=0;});checks.push(`${width}: entry scrolls away rather than sticking`);
  await page.getByRole('button',{name:'更多预设操作',exact:true}).click();for(const name of ['导出操作前备份','此对话跟随默认','重新协调对话预设'])assert.equal(await page.locator('.mm-menu').getByRole('button',{name,exact:true}).count(),0);await page.getByRole('button',{name:'更多预设操作',exact:true}).click();checks.push(`${width}: three duplicate menu items removed`);
  await openParameters();let modal=page.getByRole('dialog',{name:'预设参数设置',exact:true});

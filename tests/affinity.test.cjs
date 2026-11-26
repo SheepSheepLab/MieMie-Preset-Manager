@@ -93,7 +93,7 @@ test('Affinity and Unicode compose in one native request, before display and wit
     'CHAT_CHANGED', 'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY'];
   const eventTypes = Object.fromEntries(keys.map(key => [key, key]));
   const eventSource = new EventEmitter(), writes = new Map();
-  const c = { mainApi: 'openai', chatId: 'chat-a', chat: [roster([['阿岚', 10, 20]])], eventSource, eventTypes };
+  const c = { mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' }, chatId: 'chat-a', chat: [roster([['阿岚', 10, 20]])], eventSource, eventTypes };
   const host = {
     SillyTavern: { getContext: () => c }, location: { href: 'http://localhost/' }, setTimeout, clearTimeout,
     localStorage: { getItem: key => writes.get(key), setItem: (key, value) => writes.set(key, value) },
@@ -115,7 +115,7 @@ test('Affinity and Unicode compose in one native request, before display and wit
   const received = await host.fetch('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(request) });
   assert.match((await received.json()).choices[0].message.content, /阿岚 💞好感: 14/);
   assert.match(c.chat[0].mes, /阿岚 💞好感: 10/);
-  assert.deepEqual([...writes.values()].map(JSON.parse), [{ input: 'unicode', reply: 'encoded', affinity: true }]);
+  assert.deepEqual([...writes.values()].map(JSON.parse), [{ '测试预设': { input: 'unicode', reply: 'encoded', affinity: true, tagIsolation: true } }]);
   tools.dispose();
 });
 
@@ -196,7 +196,7 @@ test('Native re-roll keeps the previous floor even if the host changes the targe
   const eventSource = new EventEmitter();
   const old = roster([['阿岚', 10, 20]]);
   const target = roster([['阿岚', 70, 30], ['白羽', 20, 4]]);
-  const c = { mainApi: 'openai', chatId: 'chat-a', chat: [old, { mes: '继续', is_user: true }, target], eventSource, eventTypes };
+  const c = { mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' }, chatId: 'chat-a', chat: [old, { mes: '继续', is_user: true }, target], eventSource, eventTypes };
   const host = {
     SillyTavern: { getContext: () => c }, location: { href: 'http://localhost/' }, setTimeout, clearTimeout,
     localStorage: { getItem: () => null, setItem() {} },

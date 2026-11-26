@@ -56,6 +56,13 @@ async function launchPage(browser, width) {
       checks.push(`${width}: no cloned/moving title; dialog heading geometry and font stay unchanged while shell expands`);
       await page.screenshot({path:path.join(out,`expand-mid-${width}.png`)});if(width===390)await captureMotion(page,'opening',360);await finish(page);if(width===390)await page.screenshot({path:path.join(out,'frames','opened.png')});
       assert(await modal.isVisible());assert(await modal.evaluate(e=>!e.inert&&getComputedStyle(e).opacity==='1'));
+      const heading = modal.locator('.mm-preset-dialog-head');
+      assert.equal(await heading.getByRole('heading',{name:'预设参数设置'}).count(),1);
+      assert.equal(await heading.locator('.mm-tools-icon svg').count(),1);
+      assert.equal(await heading.locator('.mm-preset-dialog-name').textContent(),'星夜 · 示例预设');
+      assert.equal(await modal.locator('.mm-dialog-body').getByText('星夜 · 示例预设',{exact:true}).count(),0);
+      assert.equal(await modal.getByText('先在此保存修改，再点击列表上方的保存图标同步酒馆。',{exact:true}).count(),0);
+      assert.deepEqual(await modal.locator('.mm-dialog-actions button').allTextContents(),['取消','保存']);
       checks.push(`${width}: entry shell expands into dialog; form dimensions stay fixed; opening settles and removes ghosts`);
 
       await modal.getByLabel('温度',{exact:true}).fill('1.2');

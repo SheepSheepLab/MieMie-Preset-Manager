@@ -36,6 +36,9 @@ test('Production release checksums match every raw file; metadata within 64KiB',
  for(const line of read('SHA256SUMS').toString().trim().split('\n')){const [digest,name]=line.split('  ');assert.equal(hash(read(name)),digest);}
  assert.ok(read('MieMie-Extension-update.json').length<=65536);assert.ok(bytes.length<=16777216);assert.deepEqual(metadata.manifest,manifest);
 });
+test('The bundle can be embedded in a Tavern Helper inline-script iframe',()=>{
+ assert.doesNotMatch(script.content, /<\/script(?=[\s/>]|$)/i);
+});
 test('Hub rejects missing manifest fields, unsafe icon, long launcher, API and repository mismatch',async()=>{
  const h=await hub;for(const field of ['schemaVersion','apiVersion','id','name','version','author','description','entry','repository','license']){const x=clone(manifest);delete x[field];assert.throws(()=>h.validateExtensionManifest(x,REPOSITORY),undefined,field);}
  for(const patch of [{icon:'../private.png'},{icon:'data:image/png;base64,abc'},{icon:'/private/icon.png'},{contributes:{launcher:{title:manifest.name,icon:'x'.repeat(17)}}},{hubApi:{min:1,max:1}},{repository:'https://github.com/Someone/Else'}])assert.throws(()=>h.validateExtensionManifest({...manifest,...patch},REPOSITORY));

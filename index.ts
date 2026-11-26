@@ -30,7 +30,10 @@ $(() => {
   window.addEventListener('pagehide', stop, { once: true });
   void (async () => {
     try {
-      adapter = await createSTAdapter(host);
+      adapter = await createSTAdapter(host, {
+        rename: (oldName, newName) => tools?.renameSettings(oldName, newName),
+        remove: name => tools?.deleteSettings(name),
+      });
       if (stopped) { adapter.dispose?.(); return; }
       binding = createPresetBinding(adapter, createBindingHost(host), () => controller?.state ?? { dirty: false, busy: false });
       controller = createController(binding.adapter, binding);

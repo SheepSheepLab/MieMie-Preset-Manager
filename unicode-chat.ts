@@ -292,6 +292,7 @@ interface RequestOptions {
   toolReply?: boolean;
   affinity?(messages: Data[]): ChatExchange | undefined;
   status?(messages: Data[]): ChatExchange | undefined;
+  worldReport?(messages: Data[]): ChatExchange | undefined;
   valid(): boolean;
 }
 
@@ -333,21 +334,23 @@ export function createChatTransport(host: UnicodeHost) {
       const messages = objects(request.messages);
       const affinity = incompatible ? undefined : claim.affinity?.(messages);
       const status = incompatible ? undefined : claim.status?.(affinity?.messages ?? messages);
-      const outgoing = status?.messages ?? affinity?.messages ?? messages;
+      const worldReport = incompatible ? undefined : claim.worldReport?.(status?.messages ?? affinity?.messages ?? messages);
+      const outgoing = worldReport?.messages ?? status?.messages ?? affinity?.messages ?? messages;
       const source = String(request.chat_completion_source ?? '');
       const toolReply = Boolean(claim.toolReply && !incompatible && addReplyTool(request, claim.reply === 'encoded'));
       if (claim.reply) request.messages = encodeMessages(outgoing, claim.reply, toolReply);
-      else if (status || affinity) request.messages = outgoing;
+      else if (worldReport || status || affinity) request.messages = outgoing;
       const response = await next.call(host, input, { ...init, body: JSON.stringify(request) });
       if (!claim.valid() || init.signal?.aborted) throw canceled();
-      if ((!affinity && !status && claim.reply !== 'encoded' && !toolReply) || !response.ok) return response;
+      if ((!worldReport && !affinity && !status && claim.reply !== 'encoded' && !toolReply) || !response.ok) return response;
       const transform: ReplyTransform = (body, intermediate) => {
         const decoded = claim.reply === 'encoded' ? decodeUnicode(body) : body;
         const settled = affinity ? affinity.finish(decoded, intermediate) : decoded;
-        return status ? status.finish(settled, intermediate) : settled;
+        const withStatus = status ? status.finish(settled, intermediate) : settled;
+        return worldReport ? worldReport.finish(withStatus, intermediate) : withStatus;
       };
       const invalidText = claim.reply === 'encoded' ? invalidReply : toolReply ? invalidToolReply :
-        (status ? '状态栏引擎' : '好感度引擎') + '无法读取完整的模型回复，请重试。';
+        (worldReport ? '世界运行报告引擎' : status ? '状态栏引擎' : '好感度引擎') + '无法读取完整的模型回复，请重试。';
       let output: string;
       try {
         if (request.stream) {

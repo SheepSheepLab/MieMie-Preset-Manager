@@ -5,6 +5,7 @@
 import { bounded, FULL_READ_TIMEOUT } from './async-scope';
 import { NativePresetDraftError, type PresetAdapter, type RawPreset, type Snapshot } from './contracts';
 import { validatePreset } from './model';
+import { attachPresetRegex } from './preset-regex';
 
 type Data = Record<string, unknown>;
 type Listener = (...args: unknown[]) => void;
@@ -187,7 +188,10 @@ export class PresetOperationError extends Error {
 }
 
 /** Uses the host's existing modules only; importing core modules inside a script iframe would duplicate state. */
-export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter> {
+export async function createSTAdapter(windowHost: Window, toolsLifecycle?: {
+  rename(oldName: string, newName: string): void;
+  remove(name: string): void;
+}): Promise<PresetAdapter> {
   const host = windowHost as Host;
   const tauriTavern = !!host.__TAURITAVERN_HOST__ && typeof host.__TAURI_INTERNALS__?.invoke === 'function';
   const promptManager = host.TavernHelper?.builtin?.promptManager;
@@ -445,6 +449,17 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     if (cacheSaved(name, raw)) await apply(name, () => manager.selectPreset(manager.findPreset(name)));
     else await apply(name, () => manager.updateList(name, clone(raw)));
   }
+  async function saveCurrent(expected: Snapshot, actual: Snapshot, next: RawPreset): Promise<Snapshot> {
+    const raw = rawPreset(prepareSave?.(expected.name, next) ?? next);
+    if (!unchanged(expected, actual)) throw new PresetOperationError('保存前原生状态已改变，请重新读取。', expected);
+    await persist(expected.name, raw, expected);
+    if (!unchanged(expected, actual)) {
+      cacheSaved(expected.name, raw);
+      throw new PresetOperationError(`修改已保存到「${expected.name}」，但原生状态已改变；保留当前选择和未保存修改，没有自动应用。请重新读取。`, expected, expected.name);
+    }
+    try { await loadSaved(expected.name, raw); return await read(); }
+    catch { throw new PresetOperationError(`修改已保存到「${expected.name}」，但应用状态未确认；请重新读取。`, expected, expected.name); }
+  }
   function checkName(name: string, names: string[]): void {
     if (!name.trim() || name !== name.trim() || /[<>:"/\\|?*\u0000-\u001f]/.test(name) || /[. ]$/.test(name)
       || new TextEncoder().encode(name).length > 180 || /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name)) {
@@ -512,9 +527,9 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       validatePreset(raw);
       return raw;
     },
-    async readPresetByName(name) {
+    async readPresetByName(name, signal) {
       alive();
-      const presets = await disk();
+      const presets = await disk(false, signal);
       alive();
       if (!presets.has(name)) throw Error('来源预设已删除或重命名，请重新选择来源。');
       const raw = rawPreset(diskPreset(presets, name), false);
@@ -548,23 +563,32 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
     }),
     save: (expected, next) => serialize(async () => {
       const { actual } = await expectedState(expected);
-      const raw = rawPreset(prepareSave?.(expected.name, next) ?? next);
-      if (!unchanged(expected, actual)) throw new PresetOperationError('保存前原生状态已改变，请重新读取。', expected);
-      await persist(expected.name, raw, expected);
-      if (!unchanged(expected, actual)) {
-        // Keep the saved cache current even when the native selection has moved.
-        cacheSaved(expected.name, raw);
-        throw new PresetOperationError(`修改已保存到「${expected.name}」，但原生状态已改变；保留当前选择和未保存修改，没有自动应用。请重新读取。`, expected, expected.name);
-      }
-      try { await loadSaved(expected.name, raw); return await read(); }
-      catch { throw new PresetOperationError(`修改已保存到「${expected.name}」，但应用状态未确认；请重新读取。`, expected, expected.name); }
+      return saveCurrent(expected, actual, next);
     }),
     create: (expected, name, raw) => serialize(() => saveNew(expected, name, raw)),
+    bindRegex: (expected, name, scripts) => serialize(async () => {
+      const { actual, presets } = await expectedState(expected);
+      if (!presets.has(name)) throw Error('绑定目标已删除或重命名，请重新选择。');
+      const raw = name === expected.name ? actual.raw : rawPreset(diskPreset(presets, name), false);
+      const next = attachPresetRegex(raw, scripts);
+      if (equal(raw, next)) return actual;
+      if (name === expected.name) return saveCurrent(expected, actual, next);
+      if (!unchanged(expected, actual) || !Number.isInteger(manager.getPresetList().preset_names[name])) {
+        throw Error('绑定目标或当前预设已改变，请重新读取。');
+      }
+      const saved = rawPreset(prepareSave?.(name, next) ?? next);
+      await persist(name, saved, expected);
+      if (!cacheSaved(name, saved) || !unchanged(expected, actual)) {
+        throw new PresetOperationError(`正则已保存到「${name}」，但原生状态已改变；请重新读取。`, expected, name);
+      }
+      return actual;
+    }),
     rename: (expected, name) => serialize(async () => {
       const created = await saveNew(expected, name, expected.raw);
       let deletion;
       try { deletion = await deleteNative(expected.name, expected); }
       catch { throw new PresetOperationError(`「${name}」已保存，但旧预设「${expected.name}」未确认删除；可能保留两份。请重新读取。`, expected, name); }
+      toolsLifecycle?.rename(expected.name, created.name);
       if (current() !== created.name) throw new PresetOperationError(`已重命名为「${name}」，期间当前预设发生切换，请重新读取。`, expected, name);
       return snapshotFromDisk(deletion.remaining, deletion.stamp);
     }),
@@ -578,6 +602,7 @@ export async function createSTAdapter(windowHost: Window): Promise<PresetAdapter
       if (!unchanged(expected, actual)) throw new PresetOperationError('删除前当前预设已改变，请重新读取。', expected);
       await loadSaved(replacement, raw);
       const deletion = await deleteNative(expected.name, expected);
+      toolsLifecycle?.remove(expected.name);
       if (current() !== replacement) throw new PresetOperationError(`「${expected.name}」已删除，但当前预设发生切换，请重新读取。`, expected);
       return snapshotFromDisk(deletion.remaining, deletion.stamp);
     }),

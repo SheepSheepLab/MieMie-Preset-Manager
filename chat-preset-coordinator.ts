@@ -334,6 +334,10 @@ export function createPresetBinding(adapter: PresetAdapter, host: BindingHost,
       const chatKey = host.currentChat().identity.key, epoch = state.epoch;
       return remember(await adapter.save(expected, raw), chatKey, epoch);
     }),
+    bindRegex: adapter.bindRegex && ((expected, name, scripts) => command(async () => {
+      const chatKey = host.currentChat().identity.key, epoch = state.epoch;
+      return remember(await adapter.bindRegex!(expected, name, scripts), chatKey, epoch);
+    })),
     rename: (expected, name) => command(async () => {
       const current = captureChat(), epoch = state.epoch;
       const result = await adapter.rename(expected, name), listing = await directory();

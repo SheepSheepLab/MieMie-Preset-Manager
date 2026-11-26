@@ -8,7 +8,7 @@ import type { PresetAdapter, RawPreset, Snapshot } from '../../contracts';
 
 const w = window as Window & { reorderTest: unknown };
 let raw: RawPreset = {
-  prompts: ['a', 'b', 'c', 'd'].map(identifier => ({ identifier, name: `写作-${identifier}`, content: 'synthetic test text', role: 'system', system_prompt: false, future_prompt: { preserved: true } })),
+  prompts: ['a', 'b', 'c', 'd'].map(identifier => ({ identifier, name: `✍️写作-${identifier}`, content: 'synthetic test text', role: 'system', system_prompt: false, future_prompt: { preserved: true } })),
   prompt_order: [{ character_id: 100001, order: ['a', 'b', 'c', 'd'].map(identifier => ({ identifier, enabled: true, future_entry: identifier })), future_group: true }],
   future_root: true,
 };

@@ -1,8 +1,9 @@
 // Copyright (C) 2026 SheepSheepLab
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Presentation only: never owns parameter drafts, saves or Hub navigation.
+// Presentation only: never owns dialog state, saves or Hub navigation.
 export function createParameterPresentation(host: Window, layer: HTMLElement, entry: HTMLElement) {
   const doc = host.document;
+  layer.tabIndex = -1;
   const animations = new Set<Animation>();
   let release: (() => void) | null = null, disposed = false;
   function cancel() {
@@ -25,11 +26,12 @@ export function createParameterPresentation(host: Window, layer: HTMLElement, en
     // Rectangles are mapped into the layer, including a scaled native/Hub surface.
     const sx = layer.clientWidth / parent.width, sy = layer.clientHeight / parent.height;
     const rect = (r: DOMRect) => ({ left: (r.left - parent.left) * sx, top: (r.top - parent.top) * sy, width: r.width * sx, height: r.height * sy });
-    const source = entry.getBoundingClientRect(), scroll = entry.parentElement?.getBoundingClientRect();
+    const source = entry.getBoundingClientRect(), scroll = entry.closest('.mm-scroll')?.getBoundingClientRect();
     const css = host.getComputedStyle(entry);
     const visible = entry.isConnected && !entry.closest('[hidden]') && css.visibility !== 'hidden' && css.display !== 'none' &&
       source.width > 0 && source.height > 0 && source.top >= Math.max(parent.top, scroll?.top ?? parent.top) &&
-      source.bottom <= Math.min(parent.bottom, scroll?.bottom ?? parent.bottom) && source.left >= parent.left && source.right <= parent.right;
+      source.bottom <= Math.min(parent.bottom, scroll?.bottom ?? parent.bottom) && source.left >= Math.max(parent.left, scroll?.left ?? parent.left) &&
+      source.right <= Math.min(parent.right, scroll?.right ?? parent.right);
     const from = visible ? rect(source) : null, to = rect(target), theme = host.getComputedStyle(box);
     const duration = opening ? 360 : 280, easing = 'cubic-bezier(.22,.8,.22,1)';
     const veil = doc.createElement('div'); veil.className = 'mm-parameter-morph-veil';

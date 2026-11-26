@@ -64,12 +64,14 @@ export function group(raw: RawPreset, id: string | number): OrderGroup {
   return found;
 }
 
+const emojiPrefix = /^(?:[#*0-9]\uFE0F?\u20E3|(?![#*0-9])\p{Emoji})/u;
+
 function prefix(name: string): string | null {
-  const clean = name.trim().replace(/^[\s★☆●○◆◇▪▫✦✧•·※#*_~]+/u, '').trim();
+  const clean = name.trim().replace(/^(?:[\s★☆●○◆◇✦✧•·※_~]|[#*▪▫](?!\uFE0F|\u20E3))+/u, '');
   const bracket = clean.match(/^[【\[「『]([^】\]」』]{1,24})[】\]」』]\s*\S/u);
-  if (bracket) return bracket[1].trim();
-  const separated = clean.match(/^(.{1,24}?)\s*(?:::|[:：—–|/\-])\s*\S/u);
-  return separated?.[1].trim() || null;
+  const match = bracket ?? clean.match(/^(.{1,24}?)\s*(?:::|[:：—–|/\-])\s*\S/u);
+  const category = match?.[1].trim();
+  return category && emojiPrefix.test(category) ? category : null;
 }
 
 export function categoriesFor(prompts: NativePrompt[]): Map<string, string> {
@@ -83,10 +85,9 @@ export const detachable = (p: NativePrompt): boolean => p.system_prompt === fals
 /** Owner-approved destructive policy, independent of native detach eligibility. */
 export const deletable = (p: NativePrompt): boolean => p.system_prompt === false && p.marker !== true && !PROTECTED_IDS.has(p.identifier);
 export const editable = (p: NativePrompt): boolean => !p.marker || MARKER_EDITABLE.has(p.identifier);
-export function rowsFor(raw: RawPreset, groupId: string | number): Row[] {
+export function rowsFor(raw: RawPreset, groupId: string | number, cats = categoriesFor(raw.prompts)): Row[] {
   const active = group(raw, groupId).order;
   const byId = new Map(raw.prompts.map(p => [p.identifier, p]));
-  const cats = categoriesFor(raw.prompts);
   const attached = new Set(active.map(e => e.identifier));
   const make = (p: NativePrompt, enabled: boolean, linked: boolean): Row => ({ prompt: p, enabled, attached: linked, category: cats.get(p.identifier) || '未分类', editable: editable(p), copyable: copyable(p), detachable: linked && detachable(p), deletable: deletable(p), toggleable: !p.marker || MARKER_TOGGLEABLE.has(p.identifier) });
   return [...active.map(e => make(byId.get(e.identifier)!, e.enabled, true)), ...raw.prompts.filter(p => !attached.has(p.identifier)).map(p => make(p, false, false))];
@@ -147,9 +148,12 @@ export function copyPrompt(raw: RawPreset, groupId: string | number, id: string,
 export function togglePrompt(raw: RawPreset, groupId: string | number, id: string): RawPreset {
   const p = prompt(raw, id);
   if (p.marker && !MARKER_TOGGLEABLE.has(id)) throw Error('该 Marker 的开关由酒馆管理，不能直接修改。');
-  const next = clone(raw), entry = group(next, groupId).order.find(e => e.identifier === id);
-  if (!entry) throw Error('请先将条目重新挂接到发送列表。');
-  entry.enabled = !entry.enabled; return next;
+  const active = group(raw, groupId);
+  const index = active.order.findIndex(entry => entry.identifier === id);
+  if (index === -1) throw Error('请先将条目重新挂接到发送列表。');
+  const order = active.order.slice();
+  order[index] = { ...order[index], enabled: !order[index].enabled };
+  return { ...raw, prompt_order: raw.prompt_order.map(item => item === active ? { ...item, order } : item) };
 }
 
 export function detachPrompt(raw: RawPreset, groupId: string | number, id: string): RawPreset {

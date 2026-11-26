@@ -1,0 +1,19 @@
+[Unit]
+Description=Synchronize the official MieMie preset download catalog
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=miemie-preset-download
+Group=miemie-preset-download
+WorkingDirectory=/opt/miemie-preset-download/current
+ExecStart=/opt/miemie-node/bin/node server/sync.mjs
+StateDirectory=miemie-preset-download
+StateDirectoryMode=0755
+UMask=0022
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+TimeoutStartSec=10min

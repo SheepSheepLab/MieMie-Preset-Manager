@@ -13,7 +13,9 @@ function fixture() {
   const read = (): Snapshot => ({ name, names: ['A', 'B'], raw: structuredClone(raw), activeGroupId: 100001, revision: name + JSON.stringify(raw) });
   const adapter: PresetAdapter = { read: async () => read(), save: async (expected, next) => {
     assert.equal(expected.revision, read().revision); saves++; raw = structuredClone(next); return read();
-  }, select: async next => { name = next; return read(); }, create: async () => { throw Error('unused'); }, rename: async () => { throw Error('unused'); }, remove: async () => { throw Error('unused'); } };
+  }, select: async next => { name = next; return read(); }, create: async (_, nextName, next) => {
+    name = nextName; raw = structuredClone(next); return read();
+  }, rename: async () => { throw Error('unused'); }, remove: async () => { throw Error('unused'); } };
   return { controller: createController(adapter), get raw() { return raw; }, get saves() { return saves; } };
 }
 test('opening/cancelling absent parameters does not write, Owner defaults stage only on confirmation', async () => {
@@ -38,6 +40,23 @@ test('Owner defaults are exact and never replace explicit false, zero or existin
     presence_penalty: 0, top_p: 0, stream_openai: true, show_thoughts: true, reasoning_effort: 'high' };
   assert.deepEqual(missingParameterDefaults(existing), {});
   assert.deepEqual(patchParameters(empty, missingParameterDefaults(empty)), { ...empty, ...PARAMETER_DEFAULTS });
+});
+test('MieMie reply defaults to 64000 on import and parameter editing when absent', async () => {
+  const f = fixture();
+  await f.controller.refresh();
+  const signed = { prompts: [{ identifier: 'p', name: '📜说明', content: '作者：SheepSheep' }], prompt_order: f.raw.prompt_order };
+  const explicit = { ...signed, openai_max_tokens: 32000 };
+  const ordinary = { ...signed, prompts: [{ identifier: 'p', name: '📜说明', content: '感谢 SheepSheep' }] };
+  assert.equal(missingParameterDefaults(signed).openai_max_tokens, 64000);
+  assert.equal(missingParameterDefaults(explicit).openai_max_tokens, undefined);
+  assert.equal(missingParameterDefaults(ordinary).openai_max_tokens, 30000);
+  await f.controller.importText('改名后的预设.json', JSON.stringify(signed));
+  assert.deepEqual(f.raw, { ...signed, openai_max_tokens: 64000 });
+  await f.controller.importText('已有长度的预设.json', JSON.stringify(explicit));
+  assert.deepEqual(f.raw, explicit);
+  await f.controller.importText('普通预设.json', JSON.stringify(ordinary));
+  assert.deepEqual(f.raw, ordinary);
+  f.controller.dispose();
 });
 test('parameters stage locally and save one root patch, retaining prompts/order/regex', async () => {
   const f = fixture(); await f.controller.refresh(); const before = structuredClone(f.raw);

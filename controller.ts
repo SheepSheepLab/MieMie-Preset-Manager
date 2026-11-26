@@ -5,7 +5,8 @@
 import { NativePresetDraftError, type ManagerController, type ManagerState, type PresetAdapter, type PromptPatch, type RawPreset, type Snapshot } from './contracts';
 import { newPresetId } from './preset-id';
 import * as model from './model';
-import { patchParameters, missingParameterDefaults } from './preset-parameters';
+import { patchParameters, missingParameterDefaults, miemieReplyDefault } from './preset-parameters';
+import { attachPresetRegex, boundRegexCount } from './preset-regex';
 import type { PresetBindingService } from './chat-preset-coordinator';
 import { createMigrationController } from './migration-controller';
 import { EDITOR_KEYS as editableKeys } from './prompt-editor-fields';
@@ -21,6 +22,15 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
   const message = (error: unknown) => error instanceof Error ? error.message : '操作失败，请重新读取后重试。';
   const snapshot = () => { if (!state.snapshot) throw Error('预设尚未读取。'); return state.snapshot; };
   const currentRaw = () => state.pendingRaw ?? snapshot().raw;
+  let categorizedPrompts: RawPreset['prompts'] | undefined;
+  let categories = new Map<string, string>();
+  function promptCategories(prompts: RawPreset['prompts']) {
+    if (categorizedPrompts !== prompts) {
+      categories = model.categoriesFor(prompts);
+      categorizedPrompts = prompts;
+    }
+    return categories;
+  }
   const sameRaw = (a: RawPreset, b: RawPreset) => {
     // Compare JSON trees without serializing full Prompt bodies; shared unchanged
     // subtrees are skipped. No shared references are introduced inside either tree.
@@ -235,20 +245,41 @@ export function createController(adapter: PresetAdapter, binding?: PresetBinding
     revision() { return `${state.snapshot?.revision ?? ''}:${state.localRevision}`; },
     rows() {
       if (!state.snapshot) return [];
-      const rows = model.rowsFor(currentRaw(), state.snapshot.activeGroupId);
+      const raw = currentRaw();
+      const rows = model.rowsFor(raw, state.snapshot.activeGroupId, promptCategories(raw.prompts));
       return state.category === '全部' ? rows : rows.filter(r => r.category === state.category);
     },
     categories() {
       if (!state.snapshot) return ['全部', '未分类'];
-      return ['全部', ...new Set([...model.categoriesFor(currentRaw().prompts).values()].filter(c => !['全部', '未分类'].includes(c))), '未分类'];
+      return ['全部', ...new Set([...promptCategories(currentRaw().prompts).values()].filter(c => !['全部', '未分类'].includes(c))), '未分类'];
     },
     category(name) { state.category = name; notify(); },
     select(name) { return run(s => adapter.select(name, s), '已切换并确认酒馆当前预设。'); },
-    async importText(filename, text) {
+    async importText(filename, text, scripts) {
       if (!cleanRequired()) return;
       let raw: RawPreset;
-      try { raw = model.parsePreset(text); } catch (error) { state.error = message(error); notify(); return; }
+      try {
+        raw = model.parsePreset(text);
+        if (scripts) raw = attachPresetRegex(raw, scripts);
+      } catch (error) { state.error = message(error); notify(); return; }
+      const maxReply = miemieReplyDefault(raw);
+      if (maxReply !== undefined) raw = { ...raw, openai_max_tokens: maxReply };
       return run(s => adapter.create(s, model.uniqueName(filename.replace(/\.json$/i, '').trim() || '导入预设', s.names), raw), '已导入、保存并切换。同名时会自动添加编号，原预设保留。');
+    },
+    async readBoundRegexCount(name, signal) {
+      signal.throwIfAborted();
+      const current = state.snapshot;
+      if (!current?.names.includes(name)) return undefined;
+      if (name === current.name) return boundRegexCount(current.raw);
+      const source = await adapter.readPresetByName?.(name, signal);
+      signal.throwIfAborted();
+      return source ? boundRegexCount(source.raw) : undefined;
+    },
+    bindRegex(name, scripts) {
+      return run(s => {
+        if (!adapter.bindRegex) throw Error('当前酒馆未提供预设正则绑定能力，可以仅下载文件。');
+        return adapter.bindRegex(s, name, scripts);
+      }, `正则已添加到「${name}」。`);
     },
     async exportText() {
       if (disposed || state.busy) throw Error('请等待当前操作完成后再导出。');

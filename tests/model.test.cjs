@@ -43,12 +43,16 @@ test('editing only a title changes exactly one field', () => {
 });
 test('category detection is local and never mutates titles', () => {
   const raw = fixture(), before = structuredClone(raw); const cats = m.categoriesFor(raw.prompts);
-  assert.equal(cats.get('A1'), 'A'); assert.equal(cats.get('main'), '未分类'); assert.deepEqual(raw, before);
-  assert.deepEqual([...m.categoriesFor([{ identifier: 'a', name: '【文风】正文' }, { identifier: 'b', name: '【文风】限制' }]).values()], ['文风', '文风']);
+  assert.equal(cats.get('A1'), '未分类'); assert.equal(cats.get('main'), '未分类'); assert.deepEqual(raw, before);
+  const native = require('./fixtures/st-1.18.0-default.json');
+  assert.equal(m.categoriesFor(native.prompts).get('jailbreak'), '未分类');
   const mixed = ['🕋难度-地狱(多选一)', '🕋难度:普通', '📕文风:FateZero', '📕文风-简洁', '📕文风：叙事',
+    '【📕文风】正文', '📕文风-限制', '🧷卡原生思维链-正文', '🧷卡原生思维链-规则',
     'Language::English', 'Language : 中文', '单条:保持未分类', '无前缀'].map((name, i) => ({ identifier: String(i), name }));
   const untouched = structuredClone(mixed);
-  assert.deepEqual([...m.categoriesFor(mixed).values()], ['🕋难度', '🕋难度', '📕文风', '📕文风', '📕文风', 'Language', 'Language', '单条', '未分类']);
+  assert.deepEqual([...m.categoriesFor(mixed).values()], ['🕋难度', '🕋难度', '📕文风', '📕文风', '📕文风',
+    '📕文风', '📕文风', '🧷卡原生思维链', '🧷卡原生思维链',
+    '未分类', '未分类', '未分类', '未分类']);
   assert.deepEqual(mixed, untouched, 'category parsing never rewrites original names');
 });
 test('filtered reorder only permutes visible slots including all per-entry metadata', () => {

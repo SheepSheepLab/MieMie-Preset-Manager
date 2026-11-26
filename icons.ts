@@ -3,10 +3,11 @@
 // See LICENSE for terms; distributed without warranty.
 
 export type IconName =
-  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'export' | 'more' | 'back' | 'refresh' | 'save' | 'default' | 'settings' | 'chevron' | 'check' | 'migration' | 'tools' | 'transfer' | 'insert-top' | 'insert-bottom' | 'transfer-all' | 'transfer-text' | 'view';
+  'sheep' | 'close' | 'edit' | 'copy' | 'unlock' | 'link' | 'trash' | 'plus' | 'import' | 'download' | 'export' | 'more' | 'back' | 'refresh' | 'save' | 'default' | 'settings' | 'sliders' | 'chevron' | 'check' | 'migration' | 'tools' | 'transfer' | 'insert-top' | 'insert-bottom' | 'transfer-all' | 'transfer-text' | 'view' | 'regex' | 'stop';
 
 const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   view: ['M3 3h12l6 6v12H3zM15 3v6h6M7 12h10M7 16h8'],
+  regex: ['M5 8 1 12l4 4m14-8 4 4-4 4', 'M8 15h.01M14 7v8m-3.5-6 7 4m-7 0 7-4'],
   migration: ['M8 4H3v16h5M16 4h5v16h-5', 'M7 12h10m-4-4 4 4-4 4'],
   tools: ['M3 8h18v12H3zM8 8V4h8v4M3 13h18M10 13v2h4v-2'],
   'transfer-all': ['M3 3h10v18H3zM6 7h4M6 11h4M6 15h3', 'M14 12h7m-3-3 3 3-3 3'],
@@ -16,6 +17,7 @@ const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   'insert-bottom': ['M4 20h16M12 4v12m-5-5 5 5 5-5'],
   chevron: ['m6 9 6 6 6-6'],
   check: ['m5 12 4 4 10-10'],
+  sliders: ['M4 7h6m5 0h5M4 17h10m5 0h1', 'M15 7a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm4 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z'],
   settings: ['M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z', 'M9.5 3h5l.5 2.5 2 1.2 2.4-.7 2.5 4.3-1.9 1.7v2l1.9 1.7-2.5 4.3-2.4-.7-2 1.2-.5 2.5h-5L9 20.5l-2-1.2-2.4.7-2.5-4.3L4 14v-2l-1.9-1.7L4.6 6l2.4.7 2-1.2.5-2.5Z'],
   default: ['M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z'],
   close: ['M6 6l12 12M18 6 6 18'],
@@ -26,6 +28,8 @@ const paths: Record<Exclude<IconName, 'sheep'>, string[]> = {
   trash: ['M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7'],
   plus: ['M12 5v14M5 12h14'],
   import: ['M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5'],
+  download: ['M7 17H6a4 4 0 0 1-.2-8A6.4 6.4 0 0 1 18 8.6a4.2 4.2 0 0 1 0 8.4h-1', 'M12 11v10m-3-3 3 3 3-3'],
+  stop: ['M8 8h8v8H8z'],
   export: ['M12 15V3m-5 5 5-5 5 5M4 16v5h16v-5'],
   more: ['M5 11v2M12 11v2M19 11v2'],
   back: ['m10 5-7 7 7 7M3 12h18'],

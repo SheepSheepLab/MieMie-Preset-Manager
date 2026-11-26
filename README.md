@@ -1,6 +1,6 @@
 # MieMie Preset Manager · 咩咩预设管理
 
-> **1.1.0** 支持 Hub 0.9.0 的 Extension API2，机器包沿用 Package v1。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.1.0)，运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
+> **1.2.0** 新增预设下载、低思考模式和世界运行报告引擎，并按预设保存工具设置。正式安装包见 [GitHub Release](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.2.0)。Hub 0.9.0 起支持 Extension API2，机器包沿用 Package v1。运行与安装的独立验证见 [Hub API2 接入说明](docs/HUB-API2.md)。
 
 浮球可在工具内调整大小并启用潜航模式。潜航后向屏幕内侧拉动可打开，原地长按约 0.9 秒可拖动。面板打开时位于浮球之上，窄屏会模糊背景并挡住下层点击。
 
@@ -14,12 +14,13 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 项目状态 / Status
 
-- 当前版本为 `1.1.0`。变更和正式附件见 [1.1.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.1.0)。
+- 当前版本为 `1.2.0`。变更和正式附件见 [1.2.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.2.0)。
+- [1.1.0 发行说明](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/tag/v1.1.0)记录了 ST 1.14 至 1.19 兼容更新。
 - 已发布历史版本：`0.7.0`，GitHub **Stable Release**。批量迁移简化、单条目自动分类与独立窗口定位修复见 [Release 0.7.0](docs/RELEASE-0.7.0.md)；完整绑定规则见 [Binding](docs/PER-CHAT-PRESET-BINDING.md)。
 - **从 0.6.0 升级：保留有效的 binding-v2 聊天绑定。** 全局默认改变不影响已有有效绑定。仅从 0.5.1 及更早旧绑定系统升级时，旧绑定关系不迁移；该历史规则不适用于 0.6.0 → 0.7.0。
 - 官方上游：`SheepSheepLab/MieMie-Preset-Manager`。
 - Extension / Product ID：`miemie.preset-manager`；本分支 MieMie Hub Runtime API：`2`，正式 0.7.0 的 API1 记录保持历史范围。
-- 适配范围：原版 ST `1.14` 至 `1.19`，有启动时能力检查。本版按各系列官方标签与酒馆助手 4.11.3 验收。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
+- 适配范围：原版 ST `1.14` 至 `1.19`，有启动时能力检查。1.1.0 按各系列官方标签与酒馆助手 4.11.3 验收。历史 Foundation 实机为 **ST 1.18.0 + Helper 4.11.2 + Hub 0.8.1 + Safari 26.6 / macOS 26.6**，只对应当时的 0.1.2 包。2026-10-08 新证据确认正式 **0.2.3 + ST 1.19.0 (`7e8663c`) + Helper 4.11.3** 的代表性桌面路径与 **iOS Simulator Mobile Safari** 操作；Owner 另确认移动长按排序、统一保存、刷新持久化、切换及普通列表滑动到底且不改变顺序。物理手机、完整补丁/第三方生态矩阵未验。
 
 正式需求见 [PRODUCT_PLAN.md](docs/PRODUCT_PLAN.md)，协作规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。实现边界见 [Compatibility Notes](docs/COMPATIBILITY.md)，自动测试结果及 18 项真实宿主验收清单见 [Testing](docs/TESTING.md)。未覆盖需求仍是待解决项。
 
@@ -49,7 +50,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 ## 安装当前版本
 
-交付物为 **Tavern Helper（酒馆助手）脚本 JSON**，不是放入 SillyTavern `third-party` 目录的原生扩展。当前版本使用 [MieMie-Preset-Manager-Extension-1.1.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v1.1.0/MieMie-Preset-Manager-Extension-1.1.0.json)。历史 0.7.0 下载及说明如下。
+将 [MieMie-Preset-Manager-Extension-1.2.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v1.2.0/MieMie-Preset-Manager-Extension-1.2.0.json) 导入 **Tavern Helper（酒馆助手）全局脚本**。历史 0.7.0 下载及说明如下。
 
 [MieMie-Preset-Manager-Extension-0.7.0.json](https://github.com/SheepSheepLab/MieMie-Preset-Manager/releases/download/v0.7.0/MieMie-Preset-Manager-Extension-0.7.0.json)
 
@@ -68,21 +69,25 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 顶部显示实际当前预设。选择框使用与参数设置一致的页面内下拉菜单，不调用系统选择窗口；展开按当前选中行定位，保持原顺序，边界不足时自动调整高度与滚动。导入和完整复制会先保存、回读，再切换到新预设；同名导入生成唯一名称。更多菜单提供完整导出、复制当前预设、新建、重命名和删除。新建使用酒馆随版本附带的原始 Default 模板，包含默认条目、正文、顺序、启用状态和生成参数。切换时是否同时应用模板里的 API 配置，由酒馆原生「将预设与 API 配置绑定」开关决定。
 
-「更多预设操作 → 预设工具」提供「发送消息转拼音」，默认关闭。开启后，酒馆聊天补全的常规回复会在发送前将最新一条可识别的用户消息转成无声调拼音。聊天记录保留原文，转换在本机完成。开关保存在当前浏览器。
+「预设工具」与「预设参数设置」并排显示，每个预设独立保存工具设置。「发送消息转拼音」默认关闭。开启后，酒馆聊天补全的常规回复会在发送前将最新一条可识别的用户消息转成无声调拼音。聊天记录保留原文，转换在本机完成。
 
 同一张工具卡也提供「上下文 Unicode 转义」。它逐条编码已组装的聊天补全文本，包括预设和历史消息。拼音和 Unicode 一次启用一种，Unicode 默认回复原文。选用「编码回复」时，收到完整的 JSON 字符串后先解码，再进入酒馆的正则、显示和保存流程。使用流式连接时，编码回复会在收完后一次显示。编码会增加上下文和回复的 token 用量。
 
-「工具调用回复」默认关闭。开启后，在支持工具调用的 OpenAI、Custom（OpenAI 兼容）、OpenRouter、Google AI Studio 或 Vertex AI 连接上，常规生成和重 Roll 会通过一个工具接收整条回复。脚本收齐后还原为普通回复，再交给对话状态工具及酒馆的显示和保存流程。现有预设可以直接使用。原生续写、同时生成多个候选、已有工具或指定结构化输出的请求沿用酒馆流程。普通文本回复可以照常显示，工具结果不完整且没有正文时会提示重试。
+「工具调用回复」开启后，在支持工具调用的 OpenAI、Custom（OpenAI 兼容）、OpenRouter、Google AI Studio 或 Vertex AI 连接上，常规生成和重 Roll 会通过一个工具接收整条回复。脚本收齐后还原为普通回复，再交给对话状态工具及酒馆的显示和保存流程。现有预设可以直接使用。原生续写、同时生成多个候选、已有工具或指定结构化输出的请求沿用酒馆流程。普通文本回复可以照常显示，工具结果不完整且没有正文时会提示重试。
 
-「好感度引擎」支持咩咩预设的通用、EVA 与 NPC 好感度，默认关闭。AI 提交变化，脚本按预设规则结算并把完整名单写回回复的原有好感度区块。下一轮以当前对话中的最近有效名单为准。把带名单的原始回复复制到新对话开场白即可继承，名单随聊天文件删除。重生成使用该回合之前的名单，续写同一条回复时延续已有状态。启用时会等完整回复到齐再结算。
+「好感度引擎」识别预设里成对的方括号标题与分隔线。AI 提交变化，脚本按预设规则结算并把完整名单写回原有好感度区块。下一轮以当前对话中的最近有效名单为准。把带名单的原始回复复制到新对话开场白即可继承，名单随聊天文件删除。重生成使用该回合之前的名单，续写同一条回复时延续已有状态。启用时会等完整回复到齐再结算。
 
-「状态栏引擎」默认关闭。首次生成完整状态栏，后续将变化条目按标题合并进最近的完整状态栏。增量提示词默认是「仅输出本回合有变化的条目即可。」可在预设工具内编辑。预设工具面板从更多操作按钮展开，也会收回该处。
+「状态栏引擎」首次生成完整状态栏，后续按条目标题合并变化。「世界运行报告引擎」同样从完整报告开始，后续按 `【模块标题】` 合并变化。两者的增量提示词都可在预设工具中编辑。
+
+普通预设的工具设置默认只开启「标签隔离」。带有「📜说明」和 SheepSheep 署名的咩咩预设还默认开启「低思考模式」「工具调用回复」和三个对话状态引擎。低思考模式使用当前模型已确认的最低推理档位并关闭原生思维链回传。咩咩预设缺少最大回复长度时使用 64000，已设置的值优先。
+
+「更多预设操作 → 预设下载」提供官方预设、正则、发布日期和更新日志。可单独导入预设，或同时下载配套正则并绑定到新预设。单独下载正则时可保存原始 JSON 到浏览器下载位置，也可绑定到已有预设。已有规则时，下载的正则按顺序追加到末尾。
 
 主动打开管理器或点击「重新读取实际状态」时，以酒馆已保存的预设为准。原生界面有未保存修改时，管理器会重新应用已保存的内容，预设文件保持原样。管理器内的草稿仍有独立的保存与放弃流程。
 
 当前版本采用统一保存：Prompt 编辑窗口的“保存”只暂存本次编辑，取消丢弃本次编辑；条目排序、开关、复制、新增、解锁／挂接与删除先留在本地。分类右侧的软盘 SVG 保存图标（“保存修改”）在无改动时变暗，有改动时可用；点击后才统一同步酒馆并回读确认。“重新读取实际状态”在有未保存内容时确认放弃，读取成功后恢复实际数据；读取失败保留修改。关闭预设管理时也会提示未保存内容，选“是”丢弃，选“否”继续编辑。有未保存内容时须先保存或重新读取，再切换、导入、复制或导出预设。新增条目位于分类左侧。高级设置默认折叠，支持原生 Role、Trigger、Position、Depth、Order 和 `forbid_overrides` 等字段。未知字段保留；Marker 内容由酒馆生成，不作为普通文本编辑。“解锁”将可操作条目从当前发送顺序移出，保留定义；可重新挂接，或确认后永久删除。Copy 是 MPM 的便利功能，只允许普通自定义条目；物理 Delete 同样保守保护 Marker、内建／保留 identifier。Detach 则按固定原生资格 `system_prompt === false`，允许合法特殊条目仅移出当前顺序；定义、其他组和未知字段保留。三者独立，见 [Compatibility](docs/COMPATIBILITY.md)。
 
-整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。分类仅根据本地标题前缀生成，支持 `🕋难度-地狱`、`📕文风:FateZero` 等连字符／单冒号格式，也保留双冒号、括号等已有格式。中文全角冒号 `：` 同样可用；只要有一条符合现有前缀规则就生成分类，不更改名称或数据；在分类内排序只置换该分类原有位置。
+整张卡片的非交互区域都可拖动；手机长按约 350ms 后拖动，正常滑动不提交排序。键盘聚焦卡片后可用 Alt+↑/↓ 排序。自动分组要求分类前缀以 Emoji 开头，例如 `🧷卡原生思维链-规则`、`📕文风:FateZero` 或 `【📕文风】正文`。符合规则的单个条目也会形成分类。分类在浏览器内计算，分类内排序只置换该分类原有位置。
 
 界面包含窄屏、低高度横屏、安全区和 `visualViewport` 布局处理，主要按钮触控区域至少约 44px。尺寸变化保留编辑草稿、焦点和选区；编辑区滚动，保存按钮位于编辑窗口底部。旋转时取消正在进行的拖动。实际 iOS Simulator Mobile Safari 已验证软件键盘、编辑保存/取消、可见区域适配及基础旋转，Owner 另确认长按排序与刷新持久化；普通触摸列表滑动由 Owner 补充确认；拖动期间旋转等未测细项保留原范围，不声称物理手机通过。
 
@@ -102,7 +107,7 @@ MieMie Preset Manager is a frontend for SillyTavern's native Chat Completion pre
 
 导出包含**完整原始设置**，可能含 `proxy_password`、`custom_include_headers`、连接地址或其他敏感字段；不会自动脱敏。导出文件和个人备份应作为私人数据保管，分享前另行检查。内存备份在停用脚本、关闭或刷新酒馆页面后清除。原生服务端没有跨请求事务，不能保证跨浏览器并发写入的绝对原子性。
 
-分类和编辑在浏览器本地处理。运行时仅请求当前 ST 宿主的原生读取／保存接口，不向 Registry、Hub Server、第三方分析、遥测或 AI 服务发送 Prompt 正文。Hub 只接收清单与面板生命周期，不接收完整预设、控制器或草稿。这不构成对其他同源脚本的安全隔离。
+分类和编辑在浏览器本地处理，通过当前 ST 宿主的原生接口读写。「预设下载」请求公开目录、更新日志与附件。下载请求只包含公开条目标识。Hub 只接收清单与面板生命周期。宿主发送的模型请求由酒馆及其连接设置决定。
 
 ## 源码与构建
 

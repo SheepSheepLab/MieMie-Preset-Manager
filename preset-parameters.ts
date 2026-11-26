@@ -1,6 +1,7 @@
 // Copyright (C) 2026 SheepSheepLab
 // SPDX-License-Identifier: GPL-3.0-or-later
 import type { RawPreset } from './contracts';
+import { isMieMiePreset } from './miemie-preset';
 
 /** Native preset names, not the live UI aliases (temp_openai, etc.). */
 export const NUMERIC_PARAMETERS = [
@@ -21,9 +22,17 @@ export const PARAMETER_DEFAULTS = {
   frequency_penalty: 0, presence_penalty: 0, top_p: 0.9,
   stream_openai: false, show_thoughts: false, reasoning_effort: 'auto',
 } as const;
+
+export function miemieReplyDefault(raw: RawPreset): number | undefined {
+  return raw.openai_max_tokens === undefined && isMieMiePreset(raw) ? 64000 : undefined;
+}
+
 /** Only absent fields receive Owner defaults; false/0/unknown existing values survive. */
 export function missingParameterDefaults(raw: RawPreset): ParameterPatch {
-  return Object.fromEntries(Object.entries(PARAMETER_DEFAULTS).filter(([key]) => raw[key] === undefined));
+  const missing: ParameterPatch = Object.fromEntries(Object.entries(PARAMETER_DEFAULTS).filter(([key]) => raw[key] === undefined));
+  const maxReply = miemieReplyDefault(raw);
+  if (maxReply !== undefined) missing.openai_max_tokens = maxReply;
+  return missing;
 }
 
 /** Patch only touched fields. Opening a dialog never materializes missing defaults. */

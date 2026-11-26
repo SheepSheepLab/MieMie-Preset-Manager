@@ -6,8 +6,43 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createSTAdapter, PresetOperationError } from '../st-adapter';
 import type { RawPreset } from '../contracts';
+import { boundRegexCount, type PresetRegex } from '../preset-regex';
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+
+test('downloaded regex appends to an inactive preset in file order and keeps edited rules on repeat downloads', async () => {
+  const f = fake();
+  const adapter = await createSTAdapter(f.host);
+  try {
+    const active = await adapter.read();
+    const previous = f.records.get('B')!;
+    const original = { id: 'existing', scriptName: '用户的正则', findRegex: '自己修改', disabled: true };
+    const first = { id: 'existing', scriptName: '公开正则一', findRegex: '原始内容', disabled: false };
+    const second = { id: 'download', scriptName: '公开正则二', disabled: true };
+    const raw = { ...previous, extensions: { future: 1, regex_scripts: [original] } };
+    f.records.set('B', raw);
+    f.presets[1] = copy(raw);
+    assert.equal(boundRegexCount((await adapter.readPresetByName!('B')).raw), 1);
+    await adapter.bindRegex!(active, 'B', [first, second]);
+    const after = await adapter.read();
+    assert.equal(after.name, 'A');
+    assert.deepEqual(after.raw, active.raw);
+    const saved = f.records.get('B')!;
+    const entries = (saved.extensions as { regex_scripts: PresetRegex[] }).regex_scripts;
+    assert.equal(entries.length, 3);
+    assert.notEqual(entries[1].id, original.id);
+    assert.deepEqual(entries, [original, { ...first, id: entries[1].id }, second]);
+    assert.deepEqual(saved, { ...previous, extensions: { future: 1, regex_scripts: entries } });
+    assert.deepEqual(f.presets[1], saved);
+    await adapter.bindRegex!(after, 'B', [first, second]);
+    const repeated = (f.records.get('B')!.extensions as { regex_scripts: PresetRegex[] }).regex_scripts;
+    assert.deepEqual(repeated.slice(0, 3), entries);
+    assert.deepEqual(repeated.slice(3), [{ ...first, id: repeated[3].id }, { ...second, id: repeated[4].id }]);
+    assert.equal(new Set(repeated.map(entry => entry.id)).size, 5);
+    assert.equal(f.controls.saveCalls, 2);
+  } finally { adapter.dispose?.(); }
+});
+
 function preset(content = 'text'): RawPreset {
   return {
     temperature: 0.7, future_top: { untouched: ['x', 2] },

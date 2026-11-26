@@ -3,6 +3,7 @@
 // See LICENSE for terms; distributed without warranty.
 
 import type { LauncherAppearance } from './launcher-appearance';
+import type { PresetRegex } from './preset-regex';
 
 /** Native JSON stays authoritative. Unknown keys at every level are retained. */
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -24,7 +25,7 @@ export interface PresetAdapter {
   restoreSavedPreset?(expectedName: string): Promise<Snapshot>;
   /** Stock host template for new presets, independent of installed presets. */
   readDefaultPreset?(): Promise<RawPreset>;
-  readPresetByName?(name: string): Promise<SourcePreset>;
+  readPresetByName?(name: string, signal?: AbortSignal): Promise<SourcePreset>;
   /** Disk-confirmed directory in native list order; unsupported formats are excluded separately. */
   directory?(): Promise<{ names: string[]; supported: string[] }>;
   select(name: string, expected: Snapshot): Promise<Snapshot>;
@@ -32,6 +33,7 @@ export interface PresetAdapter {
   prepareSave?(name: string, raw: RawPreset): RawPreset;
   save(expected: Snapshot, next: RawPreset): Promise<Snapshot>;
   create(expected: Snapshot, name: string, raw: RawPreset): Promise<Snapshot>;
+  bindRegex?(expected: Snapshot, name: string, scripts: readonly PresetRegex[]): Promise<Snapshot>;
   rename(expected: Snapshot, name: string): Promise<Snapshot>;
   remove(expected: Snapshot): Promise<Snapshot>;
   /** True only when this exact verified read covers every notification and host state is still unchanged. */
@@ -65,7 +67,9 @@ export interface ManagerController {
   categories(): string[];
   category(name: string): void;
   select(name: string): Promise<void>;
-  importText(name: string, text: string): Promise<void>;
+  importText(name: string, text: string, scripts?: readonly PresetRegex[]): Promise<void>;
+  readBoundRegexCount(name: string, signal: AbortSignal): Promise<number | undefined>;
+  bindRegex(name: string, scripts: readonly PresetRegex[]): Promise<void>;
   exportText(): Promise<{ name: string; text: string }>;
   exportRecovery(): { name: string; text: string };
   copyPreset(): Promise<void>;

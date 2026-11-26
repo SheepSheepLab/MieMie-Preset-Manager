@@ -7,7 +7,7 @@ import { createController } from '../controller';
 import type { PresetAdapter, RawPreset, Snapshot } from '../contracts';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function fixture() {
-  let raw: RawPreset = { prompts: ['a', 'b', 'c', 'd'].map(id => ({ identifier: id, name: `${id === 'b' || id === 'd' ? '角色' : '写作'}-${id}`, role: 'system', content: 'synthetic', system_prompt: false, future: { keep: id } })),
+  let raw: RawPreset = { prompts: ['a', 'b', 'c', 'd'].map(id => ({ identifier: id, name: `${id === 'b' || id === 'd' ? '🎭角色' : '✍️写作'}-${id}`, role: 'system', content: 'synthetic', system_prompt: false, future: { keep: id } })),
     prompt_order: [{ character_id: 100001, order: ['a', 'b', 'c', 'd'].map(identifier => ({ identifier, enabled: true, meta: identifier })), extra: true },
       { character_id: 'other', order: [{ identifier: 'a', enabled: false, privateFuture: ['keep'] }], meta: { keep: true } }], futureRoot: { unknown: true } };
   let name = 'A', epoch = 0, writes = 0, reads = 0, selects = 0, notify = () => {};
@@ -74,7 +74,7 @@ test('late save read returning unrelated external raw cannot clear local changes
   assert.equal(f.writes, 1); assert.equal(c.state.dirty, true); assert.equal(c.state.conflict, true); assert.match(c.state.error, /外部/); c.dispose();
 });
 test('filtered local sorting keeps hidden slots, all group and entry metadata', async () => {
-  const { f, c } = await setup(); const before = structuredClone(f.raw); c.category('写作'); await c.move('c', 'a', c.revision());
+  const { f, c } = await setup(); const before = structuredClone(f.raw); c.category('✍️写作'); await c.move('c', 'a', c.revision());
   assert.deepEqual(c.state.pendingRaw!.prompt_order[0].order.map(e => e.identifier), ['c', 'b', 'a', 'd']);
   await c.saveChanges(); assert.deepEqual(f.raw.prompt_order[1], before.prompt_order[1]); assert.deepEqual(f.raw.futureRoot, before.futureRoot);
   for (const e of f.raw.prompt_order[0].order) assert.equal(e.meta, e.identifier); c.dispose();
@@ -114,7 +114,7 @@ test('all Prompt operations remain local until one save; cancel erases additions
   await c.detach('a'); await c.attach('a'); await c.saveChanges(); assert.equal(f.writes, 1); assert.deepEqual(f.raw.prompts, before.prompts); c.dispose();
 });
 test('draft revert and editor Cancel produce no dirty state, reads or writes', async () => {
-  const { f, c } = await setup(); const reads = f.reads; c.edit('a'); c.draft({ name: 'change' }); c.draft({ name: '写作-a' }); assert.equal(c.state.dirty, false);
+  const { f, c } = await setup(); const reads = f.reads; c.edit('a'); c.draft({ name: 'change' }); c.draft({ name: '✍️写作-a' }); assert.equal(c.state.dirty, false);
   await c.saveEdit(); assert.equal(c.state.dirty, false); assert.equal(f.reads, reads); c.edit('a'); c.draft({ content: 'unsaved' }); c.cancelEdit(); assert.equal(c.state.dirty, false); assert.equal(f.writes, 0); c.dispose();
 });
 test('dispose while save pending prevents late acknowledgement from mutating UI state', async () => {

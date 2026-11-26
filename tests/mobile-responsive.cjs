@@ -171,26 +171,37 @@ async function checkLayout(page, viewport) {
         await item.scrollIntoViewIfNeeded();
         names.push((await hitVisible(item, viewport)).name);
       }
-      assert.deepEqual(names, ['预设条目迁移', '预设工具', '导出完整预设', '复制当前预设', '新建预设', '重命名预设', '删除当前预设'], 'Every preset menu action must remain reachable');
+      assert.deepEqual(names, ['预设条目迁移', '预设下载', '导出完整预设', '复制当前预设', '新建预设', '重命名预设', '删除当前预设'], 'Every preset menu action must remain reachable');
       measurements.push({ viewport, menuItemsReachable: names });
       if (viewport.width === 320) await screenshot(page, 'responsive-menu-320x400.png');
-      const entry = menu.getByRole('button', { name: '预设工具', exact: true });
+      await page.keyboard.press('Escape');
+      const entry = page.getByRole('button', { name: '预设工具', exact: true });
+      await hitVisible(entry, viewport);
+      const pair = await entry.evaluate(node => [node.previousElementSibling, node].map(button => {
+        const { x, y, width, height } = button.getBoundingClientRect();
+        const label = button.querySelector('.mm-settings-entry-label');
+        return { x, y, width, height, fits: button.scrollWidth <= button.clientWidth + 1 &&
+          label.scrollWidth <= label.clientWidth + 1 && getComputedStyle(label).whiteSpace === 'nowrap' };
+      }));
+      assert.equal(pair[0].y, pair[1].y);
+      assert.equal(pair[0].height, pair[1].height);
+      assert(pair[0].x + pair[0].width < pair[1].x && pair.every(button => button.fits));
       if (viewport.width === 320) {
         const opening = await entry.evaluate(button => {
           button.click();
           const layer = document.querySelector('.mm-preset-tools-layer');
-          const shell = layer.querySelector('.mm-tools-motion-shell');
+          const shell = layer.querySelector('.mm-parameter-morph-shell');
           const frame = shell?.getAnimations()[0]?.effect;
-          const heading = layer.querySelector('.mm-dialog-head').getAnimations()[0]?.effect;
-          return { phase: layer.dataset.motion, duration: frame?.getTiming().duration,
-            expands: frame?.getKeyframes()[0].transform !== frame?.getKeyframes()[1].transform,
-            headingDelay: heading?.getTiming().delay };
+          const pageEffect = layer.querySelector('.mm-tools-dialog').getAnimations()[0]?.effect;
+          return { phase: layer.dataset.parameterMotion, duration: frame?.getTiming().duration,
+            expands: frame?.getKeyframes()[0].width !== frame?.getKeyframes()[1].width,
+            contentDelay: pageEffect?.getTiming().delay };
         });
-        assert.deepEqual(opening, { phase: 'opening', duration: 360, expands: true, headingDelay: 180 });
+        assert.deepEqual(opening, { phase: 'opening', duration: 360, expands: true, contentDelay: 240 });
       } else await entry.click();
       const tools = page.getByRole('dialog', { name: '预设工具', exact: true });
       await tools.waitFor();
-      await page.locator('.mm-preset-tools-layer[data-motion=opening]').waitFor({ state: 'detached' });
+      await page.locator('.mm-preset-tools-layer .mm-parameter-morph-shell').waitFor({ state: 'detached' });
       await hitVisible(tools.getByRole('button', { name: '返回', exact: true }), viewport);
       assert.equal(await tools.getByRole('switch', { name: '发送消息转拼音', exact: true }).isDisabled(), true);
       const sameCard = await tools.locator('section.mm-launcher-card').evaluateAll(cards => cards.some(card =>
@@ -213,25 +224,32 @@ async function checkLayout(page, viewport) {
         const motion = await tools.getByRole('button', { name: '返回', exact: true }).evaluate(button => {
           button.click();
           const layer = button.closest('.mm-preset-tools-layer');
-          return { visible: !layer.hidden, phase: layer.dataset.motion,
-            animated: layer.querySelector('.mm-tools-motion-shell')?.getAnimations().length === 1,
+          const effect = layer.querySelector('.mm-parameter-morph-shell')?.getAnimations()[0]?.effect;
+          const target = effect?.getKeyframes().at(-1);
+          const bounds = layer.getBoundingClientRect();
+          return { visible: !layer.hidden, phase: layer.dataset.parameterMotion,
+            duration: effect?.getTiming().duration,
+            destination: target && [bounds.x + parseFloat(target.left), bounds.y + parseFloat(target.top),
+              parseFloat(target.width), parseFloat(target.height)],
             blocked: layer.parentElement.querySelector('.mm-frame').inert };
         });
-        assert.deepEqual(motion, { visible: true, phase: 'closing', animated: true, blocked: true });
+        const { destination, ...timing } = motion;
+        assert.deepEqual(timing, { visible: true, phase: 'closing', duration: 280, blocked: true });
+        assert(destination);
+        assert(destination.every((value, i) => Math.abs(value - [pair[1].x, pair[1].y, pair[1].width, pair[1].height][i]) < 1));
         await page.keyboard.press('Escape');
         await page.locator('.mm-preset-tools-layer').waitFor({ state: 'hidden' });
-        assert(await page.getByRole('button', { name: '更多预设操作', exact: true }).evaluate(node => node === document.activeElement));
+        assert(await entry.evaluate(node => node === document.activeElement));
       } else await page.keyboard.press('Escape');
       await tools.waitFor({ state: 'hidden' });
       await menu.waitFor({ state: 'hidden' });
       if (viewport.width === 320) {
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.getByRole('button', { name: '更多预设操作', exact: true }).click();
         await entry.click();
         await tools.waitFor();
-        assert.equal(await tools.locator('.mm-tools-motion-shell').count(), 0);
+        assert.equal(await tools.locator('.mm-parameter-morph-shell').count(), 0);
         await tools.getByRole('button', { name: '返回', exact: true }).click();
-        assert(await page.locator('.mm-preset-tools-layer').evaluate(layer => layer.hidden && !layer.dataset.motion));
+        assert(await page.locator('.mm-preset-tools-layer').evaluate(layer => layer.hidden && !layer.dataset.parameterMotion));
         await page.emulateMedia({ reducedMotion: 'no-preference' });
       }
     }

@@ -1,0 +1,30 @@
+presets.sheepsheeplab.com {
+	root * /var/lib/miemie-preset-download
+	header {
+		Access-Control-Allow-Origin *
+		X-Content-Type-Options nosniff
+	}
+	@catalog {
+		method GET HEAD
+		path /v1/catalog.json
+	}
+	@files {
+		method GET HEAD
+		path_regexp file ^/v1/files/[a-f0-9]{64}/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.json$
+	}
+	handle @catalog {
+		header Cache-Control "public, max-age=60" {
+			match status 2xx 304
+		}
+		file_server
+	}
+	handle @files {
+		header Cache-Control "public, max-age=31536000, immutable" {
+			match status 2xx 304
+		}
+		file_server
+	}
+	handle {
+		respond 404
+	}
+}

@@ -73,7 +73,7 @@ async function dragTo(page, id, target) {
     await page.getByRole('button', { name: '取消', exact: true }).click();
     receipts.push('宿主body和button文字阴影污染可在旧版复现；候选编辑保存按钮text-shadow为none');
     await page.close(); page = await pageFor();
-    const names = ['🛡️破甲', '📕文风', '🧠情绪控制', '很长的中文分类名称完整保留不缩小字号', '🌍Wlog Mixed中文Category', '🧩 NPC视角与人物关系', '语言'];
+    const names = ['🛡️破甲', '📕文风', '🧠情绪控制', '📒很长的中文分类名称完整保留不缩小字号', '🌍Wlog Mixed中文Category', '🧩 NPC视角与人物关系', '🗣️语言'];
     await page.evaluate(names => window.reorderTest.categories(names), names);
     for (const width of [320, 390, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
@@ -216,7 +216,7 @@ async function dragTo(page, id, target) {
     assert(await save.isEnabled());
     await reload.click(); confirm = page.getByRole('dialog', { name: '重新读取实际状态', exact: true });
     await confirm.getByRole('button', { name: '重新读取', exact: true }).click(); await confirm.waitFor({ state: 'hidden' });
-    assert.equal(await page.locator('.mm-card[data-id=a] .mm-card-title').textContent(), '写作-a'); assert(await save.isDisabled());
+    assert.equal(await page.locator('.mm-card[data-id=a] .mm-card-title').textContent(), '✍️写作-a'); assert(await save.isDisabled());
     assert.equal(await save.evaluate(n => getComputedStyle(n, '::after').display), 'none');
     assert.equal(await page.evaluate(() => window.reorderTest.writes), 0);
     assert.equal(await page.locator('.mm-footer .mm-hint').textContent(),'已重新读取酒馆实际状态，未保存修改已丢弃。');

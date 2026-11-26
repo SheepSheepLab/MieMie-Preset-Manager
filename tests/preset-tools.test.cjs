@@ -20,7 +20,7 @@ test('Pinyin transforms only the identified native user turn in the outgoing req
   const previous = { is_user: true, name: '甲', mes: '昨天见' };
   const user = { is_user: true, name: '甲', mes: '你好' };
   const chat = [previous, user];
-  const context = { chatId: 'test-chat', chat, eventSource, eventTypes, mainApi: 'openai' };
+  const context = { chatId: 'test-chat', chat, eventSource, eventTypes, mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' } };
   const attachment = { type: 'image_url', image_url: { url: 'synthetic:unchanged' } };
   const text = { type: 'text', text: '甲: 你好\n\n附件' };
   const before = { role: 'user', content: '昨天见', identifier: 'chatHistory-1' };
@@ -106,7 +106,7 @@ test('Unicode only transforms the native request and decodes its reply before th
     'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY',
   ].map(key => [key, key]));
   const chat = [{ is_user: true, mes: '你好' }];
-  const context = { chatId: 'test-chat', chat, eventSource, eventTypes, mainApi: 'openai' };
+  const context = { chatId: 'test-chat', chat, eventSource, eventTypes, mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' } };
   const stored = new Map([['miemie_preset_manager_pinyin_v1', 'true']]);
   const requests = [];
   let upstream = story;
@@ -135,7 +135,7 @@ test('Unicode only transforms the native request and decodes its reply before th
     method: 'POST', body: JSON.stringify(request),
   });
   assert.equal(tools.enabled(), true);
-  assert.deepEqual(tools.settings(), { input: 'pinyin', reply: 'plain' });
+  assert.deepEqual(tools.settings(), { input: 'pinyin', reply: 'plain', tagIsolation: true });
   assert(tools.setSettings({ input: 'unicode' }));
   assert.equal(tools.enabled(), false);
   const rawReply = await dispatch(ready());
@@ -165,7 +165,7 @@ test('Unicode only transforms the native request and decodes its reply before th
   tools.dispose();
   assert.equal(host.fetch, nativeFetch);
   const reopened = createPresetTools(host);
-  assert.deepEqual(reopened.settings(), { input: 'unicode', reply: 'encoded' });
+  assert.deepEqual(reopened.settings(), { input: 'unicode', reply: 'encoded', tagIsolation: true });
   reopened.dispose();
 });
 
@@ -177,7 +177,7 @@ test('Tool reply is opt-in, preserves the native messages and makes one request 
   const eventSource = new EventEmitter();
   const eventTypes = Object.fromEntries(['GENERATION_AFTER_COMMANDS', 'GENERATE_AFTER_DATA', 'GENERATION_STOPPED',
     'GENERATION_ENDED', 'CHAT_CHANGED', 'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY'].map(key => [key, key]));
-  const context = { chatId: 'test-chat', chat: [{ is_user: true, mes: '继续' }], eventSource, eventTypes, mainApi: 'openai' };
+  const context = { chatId: 'test-chat', chat: [{ is_user: true, mes: '继续' }], eventSource, eventTypes, mainApi: 'openai', chatCompletionSettings: { preset_settings_openai: '测试预设' } };
   const stored = new Map(), requests = [];
   const plain = { choices: [{ message: { content: story } }] };
   let upstream = plain;
@@ -270,4 +270,139 @@ test('Tool reply restores fragmented OpenAI responses and native Gemini function
   const tokenLimit = [geminiStream[1], { candidates: [{ finishReason: 'MAX_TOKENS' }] }];
   assert.deepEqual(frames(decodeChatStream(sse(tokenLimit), 'makersuite', identity, true))[0].candidates[0].content.parts,
     [{ text: '前言' }]);
+});
+
+test('Preset tools migrate legacy values once, isolate preferences, and follow verified rename and deletion', () => {
+  const eventSource = new EventEmitter();
+  const eventTypes = Object.fromEntries(
+    ['GENERATION_AFTER_COMMANDS', 'GENERATE_AFTER_DATA', 'GENERATION_STOPPED', 'GENERATION_ENDED',
+      'CHAT_CHANGED', 'PRESET_CHANGED', 'PRESET_RENAMED', 'PRESET_DELETED',
+      'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY'].map(key => [key, key]));
+  const chatCompletionSettings = { preset_settings_openai: '甲' };
+  const context = { chatCompletionSettings, eventSource, eventTypes, chat: [], mainApi: 'openai',
+    messageFormatter: { addHook() {} } };
+  const key = 'miemie_preset_manager_message_tools_v1';
+  const stored = new Map([[key, JSON.stringify({ affinity: true, statusPrompt: '原有提示词', customTags: ['prior_tag'] })]]);
+  const host = { SillyTavern: { getContext: () => context }, fetch: async () => Response.json({}),
+    localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) } };
+  const tools = createPresetTools(host);
+  assert(tools.settings().affinity);
+  assert.equal(tools.settings().statusPrompt, '原有提示词');
+  assert(tools.setSettings({ lowThinking: true }));
+  chatCompletionSettings.preset_settings_openai = '乙';
+  eventSource.emit('PRESET_CHANGED', { apiId: 'openai', name: '乙' });
+  assert.deepEqual(tools.settings(), { input: 'off', reply: 'plain', tagIsolation: true });
+  assert(!tools.setSettings({ lowThinking: true }, '甲'), 'A stale editor cannot write into either preset');
+  assert(tools.setSettings({ worldReport: true, tagIsolation: false, customTags: ['my_tag'] }));
+  chatCompletionSettings.preset_settings_openai = '甲-新';
+  eventSource.emit('PRESET_RENAMED', { apiId: 'openai', oldName: '甲', newName: '甲-新' });
+  assert(tools.settings().lowThinking);
+  assert.deepEqual(tools.settings().customTags, ['prior_tag']);
+  assert(!tools.settings('甲').affinity);
+  eventSource.emit('PRESET_DELETED', { apiId: 'openai', name: '甲-新' });
+  assert(!tools.settings().lowThinking);
+  tools.dispose();
+  chatCompletionSettings.preset_settings_openai = '乙';
+  const reopened = createPresetTools(host);
+  assert(reopened.settings().worldReport);
+  assert.equal(reopened.settings().tagIsolation, false);
+  assert.deepEqual(reopened.settings().customTags, ['my_tag']);
+  assert(!reopened.settings('甲-新').affinity);
+  reopened.dispose();
+});
+
+test('MieMie defaults follow the signed description and preserve per-preset overrides', () => {
+  const eventSource = new EventEmitter();
+  const eventTypes = Object.fromEntries([
+    'GENERATION_AFTER_COMMANDS', 'GENERATE_AFTER_DATA', 'GENERATION_STOPPED', 'GENERATION_ENDED',
+    'CHAT_CHANGED', 'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY',
+  ].map(key => [key, key]));
+  const description = content => ({ name: '📜说明', content });
+  const presets = new Map([
+    ['重命名的预设', { prompts: [description('使用说明\r\n—— SheepSheep\r\n')] }],
+    ['旧版', { prompts: [description('作者：SheepSheep')] }],
+    ['仅提到作者', { prompts: [description('感谢 SheepSheep 提供的条目')] }],
+    ['署名在别处', { prompts: [description('其他说明'), { name: '其他条目', content: 'SheepSheep' }] }],
+    ['MieMiePreset-ver2027.1.0', { prompts: [description('作者：SheepSheepLab')] }],
+  ]);
+  let selected = '重命名的预设';
+  const manager = { getSelectedPresetName: () => selected, getCompletionPresetByName: name => presets.get(name) };
+  const context = { getPresetManager: () => manager, eventSource, eventTypes, chat: [], mainApi: 'openai' };
+  const stored = new Map();
+  const host = { SillyTavern: { getContext: () => context }, fetch: async () => Response.json({}),
+    localStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) } };
+  const tools = createPresetTools(host);
+  const defaults = { input: 'off', reply: 'plain', tagIsolation: true };
+  const miemieDefaults = { ...defaults, lowThinking: true, toolReply: true, affinity: true, status: true, worldReport: true };
+  assert.deepEqual(tools.settings(), miemieDefaults);
+  assert.deepEqual(tools.settings('旧版'), miemieDefaults);
+  for (const name of ['MieMiePreset-ver2027.1.0', '仅提到作者', '署名在别处']) {
+    assert.deepEqual(tools.settings(name), defaults);
+  }
+  assert(tools.setSettings({ toolReply: false }));
+  const { toolReply, ...custom } = miemieDefaults;
+  assert.deepEqual(tools.settings(), custom);
+  selected = '旧版';
+  assert.deepEqual(tools.settings(), miemieDefaults);
+  tools.dispose();
+  selected = '重命名的预设';
+  const reopened = createPresetTools(host);
+  assert.deepEqual(reopened.settings(), custom);
+  reopened.dispose();
+});
+
+test('Low thinking applies only to the scoped native generation and keeps unsupported requests usable', async () => {
+  const eventSource = new EventEmitter();
+  const eventTypes = Object.fromEntries(
+    ['GENERATION_AFTER_COMMANDS', 'GENERATE_AFTER_DATA', 'GENERATION_STOPPED', 'GENERATION_ENDED',
+      'CHAT_CHANGED', 'CHAT_COMPLETION_PROMPT_READY', 'CHAT_COMPLETION_SETTINGS_READY'].map(key => [key, key]));
+  const chatCompletionSettings = { preset_settings_openai: '甲' };
+  const context = { chatId: 'chat', chatCompletionSettings, eventSource, eventTypes, mainApi: 'openai', chat: [] };
+  const warnings = [];
+  const host = { SillyTavern: { getContext: () => context }, TavernHelper: { getTavernVersion: () => '1.18.0' },
+    fetch: async () => Response.json({}), toastr: { warning: message => warnings.push(message) },
+    localStorage: { getItem: () => null, setItem() {} } };
+  const tools = createPresetTools(host);
+  async function send(requestFields = {}, { switchTo, dryRun = false, started = true } = {}) {
+    const messages = [{ role: 'user', content: '开场提示词' }];
+    if (started) {
+      eventSource.emit('GENERATION_AFTER_COMMANDS', 'normal', {}, dryRun);
+      eventSource.emit('CHAT_COMPLETION_PROMPT_READY', { chat: messages, dryRun });
+      eventSource.emit('GENERATE_AFTER_DATA', { prompt: messages }, dryRun);
+    }
+    if (switchTo) chatCompletionSettings.preset_settings_openai = switchTo;
+    const request = { type: 'normal', chat_completion_source: 'custom', model: 'gemini-3.8-flash',
+      custom_url: 'http://127.0.0.1:8800/v1', reasoning_effort: 'high', include_reasoning: true, messages, ...requestFields };
+    for (const listener of eventSource.listeners('CHAT_COMPLETION_SETTINGS_READY')) await listener(request);
+    assert.deepEqual(request.messages, [{ role: 'user', content: '开场提示词' }]);
+    eventSource.emit('GENERATION_ENDED');
+    return request;
+  }
+  assert((await send()).include_reasoning);
+  assert(tools.setSettings({ lowThinking: true }));
+  for (const model of ['gemini-3.8-flash', 'gemini-4-neon', 'gemini-4-hydrogen']) {
+    const request = await send({ model });
+    assert.equal(request.include_reasoning, false);
+    assert.deepEqual(JSON.parse(request.custom_include_body), { reasoning_effort: 'low', include_reasoning: false });
+  }
+  assert.equal((await send({ chat_completion_source: 'makersuite' })).reasoning_effort, 'low');
+  assert.equal((await send({ chat_completion_source: 'makersuite', model: 'gemini-3.6-flash' })).reasoning_effort, 'min');
+  const official = await send({ model: 'gemini-4-argon', custom_url: 'https://generativelanguage.googleapis.com/v1beta/openai/' });
+  assert.deepEqual(JSON.parse(official.custom_include_body), { extra_body: { google: {
+    thinking_config: { thinking_level: 'low', include_thoughts: false },
+  } } });
+  const fallback = await send({ model: 'custom-alias' });
+  assert.equal(fallback.include_reasoning, false);
+  assert.equal(fallback.reasoning_effort, 'high');
+  assert.equal(fallback.custom_include_body, undefined);
+  await send({ model: 'custom-alias' });
+  assert.equal(warnings.length, 1);
+  assert((await send({}, { dryRun: true })).include_reasoning);
+  assert((await send({}, { started: false })).include_reasoning);
+  assert((await send({}, { switchTo: '乙' })).include_reasoning);
+  assert((await send()).include_reasoning);
+  chatCompletionSettings.preset_settings_openai = '甲';
+  assert(tools.setSettings({ lowThinking: false }));
+  assert((await send()).include_reasoning);
+  tools.dispose();
 });
