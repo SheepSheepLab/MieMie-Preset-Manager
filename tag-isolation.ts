@@ -1,17 +1,14 @@
 // Copyright (C) 2026 SheepSheepLab
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-const planning = new Set(['story_driver', 'combat_driver', 'acg_think', 'lore_search', 'parallel_line_drive', 'think', 'thinking', 'analysis']);
-const sections = new Set(['story_scene', 'opening']);
-const inline = new Set(['t_big', 't_small', 't_s']);
+const presetPlanning = new Set(['story_driver', 'combat_driver', 'acg_think', 'lore_search', 'parallel_line_drive']);
+const planning = new Set([...presetPlanning, 'think', 'thinking']);
 export const DEFAULT_ISOLATION_TAGS = Object.freeze([
-  'status', 'special_status', 'affinity', 'memory_log', 'wlog', 'npc_log',
-  ...planning, ...sections, 'locator', 'selection', 'parallel_line', 'secure_log', ...inline, 'UpdateVariable', 'JSONPatch',
-  'story_driver_format', 'story_scene_format', 'status_format', 'special_status_format',
-  'affinity_format', 'memory_log_format', 'wlog_format', 'npc_log_format', 'acg_think_format',
+  'lore_search', 'acg_think', 'combat_driver', 'story_driver',
+  'special_status', 'memory_log', 'wlog', 'status', 'affinity', 'npc_log', 'selection', 'secure_log',
+  'locator', 'parallel_line_drive', 'parallel_line',
 ]);
 const builtIn = new Set(DEFAULT_ISOLATION_TAGS.map(name => name.toLowerCase()));
-const storyFormat = new Set(['story_driver', 'story_scene', 'combat_driver', 'lore_search', 'acg_think', 'parallel_line_drive']);
 const footerFormat = new Set(['memory_log', 'wlog', 'npc_log', 'parallel_line', 'secure_log', 'special_status']);
 
 const nameSource = '[\\p{L}_][\\p{L}\\p{N}_.:-]*';
@@ -36,10 +33,10 @@ export type TagBlock = { name: string; start: number; end: number; bodyStart: nu
 function recognizesPresetFormat(tags: readonly Tag[]): boolean {
   const seen = new Set<string>(), footers = new Set<string>();
   for (const { name, closing, literal } of tags) {
-    if (literal || (!storyFormat.has(name) && !footerFormat.has(name))) continue;
+    if (literal || (!presetPlanning.has(name) && !footerFormat.has(name))) continue;
     if (!closing) seen.add(name);
     else if (seen.delete(name)) {
-      if (storyFormat.has(name)) return true;
+      if (presetPlanning.has(name)) return true;
       footers.add(name);
       if (footers.size >= 2) return true;
     }
@@ -49,10 +46,10 @@ function recognizesPresetFormat(tags: readonly Tag[]): boolean {
 
 export function scanPresetTags(text: string, custom: readonly string[] = []) {
   const tags: Tag[] = [];
-  const customSet = new Set(custom);
+  const customSet = new Set(custom.map(name => name.toLowerCase()));
   const addTag = (source: string, slash: string, rawName: string, start: number, opaque: boolean) => {
     const name = rawName.toLowerCase();
-    if (!builtIn.has(name) && !customSet.has(name)) return;
+    if (!builtIn.has(name) && !customSet.has(name) && !planning.has(name)) return;
     tags.push({ name, start, end: start + source.length, closing: Boolean(slash), literal: opaque || source.endsWith('/>') });
   };
   const tokens = new RegExp(opaqueSource + '|' + tagSource, 'gmu');
@@ -64,8 +61,8 @@ export function scanPresetTags(text: string, custom: readonly string[] = []) {
   }
   // Recognize the format from the reply so older replies still work after a preset switch.
   const presetFormat = recognizesPresetFormat(tags);
-  const isProtected = (name: string) => presetFormat || customSet.has(name);
-  const applicable = presetFormat ? tags : tags.filter(tag => customSet.has(tag.name) || planning.has(tag.name) || sections.has(tag.name));
+  const isProtected = (name: string) => customSet.has(name) || (presetFormat && builtIn.has(name));
+  const applicable = tags.filter(tag => isProtected(tag.name) || planning.has(tag.name));
 
   const planningEnds = new Map<Tag, Tag>();
   const planningStarts = new Map<string, Tag>();
@@ -86,65 +83,43 @@ export function scanPresetTags(text: string, custom: readonly string[] = []) {
     accepted.add(close);
     blocks.push({ name: open.name, start: open.start, end: close.end, bodyStart: open.end, bodyEnd: close.start });
   };
-  const containers = new Map<string, Tag>(), spans = new Map<string, Tag>();
-  let fields: Tag[] = [];
-  let plan: { close?: Tag } | undefined;
+  const fields: Tag[] = [];
+  const fieldStarts = new Map<string, number>();
+  const discardFieldsFrom = (index: number) => {
+    while (fields.length > index) fieldStarts.delete(fields.pop()!.name);
+  };
+  let planEnd: Tag | undefined;
+  let incompletePlan = false;
   for (const tag of applicable) {
     const { name, closing, literal } = tag;
     if (literal) continue;
-    if (plan) {
-      if (tag === plan.close) { plan = undefined; continue; }
-      // A structural opener can recover a reply whose planning closer was omitted.
-      if (plan.close || closing || (!sections.has(name) && !planningEnds.has(tag))) continue;
-      plan = undefined;
+    if (planEnd) {
+      if (tag === planEnd) planEnd = undefined;
+      continue;
     }
     if (planning.has(name)) {
-      if (closing || containers.has('story_scene')) continue;
-      fields = [];
-      spans.clear();
-      const close = planningEnds.get(tag);
-      plan = { close };
-      if (close) pair(tag, close);
+      if (closing) continue;
+      planEnd = planningEnds.get(tag);
+      incompletePlan = !planEnd;
+      if (planEnd) pair(tag, planEnd);
       continue;
     }
-    if (sections.has(name)) {
-      fields = [];
-      spans.clear();
-      if (!closing) containers.set(name, tag);
-      else {
-        const open = containers.get(name);
-        if (open) pair(open, tag);
-        containers.delete(name);
-      }
-      continue;
-    }
-    if (inline.has(name)) {
-      if (!closing) spans.set(name, tag);
-      else {
-        const open = spans.get(name);
-        if (open) pair(open, tag);
-        spans.delete(name);
-      }
-      continue;
-    }
-    if (containers.has('story_scene')) continue;
+    const index = fieldStarts.get(name);
     if (!closing) {
-      spans.clear();
-      // MVU keeps its JSON payload inside an UpdateVariable block.
-      fields = name === 'jsonpatch' && fields[0]?.name === 'updatevariable' ? [fields[0], tag] : [tag];
-    } else {
-      const open = fields.at(-1);
-      if (open?.name !== name) continue;
-      pair(open, tag);
-      fields.pop();
-      spans.clear();
+      // A repeated opener supersedes the dangling one for the same tag.
+      if (index !== undefined) discardFieldsFrom(index);
+      fieldStarts.set(name, fields.length);
+      fields.push(tag);
+    } else if (index !== undefined) {
+      pair(fields[index], tag);
+      discardFieldsFrom(index);
     }
   }
   return {
     blocks: blocks.filter(block => isProtected(block.name)),
     isolated: applicable.filter(tag => isProtected(tag.name) && !accepted.has(tag)),
     protectsStatus: isProtected('status'),
-    incompleteStructure: Boolean(plan || containers.size),
+    incompleteStructure: incompletePlan,
   };
 }
 

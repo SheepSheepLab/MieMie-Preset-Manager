@@ -2,14 +2,14 @@
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const test = require('node:test');
-const { isolatePresetTags, parseCustomTags, scanPresetTags } = require('../.test-build/tag-isolation.js');
+const { DEFAULT_ISOLATION_TAGS, isolatePresetTags, parseCustomTags, scanPresetTags } = require('../.test-build/tag-isolation.js');
 const { createPresetTools } = require('../.test-build/preset-tools.js');
 const { prepareStatus } = require('../.test-build/status.js');
 const { projectAdaptiveMarkup } = require('../.test-build/adaptive-tag-rendering.js');
 
 const status = '<status>地点：码头</status>';
 const scene = '<story_scene>正文 <t_small>语气</t_small></story_scene>';
-const statusBodies = text => scanPresetTags(text).blocks.filter(block => block.name === 'status')
+const statusBodies = (text, names) => scanPresetTags(text, names).blocks.filter(block => block.name === 'status')
   .map(block => text.slice(block.bodyStart, block.bodyEnd));
 
 test('Planning mentions and complete examples stay literal; the real footer still matches', () => {
@@ -23,21 +23,48 @@ test('Planning mentions and complete examples stay literal; the real footer stil
   }
 });
 
-test('Orphans stay literal and structural boundaries prevent cross-block pairing', () => {
+test('Orphans, mismatched tags and superseded openers stay literal', () => {
   assert.equal(isolatePresetTags('</status><status>多余\n' + status, ['status']), '&lt;/status&gt;&lt;status&gt;多余\n' + status);
-  assert.equal(isolatePresetTags('<status>尚无结尾\n' + scene + '\n</status>'),
-    '&lt;status&gt;尚无结尾\n' + scene + '\n&lt;/status&gt;');
-  assert.equal(isolatePresetTags('<story_driver>未完 <status>\n' + scene + '\n' + status),
+  assert.equal(isolatePresetTags('<status><quest_log>错位</status></quest_log>', ['status', 'quest_log']),
+    '<status>&lt;quest_log&gt;错位</status>&lt;/quest_log&gt;');
+  assert.equal(isolatePresetTags('<story_driver>未完 <status>\n' + scene + '\n' + status, DEFAULT_ISOLATION_TAGS),
     '&lt;story_driver&gt;未完 &lt;status&gt;\n' + scene + '\n' + status);
-  assert.equal(isolatePresetTags('<opening>开场</opening>\n' + status), '<opening>开场</opening>\n' + status);
 });
 
-test('Official attributed and nested tags are preserved, as are unrelated HTML and unknown tags', () => {
+test('Attributed tags and nested opt-in tags are preserved alongside ordinary HTML', () => {
   const input = scene + '<status><div>地点：码头</div></status>\n<wlog time="00:00">当晚</wlog>' +
-    '<UpdateVariable><JSONPatch>[]</JSONPatch></UpdateVariable>\n<other>';
-  assert.equal(isolatePresetTags(input), input);
-  assert.equal(isolatePresetTags('<story_scene>他提到 <status>示例</status>。</story_scene>\n' + status),
-    '<story_scene>他提到 &lt;status&gt;示例&lt;/status&gt;。</story_scene>\n' + status);
+    '<UpdateVariable><Analysis>分析</Analysis><JSONPatch>[]</JSONPatch></UpdateVariable>\n<other>';
+  assert.equal(isolatePresetTags(input, DEFAULT_ISOLATION_TAGS), input);
+  assert.deepEqual(scanPresetTags(input, DEFAULT_ISOLATION_TAGS).blocks.map(block => block.name),
+    ['status', 'wlog']);
+  const custom = ['t_small', 'UpdateVariable', 'Analysis', 'JSONPatch'];
+  assert.equal(isolatePresetTags(input, [...DEFAULT_ISOLATION_TAGS, ...custom]), input);
+  assert.deepEqual(scanPresetTags(input, [...DEFAULT_ISOLATION_TAGS, ...custom]).blocks.map(block => block.name),
+    ['t_small', 'status', 'wlog', 'analysis', 'jsonpatch', 'updatevariable']);
+});
+
+test('Tone, visual HTML and MVU labels require explicit opt-in', () => {
+  const names = ['t_big', 't_small', 't_s', 'htmlcontent', 'UpdateVariable', 'Analysis', 'JSONPatch'];
+  const examples = names.map(name => `<${name}>`).join(' ');
+  const input = '<story_driver>' + examples + '</story_driver>\n' + examples + '\n' + status;
+  assert.equal(isolatePresetTags(input, DEFAULT_ISOLATION_TAGS), input);
+  assert.equal(scanPresetTags(input, DEFAULT_ISOLATION_TAGS).incompleteStructure, false);
+  assert.equal(isolatePresetTags(input, names), input.replaceAll(examples, examples.replaceAll('<', '&lt;').replaceAll('>', '&gt;')));
+});
+
+test('The built-in output tags work inside any prose wrapper, including unwrapped prose', () => {
+  const decorations = '<locator>码头</locator>\n<t_big>等等！</t_big>\n' +
+    '<parallel_line_drive>另一边的安排</parallel_line_drive><parallel_line>另一边的剧情</parallel_line>';
+  for (const wrapper of ['story_scene', 'opening', 'content', '']) {
+    const body = wrapper ? `<${wrapper}>${decorations}</${wrapper}>` : decorations;
+    const plan = '<story_driver>提到 <locator> 和 <status></story_driver>\n';
+    const raw = plan + body + '\n' + status;
+    const expected = plan.replace('<locator>', '&lt;locator&gt;').replace('<status>', '&lt;status&gt;') + body + '\n' + status;
+    assert.equal(isolatePresetTags(raw), expected);
+    assert.equal(isolatePresetTags(raw, wrapper ? [wrapper] : []), expected);
+  }
+  const examples = '<story_scene>、<opening>、<status_format>、<think>、<thinking>';
+  assert.equal(isolatePresetTags('<story_driver>' + examples + '</story_driver>'), '<story_driver>' + examples + '</story_driver>');
 });
 
 test('Custom names follow the same boundaries and accept Chinese names without allowing pattern syntax', () => {
@@ -51,8 +78,8 @@ test('Custom names follow the same boundaries and accept Chinese names without a
 
 test('Quoted Markdown and commented markup cannot supply the active status block', () => {
   const input = scene + '\n参考 `<status>`\n\n```text\n<status>示例</status>\n```\n<!-- <status> -->\n' + status;
-  assert.deepEqual(statusBodies(input), ['地点：码头']);
-  assert.equal([...isolatePresetTags(input).matchAll(/<status>/g)].length, 1);
+  assert.deepEqual(statusBodies(input, ['status']), ['地点：码头']);
+  assert.equal([...isolatePresetTags(input, ['status']).matchAll(/<status>/g)].length, 1);
 });
 
 test('Built-ins are scoped to identifiable replies, and explicit names also work in other formats', () => {

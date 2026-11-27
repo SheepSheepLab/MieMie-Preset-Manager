@@ -5,7 +5,7 @@ import { createChatTransport, type ChatMessage, type UnicodeReply } from './unic
 import { prepareAffinity } from './affinity';
 import { DEFAULT_STATUS_PROMPT, prepareStatus } from './status';
 import { prepareWorldReport, WORLD_REPORT_PROMPT } from './world-report';
-import { parseCustomTags } from './tag-isolation';
+import { DEFAULT_ISOLATION_TAGS, parseCustomTags } from './tag-isolation';
 import { applyLowThinking, type ThinkingRequest } from './low-thinking';
 import { createTagIsolationDisplay, type DisplayContext } from './tag-isolation-display';
 import { isMieMiePreset } from './miemie-preset';
@@ -242,11 +242,15 @@ export function createPresetTools(host: ToolsHost): PresetTools {
     else source!.on(event, fn);
     subscriptions.push([event, fn]);
   }
-  const protectedTags = (settings: Readonly<ToolSettings>) =>
-    settings.tagIsolation !== false && tagDisplay.available ? settings.customTags ?? [] : undefined;
+  function protectedTags(settings: Readonly<ToolSettings>, preset: string | undefined) {
+    if (settings.tagIsolation === false || !tagDisplay.available) return;
+    const custom = settings.customTags ?? [];
+    return preset && defaultsFor(preset) === miemieDefaults ? [...DEFAULT_ISOLATION_TAGS, ...custom] : custom;
+  }
   let displayTagKey: string | undefined;
   function syncTagDisplay() {
-    const tags = protectedTags(settingsFor());
+    const preset = presetName();
+    const tags = protectedTags(settingsFor(preset), preset);
     const key = tags?.join('\0');
     if (key === displayTagKey) return;
     displayTagKey = key;
@@ -295,7 +299,7 @@ export function createPresetTools(host: ToolsHost): PresetTools {
         const replacingReply = (type === 'swipe' || type === 'regenerate') && last && !last.is_user && !last.is_system;
         const historyEnd = replacingReply ? ctx.chat.length - 1 : undefined;
         attempt = { preset, lowThinking, chatId: ctx.chatId, chat: ctx.chat, type, input, reply, toolReply, affinity, statusPrompt, worldReportPrompt,
-          protectedTags: protectedTags(settings), historyEnd, projections: new WeakSet() };
+          protectedTags: protectedTags(settings, preset), historyEnd, projections: new WeakSet() };
       }
     });
     listen('GENERATE_AFTER_DATA', (data, dryRun) => {

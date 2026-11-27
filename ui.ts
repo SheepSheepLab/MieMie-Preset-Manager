@@ -742,10 +742,10 @@ export function createManagerView(host: Window, controller: ManagerController, t
   const refreshStatusPrompt = createToolPrompt(status.feature, 'statusPrompt', '状态栏', 'status', DEFAULT_STATUS_PROMPT);
   const refreshWorldReportPrompt = createToolPrompt(worldReport.feature, 'worldReportPrompt', '世界运行报告', 'wlog', WORLD_REPORT_PROMPT);
 
-  const tagIsolation = toolFeature('标签隔离', '自动识别咩咩预设的回复格式，防止思维链里的标签把正文卷进美化卡片。', Boolean(tools?.tagIsolationAvailable), () => {
+  const tagIsolation = toolFeature('标签隔离', '隔离落单标签和思维链里的标签示例，让正常配对的标签继续美化。', Boolean(tools?.tagIsolationAvailable), () => {
     if (tools?.tagIsolationAvailable) saveToolSettings({ tagIsolation: !readToolSettings()?.tagIsolation });
   });
-  tagIsolation.feature.append(toolExample('思维链里提到', '这回合要输出 <status>', '正式状态栏', '只美化正文后的完整 <status>…</status>'));
+  tagIsolation.feature.append(toolExample('思维链里提到', '这回合要输出 <status>', '正式状态栏', '美化完整的 <status>…</status>'));
   const customEditor = el('div', 'mm-tool-tags-content');
   const customTags = createToolEditRow('隔离标签', '编辑隔离标签', () => {
     if (!tools?.tagIsolationAvailable) return;
@@ -770,7 +770,7 @@ export function createManagerView(host: Window, controller: ManagerController, t
   customLabel.htmlFor = customInput.id;
   customInput.rows = 3;
   customInput.placeholder = '<quest_log>';
-  const customHelp = el('p', 'mm-hint', '可写 quest_log 或 <quest_log>。每行一个，也可用逗号隔开。开启标签隔离后，额外标签在其他预设中也生效。');
+  const customHelp = el('p', 'mm-hint', '可写 quest_log 或 <quest_log>。每行一个，也可用逗号隔开。额外标签只用于当前预设。');
   customHelp.id = pickerId('custom-tags-help');
   customInput.setAttribute('aria-describedby', customHelp.id);
   const customFeedback = el('p', 'mm-hint');
