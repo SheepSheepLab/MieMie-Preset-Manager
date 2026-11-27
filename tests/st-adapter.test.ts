@@ -473,9 +473,11 @@ for (const version of ['1.18.0', '1.19.0']) {
     const f = fake(version);
     Object.assign(f.records.get('A')!, { openai_max_context: 4096, max_context_unlocked: false });
     Object.assign(f.live, { openai_max_context: 2000000, max_context_unlocked: true });
-    Object.assign(f.ctx, { extensionSettings: { tavern_helper: { optimize: { maximize_preset_context_length: true } } } });
     const a = await createSTAdapter(f.host), original = copy(f.records.get('A'));
-    const read = await a.read(); assert.deepEqual(read.raw, original);
+    for (const helper of [{ script: {} }, { optimize: {} }, { optimize: { maximize_preset_context_length: true } }]) {
+      Object.assign(f.ctx, { extensionSettings: { tavern_helper: helper } });
+      assert.deepEqual((await a.read()).raw, original);
+    }
     f.live.temp_openai = 0.9; await assert.rejects(a.read(), /未保存/); f.live.temp_openai = 0.7;
     f.live.openai_max_context = 12345; await assert.rejects(a.read(), /未保存/);
     f.live.openai_max_context = 2000000;

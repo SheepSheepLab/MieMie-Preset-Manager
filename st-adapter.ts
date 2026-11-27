@@ -285,7 +285,10 @@ export async function createSTAdapter(windowHost: Window, toolsLifecycle?: {
     const live = ctx.chatCompletionSettings;
     const conflict = () => { throw new NativePresetDraftError(name); };
     const helper = ctx.extensionSettings?.tavern_helper;
-    const optimize = object(helper) && object(helper.optimize) && helper.optimize.maximize_preset_context_length === true;
+    // Tavern Helper enables this optimization in its settings schema before it
+    // writes its defaults back into the host's extension settings.
+    const optimize = object(helper) && (helper.optimize === undefined || (object(helper.optimize) &&
+      (helper.optimize.maximize_preset_context_length ?? true) === true));
     const helperProjection = optimize && live.max_context_unlocked === true && live.openai_max_context === 2000000;
     for (const key of liveKeys) {
       if (helperProjection && (key === 'max_context_unlocked' || key === 'openai_max_context')) continue;
